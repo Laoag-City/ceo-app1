@@ -1,0 +1,59 @@
+# Optional Blueprint. Manual setup is documented in RENDER-DEPLOYMENT.md.
+# Enter secrets only in Render; no database is provisioned by this file.
+services:
+  - type: web
+    name: laoag-engineering-permits
+    runtime: node
+    plan: free
+    region: singapore
+    autoDeployTrigger: off
+    buildCommand: npm --prefix backend/database ci && npm --prefix "backend/monitorBP backend" ci
+    startCommand: node "backend/monitorBP backend/monitorServer.js"
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DB_ENGINE
+        value: postgres
+      - key: TZ
+        value: Asia/Manila
+      - key: PERMIT_COOKIE_SECURE
+        value: "true"
+      - key: PERMIT_DATABASE_URL
+        sync: false
+  - type: web
+    name: laoag-engineering-queue
+    runtime: node
+    plan: free
+    region: singapore
+    autoDeployTrigger: off
+    buildCommand: npm --prefix backend/database ci && npm --prefix "backend/monitorBP backend" ci && npm --prefix "backend/queue backend" ci
+    startCommand: node "backend/queue backend/queueServer.js"
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DB_ENGINE
+        value: postgres
+      - key: TZ
+        value: Asia/Manila
+      - key: PERMIT_COOKIE_SECURE
+        value: "true"
+      - key: QUEUE_VIDEO_STORAGE
+        value: cloudinary
+      - key: QUEUE_DATABASE_URL
+        sync: false
+      - key: PERMIT_DATABASE_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+# After Render assigns URLs, set PERMIT_PUBLIC_ORIGIN and QUEUE_PUBLIC_ORIGIN
+# on BOTH services to their actual HTTPS origins, then redeploy. Never guess URLs.

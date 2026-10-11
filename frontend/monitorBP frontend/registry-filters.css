@@ -1,0 +1,45 @@
+/* Registry-only controls, shared by building and occupancy. */
+.registry-card .registry-filter-controls { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; padding:0 28px 18px; }
+.registry-filter-controls .registry-filter-field { display:flex; flex-direction:column; gap:6px; min-width:150px; flex:0 1 180px; }
+.registry-filter-controls label { font-size:11px; font-weight:600; color:var(--text-secondary,#526774); }
+.registry-filter-controls :is(input,select) { width:100%; box-sizing:border-box; height:38px; min-height:38px; padding:8px 10px; border:1px solid var(--border,#dce5ec); border-radius:6px; background:#f7f9fb; color:var(--text-primary,#334e63); font:inherit; font-size:12px; }
+.registry-filter-controls :is(input,select):focus-visible { outline:2px solid var(--occ,var(--blue,#1769aa)); outline-offset:2px; }
+.registry-filter-controls .registry-clear { height:38px; padding:8px 12px; border:1px solid var(--border,#dce5ec); border-radius:6px; background:transparent; color:var(--text-secondary,#526774); font:inherit; font-size:12px; cursor:pointer; }
+.registry-filter-controls .registry-clear:hover:not(:disabled) { background:var(--surface,#f3f6f8); }
+.registry-filter-controls .registry-clear:disabled { opacity:.45; cursor:default; }
+.registry-filter-controls .registry-filter-error { flex-basis:100%; margin:0; color:#b42335; font-size:12px; }
+.registry-card #recordCounter { white-space:nowrap; font-size:12px; color:var(--text-secondary,#526774); }
+html[data-theme='dark'] .registry-filter-controls .registry-filter-error { color:#ffabb5; }
+html[data-theme='dark'] .registry-filter-controls .registry-clear { color:var(--theme-text); border-color:var(--theme-line); }
+html[data-theme='dark'] .occ-page .occupancy-intro-band { background:var(--theme-bg); border-color:var(--theme-line); }
+html[data-theme='dark'] .registry-card .table-wrap { background:transparent!important; }
+html[data-theme='dark'] .registry-card #recordCounter { color:var(--theme-muted); }
+html[data-theme='dark'] .registry-card { --text-secondary:#b7c4d1; --text-muted:#aab7c5; }
+html[data-theme='dark'] .registry-card .project-title-main { color:var(--theme-text)!important; }
+html[data-theme='dark'] .registry-card .occ-record-owner { color:var(--theme-muted)!important; }
+html[data-theme='dark'] .registry-card .lot-badge-inline { color:var(--theme-muted)!important; }
+html[data-theme='dark'] .registry-card :is(.btn-progress,.btn-details) { color:#9cc7ed!important; }
+html[data-theme='dark'] .occ-page .registry-card :is(.btn-progress,.btn-action) { color:#8ed6b8!important; }
+html[data-theme='dark'] .registry-card .btn-delete-record { color:#efa2ad!important; }
+html[data-theme='dark'] .registry-card :is(.occ-document-icon,.bp-project-icon) { filter:invert(.8); }
+html[data-theme='dark'] .occ-page .registry-card .filter-tab.active { background:#254137!important; color:#89d9b8!important; border-bottom-color:#89d9b8!important; }
+@media(max-width:600px) {
+    .registry-card .registry-filter-controls { padding:0 16px 16px; gap:10px; }
+    .registry-filter-controls .registry-filter-field { flex:1 1 calc(50% - 10px); min-width:0; }
+    .registry-card .registry-toolbar { flex-wrap:wrap; }
+    .registry-card .registry-toolbar .search-block { flex-basis:100%; max-width:none; }
+}
+.project-reference {
+    display: inline-block;
+    margin-right: 6px;
+    color: var(--text-secondary, #52677b);
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.registry-card .project-id-column {
+    width: 112px;
+    white-space: nowrap;
+}
+.registry-card .project-id-column .project-reference { margin-right: 0; }

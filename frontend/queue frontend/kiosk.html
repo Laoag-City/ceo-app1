@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- MAINTAINER GUIDE: queue-kiosk document/controller source. React mounts the layout before the inline controllers run. Edit this source rather than its published frontend copy. -->
+    <script src="/appearance.js"></script>
+    <script src="/destructive-action.js"></script>
+    <script src="/request-feedback.js"></script>
+    <script src="/form-safety.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office of the City Engineer | Queue Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="kiosk-style.css">
+    <style>
+        .radio-options-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        
+        .custom-radio-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background-color: #ffffff;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--ink);
+            font-weight: 500;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .custom-radio-label:hover {
+            background-color: #f8fafc;
+            border-color: var(--civic-blue);
+        }
+        .custom-radio-label input[type="radio"] {
+            margin: 0;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #1c5d99; /* Matches var(--civic-blue) */
+        }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="queue-ui.css">
+<link rel="stylesheet" href="shared-header.css">
+<link rel="stylesheet" href="status-badges.css">
+<link rel="stylesheet" href="/appearance.css">
+<link rel="stylesheet" href="/queue-workspace.css">
+<link rel="stylesheet" href="/queue-window.css">
+</head>
+<body class="queue-terminal-page">
+<div id="system-react-root" data-page="queue-kiosk" style="display:contents"></div>
+<script src="/system-react/app.js"></script>
+<script>
+    const BACKEND_URL = window.location.origin;
+    const currentWorkspace = sessionStorage.getItem('currentWorkspace');
+    
+    if(!currentWorkspace) {
+        window.location.href = 'log-in.html';
+    }
+
+    const workspaceTasks = {
+        'PC1': ['Releasing Bldg. Permit'],
+        'PC2': ['Releasing Bldg. Occupancy'],
+        'PC3': ['Receiving Bldg. Permit', 'Receiving Bldg. Occupancy', 'Inquire']
+        // Kiosk and Monitor don't need filters
+    };
+
+    function friendlyStationName(code) {
+        const map = { 
+            Kiosk: 'Registration Desk',
+            PC1: 'Window 1 (Releasing Bldg. Permit)', 
+            PC2: 'Window 2 (Releasing Bldg. Occupancy)', 
+            PC3: 'Window 3 (Receiving Bldg. permit/Occupancy)', 
+            Monitor: 'Monitor Display' 
+        };
+        return map[code] || code;
+    }
+    
+    document.getElementById('clerkHeader').innerText = `${friendlyStationName(currentWorkspace)}`;
+    document.getElementById('stationChip').innerHTML = `<i class="fa-solid fa-circle" style="font-size:8px; color:#3ddc84; margin-right:6px;"></i>${friendlyStationName(currentWorkspace)}`;
+
+    // --- DOM UI Routing ---
+    document.addEventListener("DOMContentLoaded", () => {
+        const regSection = document.getElementById('registrationSection');
+        const clerkSection = document.getElementById('clerkSection');
+        const rightPanel = document.querySelector('.right-panel');
+
+        if (currentWorkspace === 'Kiosk') {
+            document.body.classList.add('queue-registration-page');
+            clerkSection.style.display = 'none';
+            rightPanel.style.display = 'none';
+            document.title = 'Registration Desk | Office of the City Engineer';
+            document.getElementById('queuePageTitle').textContent = 'Registration desk';
+            document.getElementById('queuePageDescription').textContent = 'Register an applicant, select their service, and issue a queue ticket.';
+        } else {
+            document.body.classList.add('queue-window-page');
+            regSection.style.display = 'none';
+            clerkSection.style.borderTop = 'none';
+            clerkSection.style.marginTop = '0';
+            clerkSection.style.paddingTop = '0';
+            const windowName = 'Window ' + currentWorkspace.slice(-1);
+            document.title = windowName + ' | Office of the City Engineer';
+            document.getElementById('clerkHeader').textContent = windowName;
+            document.getElementById('windowServiceDescription').textContent = {PC1:'Building permit releasing',PC2:'Occupancy permit releasing',PC3:'Applications and inquiries'}[currentWorkspace] || '';
+            document.getElementById('queuePageTitle').textContent = 'Service desk';
+            document.getElementById('queuePageDescription').textContent = 'Call the next client, pause a ticket, or resume someone from On hold.';
+        }
+    });
+
+    document.getElementById('resetBtn').closest('.queue-maintenance').hidden=true;
+    if(currentWorkspace!=='Kiosk'){
+        RequestFeedback.fetch(BACKEND_URL+'/api/workstations/session?workspace='+encodeURIComponent(currentWorkspace)).then(r=>r.json()).then(data=>{
+            document.getElementById('resetBtn').closest('.queue-maintenance').hidden=!['admin','superadmin'].includes(data.user?.role);
+        }).catch(()=>{sessionStorage.removeItem('currentWorkspace');window.location.replace('log-in.html');});
+    }
+    const socket = io(BACKEND_URL);
+    let popupTimeout;
+    let localTicketRegistry = {};
+    let activeTicket = null;
+    let actionPending = false;
+    let queueConnected = false;
+    let waitingTickets = [];
+    let heldTickets = [];
+    let finishedTickets = [];
+    let selectedList = 'waiting';
+    function updateServiceControls() {
+        document.getElementById('activeTicketLabel').textContent = activeTicket ? activeTicket.id : (queueConnected ? 'Ready for a client' : 'Connecting…');
+        document.getElementById('activeTicketName').textContent = activeTicket?.name || '';
+        document.getElementById('activeTicketReason').textContent = activeTicket?.reason || (queueConnected ? 'Press Next ticket to begin.' : 'Waiting for the queue connection.');
+        const status = document.getElementById('activeTicketStatus');
+        status.textContent = queueConnected ? (activeTicket ? 'In service' : 'Available') : 'Offline';
+        status.classList.toggle('is-serving',!!activeTicket);
+        const live = document.querySelector('.desk-live');
+        live.classList.toggle('is-offline',!queueConnected);
+        live.lastChild.textContent=queueConnected ? 'Live queue' : 'Connecting…';
+        document.getElementById('callNextBtn').disabled = !queueConnected || actionPending || (!activeTicket && !waitingTickets.length);
+        ['recallBtn','holdBtn','dropBtn','activeDetailsBtn'].forEach(id => document.getElementById(id).disabled = !queueConnected || actionPending || !activeTicket);
+        document.querySelectorAll('.desk-ticket-select,.desk-row-drop').forEach(button=>button.disabled=!queueConnected || actionPending);
+    }
+    updateServiceControls();
+    socket.on('disconnect', () => { queueConnected = false; updateServiceControls(); });
+
+    socket.on('queueUpdate', (data) => {
+        localTicketRegistry = {};
+        queueConnected = true;
+        activeTicket = (data.serving || (data.nowServing ? [data.nowServing] : []))
+            .find(ticket => ticket.calledBy === currentWorkspace) || null;
+        let currentQueue = data.queue || data.waiting || [];
+        let currentHold = data.onHold || [];
+        let currentFinished = data.finished || [];
+
+        currentQueue.forEach(t => localTicketRegistry[t.id] = t);
+        currentHold.forEach(t => localTicketRegistry[t.id] = t);
+        currentFinished.forEach(t => localTicketRegistry[t.id] = t);
+        if(activeTicket)localTicketRegistry[activeTicket.id]=activeTicket;
+
+        const allowedTasks = workspaceTasks[currentWorkspace];
+        if (allowedTasks) {
+            currentQueue = currentQueue.filter(t => allowedTasks.includes(t.reason));
+            currentHold = currentHold.filter(t => allowedTasks.includes(t.reason));
+            currentFinished = currentFinished.filter(t => t.calledBy === currentWorkspace && allowedTasks.includes(t.reason));
+        }
+
+        waitingTickets=currentQueue;heldTickets=currentHold;finishedTickets=currentFinished;
+        renderLists(currentQueue, currentHold, currentFinished);
+        updateServiceControls();
+    });
+
+    const searchInput = document.getElementById('barangaySearchInput');
+    const innerSearch = document.getElementById('dropdownInnerSearch');
+    const menuContainer = document.getElementById('dropdownMenuContainer');
+    const hiddenValue = document.getElementById('barangayHiddenValue');
+    const options = menuContainer.querySelectorAll('.custom-option');
+    const labels = menuContainer.querySelectorAll('.optgroup-label');
+    const noResults = document.getElementById('noResultsMessage');
+
+    searchInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+        bldgMenuContainer.classList.remove('active');
+        menuContainer.classList.toggle('active');
+        if(menuContainer.classList.contains('active')) {
+            innerSearch.value = '';
+            filterOptions(options, labels, innerSearch, noResults);
+            innerSearch.focus();
+        }
+    });
+
+    options.forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const value = option.getAttribute('data-value');
+            searchInput.value = value;
+            hiddenValue.value = value;
+            menuContainer.classList.remove('active');
+        });
+    });
+
+    const bldgSearchInput = document.getElementById('bldgLocationSearchInput');
+    const bldgInnerSearch = document.getElementById('bldgDropdownInnerSearch');
+    const bldgMenuContainer = document.getElementById('bldgDropdownMenuContainer');
+    const bldgHiddenValue = document.getElementById('bldgLocationHiddenValue');
+    const bldgOptions = bldgMenuContainer.querySelectorAll('.custom-option');
+    const bldgLabels = bldgMenuContainer.querySelectorAll('.optgroup-label');
+    const bldgNoResults = document.getElementById('bldgNoResultsMessage');
+
+    bldgSearchInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menuContainer.classList.remove('active');
+        bldgMenuContainer.classList.toggle('active');
+        if(bldgMenuContainer.classList.contains('active')) {
+            bldgInnerSearch.value = '';
+            filterOptions(bldgOptions, bldgLabels, bldgInnerSearch, bldgNoResults);
+            bldgInnerSearch.focus();
+        }
+    });
+
+    bldgOptions.forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const value = option.getAttribute('data-value');
+            bldgSearchInput.value = value;
+            bldgHiddenValue.value = value;
+            bldgMenuContainer.classList.remove('active');
+        });
+    });
+
+    document.addEventListener('click', () => {
+        menuContainer.classList.remove('active');
+        bldgMenuContainer.classList.remove('active');
+    });
+
+    menuContainer.addEventListener('click', (e) => e.stopPropagation());
+    bldgMenuContainer.addEventListener('click', (e) => e.stopPropagation());
+
+    innerSearch.addEventListener('input', () => filterOptions(options, labels, innerSearch, noResults));
+    bldgInnerSearch.addEventListener('input', () => filterOptions(bldgOptions, bldgLabels, bldgInnerSearch, bldgNoResults));
+
+    function filterOptions(opts, lbs, inputEl, noResEl) {
+        const query = inputEl.value.toLowerCase().trim();
+        let globalMatchCount = 0;
+
+        opts.forEach(opt => {
+            const text = opt.textContent.toLowerCase();
+            if(text.includes(query)) {
+                opt.style.display = 'block';
+                globalMatchCount++;
+            } else {
+                opt.style.display = 'none';
+            }
+        });
+
+        lbs.forEach(label => {
+            let nextEl = label.nextElementSibling;
+            let sectionHasMatch = false;
+            
+            while (nextEl && nextEl.classList.contains('custom-option')) {
+                if (nextEl.style.display === 'block') {
+                    sectionHasMatch = true;
+                }
+                nextEl = nextEl.nextElementSibling;
+            }
+            label.style.display = sectionHasMatch ? 'block' : 'none';
+        });
+
+        noResEl.style.display = (globalMatchCount === 0) ? 'block' : 'none';
+    }
+
+    const detailsModal = document.getElementById('detailsModal');
+    
+    window.openDetailsModal = function(ticketId) {
+        const data = localTicketRegistry[ticketId];
+        if(!data) return;
+
+        document.getElementById('modalTicketId').innerText = `Details for Ticket: ${data.id}`;
+        document.getElementById('modalFullName').innerText = data.name || 'N/A';
+        document.getElementById('modalBarangay').innerText = data.barangay || 'N/A';
+        document.getElementById('modalContact').innerText = data.phone || 'N/A';
+        document.getElementById('modalReason').innerText = data.reason || 'N/A';
+        
+        detailsModal.classList.add('reveal');
+    };
+
+    document.getElementById('closeModalBtn').addEventListener('click', () => {
+        detailsModal.classList.remove('reveal');
+    });
+    
+    window.addEventListener('click', (e) => {
+        if(e.target === detailsModal) {
+            detailsModal.classList.remove('reveal');
+        }
+    });
+
+    const visibleTicketNames = new Map();
+    function renderLists(queue, holdQueue, finishedQueue = []) {
+        visibleTicketNames.clear();
+        [...queue,...holdQueue,...finishedQueue].forEach(ticket=>visibleTicketNames.set(ticket.id,ticket.name));
+        if(activeTicket)visibleTicketNames.set(activeTicket.id,activeTicket.name);
+        for(const [list,tickets,id,empty] of [
+            ['waiting',queue,'clerkQueueList','No waiting clients. Your window is up to date.'],
+            ['held',holdQueue,'clerkHoldList','No tickets on hold. Held clients will appear here.'],
+            ['finished',finishedQueue,'clerkFinishedList','No finished tickets yet. Completed clients will appear here.']
+        ]) {
+            document.getElementById(list+'Count').textContent=tickets.length;
+            const container=document.getElementById(id);
+            container.replaceChildren();
+            if(!tickets.length){const note=document.createElement('div');note.className='desk-empty';note.textContent=empty;container.appendChild(note);}
+            tickets.forEach(ticket=>container.appendChild(buildTicketRow(ticket,list)));
+        }
+        selectTicketList(selectedList);
+    }
+
+    function buildTicketRow(ticket,list) {
+        const row=document.createElement('div');row.className='desk-ticket-row';
+        const copy=document.createElement(list==='held'?'button':'div');
+        copy.className=list==='held'?'desk-ticket-select':'desk-ticket-copy';
+        if(list==='held'){
+            copy.type='button';copy.setAttribute('aria-label','Resume '+ticket.id+' — '+ticket.name);
+            copy.disabled=!queueConnected || actionPending;
+            copy.addEventListener('click',()=>window.resumeTicket(ticket.id));
+        }
+        const number=document.createElement('strong');number.className='desk-ticket-number';number.textContent=ticket.id;
+        const client=document.createElement('span');client.className='desk-ticket-client';
+        const name=document.createElement('strong');name.textContent=ticket.name;
+        const reason=document.createElement('span');reason.textContent=ticket.reason;
+        client.append(name,reason);copy.append(number,client);
+        if(list==='held'){const hint=document.createElement('small');hint.className='desk-resume-label';hint.textContent='Click to resume →';client.appendChild(hint);}
+        row.appendChild(copy);
+        const actions=document.createElement('div');actions.className='desk-ticket-actions';
+        const details=document.createElement('button');details.type='button';details.textContent='Details';details.setAttribute('aria-label','Details for '+ticket.id);
+        details.addEventListener('click',()=>openDetailsModal(ticket.id));actions.appendChild(details);
+        if(list!=='finished'){
+            const drop=document.createElement('button');drop.type='button';drop.className='desk-row-drop';drop.textContent='Drop';drop.setAttribute('aria-label','Drop '+ticket.id);
+            drop.disabled=!queueConnected || actionPending;
+            drop.addEventListener('click',()=>window.removeTicket(ticket.id,list==='held'?'holding':'waiting'));actions.appendChild(drop);
+        }
+        row.appendChild(actions);return row;
+    }
+
+    function selectTicketList(list) {
+        selectedList=list;
+        for(const name of ['waiting','held','finished']){
+            const tab=document.getElementById(name+'Tab');tab.setAttribute('aria-selected',String(name===list));tab.tabIndex=name===list?0:-1;
+            document.getElementById(name+'Panel').hidden=name!==list;
+        }
+    }
+    for(const [index,list] of ['waiting','held','finished'].entries()){
+        const tab=document.getElementById(list+'Tab');
+        tab.addEventListener('click',()=>selectTicketList(list));
+        tab.addEventListener('keydown',event=>{
+            if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+            event.preventDefault();
+            const next=event.key==='Home'?0:event.key==='End'?2:(index+(event.key==='ArrowRight'?1:2))%3;
+            const name=['waiting','held','finished'][next];selectTicketList(name);document.getElementById(name+'Tab').focus();
+        });
+    }
+
+    window.removeTicket = function(ticketId,expectedStatus) {
+        if(actionPending || !queueConnected)return;
+        return DestructiveAction.run({title:'Drop ticket?',message:'Drop '+ticketId+' — '+(visibleTicketNames.get(ticketId)||'Visitor')+'? It will leave the active queue and be marked as dropped. Its record and activity history are retained.',confirmLabel:'Drop ticket',action:async()=>{
+            if(!await serviceAction('drop',undefined,{ticketId,expectedStatus}))throw new Error(document.getElementById('queueActionFeedback').textContent);
+        }});
+    };
+
+    window.resumeTicket = function(ticketId) {
+        return serviceAction('resume',undefined,{ticketId,currentTicketId:activeTicket?.id || null});
+    };
+
+    let ticketSubmission = null;
+    try { ticketSubmission = JSON.parse(sessionStorage.getItem('queueTicketSubmission')); } catch (_) {}
+    function newSubmissionId() {
+        if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+        // getRandomValues also works on office LAN pages served over HTTP.
+        const bytes=crypto.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;
+        const hex=[...bytes].map(v=>v.toString(16).padStart(2,'0')).join('');
+        return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
+    }
+    function submissionId(payload) {
+        const fingerprint=JSON.stringify(payload);
+        if(!ticketSubmission || ticketSubmission.fingerprint!==fingerprint){
+            if(ticketSubmission && !confirm('An earlier ticket submission is unconfirmed. Check the queue before creating a different ticket. Continue?'))return null;
+            ticketSubmission={fingerprint,id:newSubmissionId()};
+            sessionStorage.setItem('queueTicketSubmission',JSON.stringify(ticketSubmission));
+        }
+        return ticketSubmission.id;
+    }
+    document.getElementById('queueForm').addEventListener('submit', FormSafety.guard('queueForm', function(e) {
+        e.preventDefault();
+        
+        const applicant = document.getElementById('applicantName').value.trim();
+        const agent = document.getElementById('agentName').value.trim();
+        const name = agent ? `${applicant} (Agent: ${agent})` : applicant;
+
+        const applicantPhone = document.getElementById('applicantPhone').value.trim();
+        const agentPhone = document.getElementById('agentPhone').value.trim();
+        const phone = agentPhone ? `${applicantPhone} (Agent: ${agentPhone})` : applicantPhone;
+
+        const email = ""; 
+
+        const addressVal = document.getElementById('barangayHiddenValue').value;
+        const bldgLocationVal = document.getElementById('bldgLocationHiddenValue').value;
+        
+        if (!addressVal || !bldgLocationVal) {
+            alert("Please select both addresses from the dropdown lists.");
+            return;
+        }
+
+        const barangay = `Address: ${addressVal} | Bldg Loc: ${bldgLocationVal}`;
+        const checkedReasonRadio = document.querySelector('input[name="visitReason"]:checked');
+        const reason = checkedReasonRadio ? checkedReasonRadio.value : '';
+        
+        if (!reason) {
+            alert("Please select a reason for your visit.");
+            return;
+        }
+        
+        const payload={name,phone,email,barangay,reason};
+        const requestId=submissionId(payload); if(!requestId)return;
+        return RequestFeedback.fetch(`${BACKEND_URL}/api/tickets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, requestId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                ticketSubmission=null; sessionStorage.removeItem('queueTicketSubmission');
+                document.getElementById('ticketId').innerText = data.ticketId;
+                document.getElementById('ticketPopup').style.display = 'block';
+                
+                document.getElementById('queueForm').reset();
+                document.getElementById('barangaySearchInput').value = '';
+                document.getElementById('barangayHiddenValue').value = '';
+                document.getElementById('bldgLocationSearchInput').value = '';
+                document.getElementById('bldgLocationHiddenValue').value = '';
+                
+                clearTimeout(popupTimeout);
+                popupTimeout = setTimeout(() => { document.getElementById('ticketPopup').style.display = 'none'; }, 4000);
+            } else {
+                alert(data.message || "Failed to generate ticket.");
+            }
+        });
+    }));
+
+    // Disable all service actions together until the server confirms the transition.
+    async function serviceAction(action, source, selection = {}) {
+        if (actionPending || !queueConnected) return false;
+        actionPending = true;
+        updateServiceControls();
+        const feedback = document.getElementById('queueActionFeedback');
+        feedback.textContent = 'Updating…';
+        feedback.dataset.error='false';
+        try {
+            const response = await RequestFeedback.fetch(BACKEND_URL + '/api/tickets/' + action, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({workspace:currentWorkspace,source,ticketId:activeTicket?.id || null,...selection})
+            });
+            const data = await response.json();
+            if (!data.success) throw new Error(data.message);
+            if (action === 'next' || action === 'resume' || action === 'recall') activeTicket = data.ticket;
+            else if(action==='hold' || action==='complete' || (action==='drop' && activeTicket?.id===data.ticket?.id))activeTicket=null;
+            const completed=data.completedTicket ? data.completedTicket.id+' moved to Finished. ' : '';
+            feedback.textContent = completed + (action==='recall' ? 'Calling '+data.ticket.id+' again.' : action==='hold' ? data.ticket.id+' is on hold. Select it under On hold to resume.' : action==='drop' ? data.ticket.id+' dropped. Its history is retained.' : data.ticket ? data.ticket.id+' called to your window.' : 'No waiting clients. You’re all caught up.');
+            return true;
+        } catch (error) {
+            feedback.textContent = error.message || 'Action failed. Refresh and try again.';
+            feedback.dataset.error='true';
+            return false;
+        } finally {
+            actionPending = false;
+            updateServiceControls();
+        }
+    }
+    document.getElementById('callNextBtn').addEventListener('click', () => serviceAction('next'));
+    document.getElementById('recallBtn').addEventListener('click', () => serviceAction('recall'));
+    document.getElementById('holdBtn').addEventListener('click', () => serviceAction('hold'));
+    document.getElementById('dropBtn').addEventListener('click', () => activeTicket && window.removeTicket(activeTicket.id,'serving'));
+    document.getElementById('activeDetailsBtn').addEventListener('click',()=>activeTicket && openDetailsModal(activeTicket.id));
+
+    document.getElementById('resetBtn').addEventListener('click', () => DestructiveAction.run({
+        title:'Reset the entire queue?',
+        message:'This clears the active queue and workstation assignments. Past clients remain in Client history. Ticket numbering restarts at 1001. Activity logs and uploaded videos are retained.',
+        confirmLabel:'Reset queue',requireText:'RESET',
+        action:async()=>{
+            const r=await RequestFeedback.fetch(`${BACKEND_URL}/api/system/reset`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace:currentWorkspace,confirmation:'RESET'})});
+            const data=await r.json();if(!data.success)throw new Error(data.message||'Queue reset failed.');
+            alert('Queue reset completed. Sign in to your workstation again.');
+            sessionStorage.removeItem('currentWorkspace');
+            window.location.href='log-in.html';
+        }
+    }));
+
+    async function handleWorkstationBack() {
+        const button = document.getElementById('logoutBtn');
+        if (button.disabled || !FormSafety.leave()) return;
+        button.disabled = true;
+        try {
+            await RequestFeedback.fetch(`${BACKEND_URL}/api/workstations/logout`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workspace: currentWorkspace })
+            });
+            sessionStorage.removeItem('currentWorkspace');
+            window.location.href = 'workstations.html';
+        } catch (error) {
+            document.getElementById('queueActionFeedback').textContent = error.message || 'Could not return to workstation selection. Please try again.';
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    function handleKioskBack() {
+        if (!FormSafety.leave()) return;
+        sessionStorage.removeItem('currentWorkspace');
+        window.location.href = 'workstations.html';
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', handleWorkstationBack);
+    const kioskBack = document.getElementById('kioskLogoutBtn');
+    if (kioskBack) kioskBack.addEventListener('click', handleKioskBack);
+
+    // Refresh must not release a server-owned window; the back button releases it explicitly.
+</script>
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script></body>
+</html>

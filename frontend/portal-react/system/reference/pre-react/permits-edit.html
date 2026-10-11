@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/appearance.js"></script>
+    <script src="/request-feedback.js"></script>
+    <script src="/form-safety.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office of the City Engineer | Building Permit Workspace</title>
+    <link rel="stylesheet" href="edit.css">
+<style>.workspace-record-icon{width:22px;height:22px;object-fit:contain;opacity:.7}.card-heading-icon .mdi-icon{width:20px;height:20px;fill:currentColor}</style>
+<link rel="stylesheet" href="/shared-header.css">
+<link rel="stylesheet" href="/status-badges.css">
+<link rel="stylesheet" href="/login-feedback.css">
+<script src="/login-feedback.js"></script>
+<script src="/workspace-notice.js"></script>
+<link rel="stylesheet" href="/appearance.css">
+<script src="/quick-templates.js" defer></script>
+<link rel="stylesheet" href="/project-records.css">
+<script src="/project-records.js"></script>
+</head>
+<body>
+
+<div class="top-bar site-header">
+    <div class="top-bar-brand">
+        <img class="top-bar-logo" src="/assets/laoag-city-official-seal.png" alt="Laoag City official seal">
+        <div>
+            <div class="top-bar-title">Building Permit Routing Workspace</div>
+            <div class="top-bar-subtitle">Office of the City Engineer — Laoag City</div>
+        </div>
+    </div>
+    <div class="top-bar-actions">
+        <span id="globalWorkflowStatus" class="global-status-badge status-pending"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-alert-circle-outline"></use></svg>Evaluating...</span>
+    </div>
+</div>
+
+<div class="page-wrapper">
+
+    <div class="action-bar">
+        <div class="action-bar-left">
+            <a class="btn-back" href="/"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-arrow-left"></use></svg>Back to Registry</a>
+        </div>
+    </div>
+
+    <section class="workspace-intro">
+        <div>
+            <div class="workspace-kicker">Permit review workspace</div>
+            <h1>Routing and technical review</h1>
+            <p>Review permit information, assigned disciplines, signatures, and feedback in one place.</p>
+        </div>
+        <div class="workspace-note"><span></span> Live permit record</div>
+    </section>
+
+    <div class="main-grid">
+
+        <div class="left-col">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-heading-group"><span class="card-heading-icon"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-source-branch"></use></svg></span><div><h2>Workflow Configuration</h2><p>Manage review stations</p></div></div>
+                </div>
+                <div class="card-body">
+                    <label class="field-label">Target Permit Flow</label>
+                    <select id="targetFlowScopeSelector" style="margin-bottom:12px;" onchange="renderStationChips()">
+                        <option value="parent-0">Primary Main Permit</option>
+                    </select>
+
+                    <label class="field-label" style="margin-bottom:6px;">Active Stations</label>
+                    <div class="station-chips-area" id="disciplineConfigList">Loading...</div>
+
+                    <form id="addDisciplineForm">
+                        <label class="field-label" for="new_discipline_name">Add Station</label>
+                        <div class="add-discipline-row">
+                            <input type="text" id="new_discipline_name" placeholder="e.g. Mechanical" required>
+                            <button type="submit" class="btn-add"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-plus"></use></svg>Add</button>
+                        </div>
+                    </form>
+
+                    <hr class="quick-add-divider">
+                    <div class="template-heading">
+                        <span class="quick-add-label">Quick Add Templates</span>
+                        <button type="button" id="manageTemplatesBtn" aria-expanded="false" aria-controls="templateEditor">Manage</button>
+                    </div>
+                    <div class="quick-add-grid" id="quickAddTemplates">
+                        <button class="btn-quick-add" type="button" onclick="handleQuickAddStation('OFFICE OF THE BUILDING OFFICIAL')">Office of the Building Official</button>
+                        <button class="btn-quick-add" type="button" onclick="handleQuickAddStation('LAND USE AND ZONING')">Land Use and Zoning</button>
+                        <button class="btn-quick-add" type="button" onclick="handleQuickAddStation('ARCHITECTURAL')">Architectural</button>
+                        <button class="btn-quick-add" type="button" onclick="handleQuickAddStation('STRUCTURAL')">Structural</button>
+                        <button class="btn-quick-add" type="button" onclick="handleQuickAddStation('LINE AND GRADE')">Line and Grade</button>
+                        <button class="btn-quick-add" type="button" onclick="handleQuickAddStation('SANITARY')">Sanitary</button>
+                        <button class="btn-quick-add" type="button" onclick="handleQuickAddStation('ELECTRICAL')">Electrical</button>
+                        <button class="btn-quick-add" type="button" onclick="handleQuickAddStation('MECHANICAL')">Mechanical</button>
+                        <button class="btn-quick-add" type="button" onclick="handleQuickAddStation('CINSP BFP CITY FIRE MARSHAL')">CINSP BFP City Fire Marshal</button>
+                    </div>
+                    <div id="templateEditor" hidden>
+                        <p class="template-help">Removing a shortcut keeps active stations unchanged.</p>
+                        <form id="quickTemplateForm">
+                            <label class="field-label" for="newTemplateName">New Template</label>
+                            <div class="add-discipline-row">
+                                <input id="newTemplateName" type="text" required maxlength="100" placeholder="e.g. Mechanical">
+                                <button type="submit" class="btn-add">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                    <p id="templateFeedback" class="template-help" role="status" aria-live="polite"></p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-heading-group"><span class="card-heading-icon gold"><img class="workspace-record-icon" src="/assets/building-project-icon.png" alt=""></span><div><h2>Permit Details</h2><p>Application information</p></div></div>
+                </div>
+                <div class="card-body" id="permitMetaDetails">
+                    <div class="meta-item"><span class="meta-label">Loading</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-col">
+<div class="card">
+                <div class="card-header matrix-card-header">
+                    <div class="card-heading-group"><span class="card-heading-icon green"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-check-circle-outline"></use></svg></span><div><h2>Signature Routing Matrix</h2><p>Discipline assignments and review status</p></div></div>
+                    <div class="matrix-header-actions">
+                        <span id="modeBadgeTable" class="mode-badge">View Only</span>
+                        <button id="editTriggerBtn" class="btn-edit-trigger" onclick="enableEditingMode()">Edit</button>
+                        <button id="cancelEditBtn" class="btn-cancel-edit" type="button" onclick="cancelEditingMode()" aria-label="Cancel editing" title="Cancel editing"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-close"></use></svg></button>
+                    </div>
+                </div>
+                <div class="matrix-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Station / Discipline</th>
+                                <th>Assigned Engineer</th>
+                                <th style="width:140px;">Status</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrixTableBody"></tbody>
+                    </table>
+                </div>
+                <button id="saveMatrixBtn" class="btn-save-matrix">Save Signature Updates</button>
+            </div>
+
+            <section data-project-records="permits" aria-label="Project activity and comments"></section>
+<div class="card">
+                <div class="card-header">
+                    <div class="card-heading-group"><span class="card-heading-icon red"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-alert-circle-outline"></use></svg></span><div><h2>Rejection History</h2><p>Recorded review issues and remarks</p></div></div>
+                </div>
+                <div class="card-body" id="historicalTimeline">
+                    <em style="color:var(--text-muted); font-size:12px;">No rejection records logged.</em>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="remarksModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); align-items:center; justify-content:center; z-index:200; padding:20px;">
+    <div style="background:#fff; border-radius:12px; width:100%; max-width:520px; box-shadow:0 20px 50px rgba(0,0,0,0.25); overflow:hidden;">
+        <div style="padding:16px 22px; background:var(--navy); color:white; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <div style="font-size:13px; font-weight:700; letter-spacing:0.01em;">Remarks</div>
+                <div id="remarksModalSubtitle" style="font-size:11px; color:#93c5fd; margin-top:2px;"></div>
+            </div>
+            <button onclick="closeRemarksModal()" aria-label="Close remarks" title="Close remarks" style="display:grid; place-items:center; width:32px; height:32px; background:none; border:none; color:#cbd5e1; cursor:pointer; transition:color 0.15s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#cbd5e1'"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-close"></use></svg></button>
+        </div>
+        <div style="padding:22px;">
+            <textarea id="remarksModalTextarea" rows="6" placeholder="Enter remarks, notes, or instructions…" style="width:100%; padding:10px 13px; border:1px solid var(--border-strong); border-radius:7px; font-size:13px; font-family:inherit; color:var(--text-primary); resize:vertical; line-height:1.6; transition:border-color 0.15s, box-shadow 0.15s;" onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px rgba(29,78,216,0.1)'" onblur="this.style.borderColor='var(--border-strong)'; this.style.boxShadow='none'"></textarea>
+            <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
+                <button onclick="closeRemarksModal()" style="padding:9px 16px; background:var(--white); color:var(--text-secondary); border:1px solid var(--border-strong); border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--white)'">Cancel</button>
+                <button onclick="applyRemarks()" style="padding:9px 18px; background:var(--blue); color:white; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; transition:background 0.15s;" onmouseover="this.style.background='#1e40af'" onmouseout="this.style.background='var(--blue)'">Apply Remarks</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const permitId = urlParams.get('id');
+    let isEditingMode = false;
+    let completeDatasetCache = null;
+
+    function formatDisplayDate(value) {
+        if (!value) return '—';
+        const datePart = String(value).split('T')[0];
+        const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        return match ? `${match[3]}/${match[2]}/${match[1]}` : datePart;
+    }
+
+    function getStoredUser() {
+        try { return JSON.parse(sessionStorage.getItem('oboUser') || 'null'); } catch (e) { return null; }
+    }
+
+    function getAuthHeaders(extra = {}) {
+        const user = getStoredUser();
+        return {
+            ...(extra || {}),
+            'Content-Type': 'application/json',
+            'x-user-role': user?.role || '',
+            'x-user-id': user?.id ? String(user.id) : ''
+        };
+    }
+
+    const currentUser = getStoredUser();
+    if (!currentUser) {
+        window.location.href = '/login';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!permitId) { alert("Missing permit ID."); window.location.href = "/"; return; }
+        fetchPermitData();
+        setupConfigFormListeners();
+    });
+
+    function setupConfigFormListeners() {
+        document.getElementById('addDisciplineForm').addEventListener('submit', FormSafety.guard('addDisciplineForm', async (e) => {
+            e.preventDefault();
+            const nameInput = document.getElementById('new_discipline_name');
+            await postStationToMatrix(nameInput.value);
+            nameInput.value = '';
+        }));
+    }
+
+    function renderStationChips() {
+        const selector = document.getElementById('targetFlowScopeSelector');
+        const wrapper = document.getElementById('disciplineConfigList');
+        const selectedValue = selector.value;
+
+        let activeStations = [];
+        if (selectedValue === 'parent-0') {
+            activeStations = completeDatasetCache.matrix || [];
+        } else {
+            const subId = parseInt(selectedValue.split('-')[1]);
+            const subMatch = (completeDatasetCache.sub_permits || []).find(s => s.id === subId);
+            if (subMatch) activeStations = subMatch.matrix || [];
+        }
+
+        if (activeStations.length === 0) {
+            wrapper.innerHTML = '<em style="color:var(--text-muted); font-size:11px;">No stations assigned. Add one below.</em>';
+            return;
+        }
+
+        wrapper.innerHTML = activeStations.map(d => {
+            const paramsString = selectedValue === 'parent-0' ? `permit_id=${permitId}` : `sub_permit_id=${selectedValue.split('-')[1]}`;
+            return `<span class="station-badge-chip">
+                ${escapeHTML(d.discipline_name)}
+                <button type="button" class="station-delete-btn" onclick="deleteStation('${encodeURIComponent(d.discipline_name)}', '${paramsString}')" aria-label="Remove ${escapeHTML(d.discipline_name)}" title="Remove station"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-close"></use></svg></button>
+            </span>`;
+        }).join(' ');
+    }
+
+    async function postStationToMatrix(stationName) {
+        if (!stationName.trim()) return;
+        const selectorValue = document.getElementById('targetFlowScopeSelector').value;
+        let payload = { discipline_name: stationName.trim() };
+        if (selectorValue === 'parent-0') payload.permit_id = permitId;
+        else payload.sub_permit_id = parseInt(selectorValue.split('-')[1]);
+        try {
+            const res = await RequestFeedback.fetch(`/api/matrix/add`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+            const out = await res.json();
+            if (out.success) { await fetchPermitData(); return true; }
+            else alert(out.message);
+        } catch(e) { console.error(e); }
+    }
+
+    async function handleQuickAddStation(targetName) { await postStationToMatrix(targetName); }
+
+    async function deleteStation(name, params) {
+        if (!confirm(`Remove "${decodeURIComponent(name)}" from this workflow?`)) return;
+        try {
+            const res = await RequestFeedback.fetch(`/api/matrix/remove?discipline_name=${name}&${params}`, { method: 'DELETE', headers: getAuthHeaders() });
+            if ((await res.json()).success) await fetchPermitData();
+        } catch(e) { console.error(e); }
+    }
+
+    async function fetchPermitData() {
+        const response = await RequestFeedback.fetch(`/api/permits/${permitId}`);
+        if (response.status === 404) { window.location.href = "/"; return; }
+        const data = await response.json();
+        completeDatasetCache = data;
+
+        let lotsList = data.lot_numbers || [];
+        let lotsSidebarHtml = lotsList.map(lot => `<span class="lot-badge-sidebar">${escapeHTML(lot)}</span>`).join(' ');
+        if (lotsList.length === 0) lotsSidebarHtml = '<em style="color:var(--text-muted);">None</em>';
+
+        document.getElementById('permitMetaDetails').innerHTML = `
+            <div class="meta-item"><span class="meta-label">Project Title</span><span class="meta-value">${escapeHTML(data.project_title)}</span></div>
+            <div class="meta-item"><span class="meta-label">Location</span><span class="meta-value">${escapeHTML(data.location)}</span></div>
+            <div class="meta-item"><span class="meta-label">Owner</span><span class="meta-value">${escapeHTML(data.owner_name)}</span></div>
+            <div class="meta-item"><span class="meta-label">Designer</span><span class="meta-value">${escapeHTML(data.designer_name)}</span></div>
+            <div class="meta-item"><span class="meta-label">Date Filed</span><span class="meta-value">${formatDisplayDate(data.permit_date)}</span></div>
+            <div class="meta-item"><span class="meta-label">Lot Numbers</span><span class="meta-value" style="margin-top:4px; display:block;">${lotsSidebarHtml}</span></div>
+        `;
+
+        const scopeSelector = document.getElementById('targetFlowScopeSelector');
+        const previousSelection = scopeSelector.value;
+        scopeSelector.innerHTML = '<option value="parent-0">Primary Main Permit</option>';
+        if (data.sub_permits && data.sub_permits.length > 0) {
+            data.sub_permits.forEach(sub => {
+                scopeSelector.innerHTML += `<option value="sub-${sub.id}">Sub: ${escapeHTML(sub.sub_project_title)}</option>`;
+            });
+        }
+        scopeSelector.value = previousSelection || 'parent-0';
+        if (!scopeSelector.value) scopeSelector.value = 'parent-0';
+
+        renderStationChips();
+        renderMatrixRows();
+        renderRejectionTimeline(data.rejection_history);
+    }
+
+    function renderMatrixRows() {
+        const body = document.getElementById('matrixTableBody');
+        body.innerHTML = '';
+        let globalTotalRows = 0, countApproved = 0, countRejected = 0, idx = 0;
+
+        const appendGroup = (rowsArray, segmentLabel, isSubVariant) => {
+            if (!rowsArray || rowsArray.length === 0) return;
+            const titleRow = document.createElement('tr');
+            titleRow.className = 'stream-header-row';
+            titleRow.innerHTML = `<td colspan="4"><span class="stream-title-header ${isSubVariant ? 'sub-variant' : ''}">${segmentLabel}</span></td>`;
+            body.appendChild(titleRow);
+
+            rowsArray.forEach(row => {
+                globalTotalRows++;
+                const status = (row.signature_status || 'Pending').trim();
+                const normalizedStatus = status.toLowerCase();
+                if (normalizedStatus === 'approved') countApproved++;
+                if (normalizedStatus === 'rejected') countRejected++;
+
+                let cellEngineer = escapeHTML(row.engineer_name || '—');
+                let cellStatus = '';
+                let cellRemarks = escapeHTML(row.feedback_remarks || '—');
+
+                if (isEditingMode) {
+                    cellEngineer = `<input type="text" id="eng_${idx}" value="${escapeHTML(row.engineer_name || '')}" placeholder="Engineer name">`;
+                    const currentRemarks = escapeHTML(row.feedback_remarks || '');
+                    cellRemarks = `
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span id="rem_preview_${idx}" style="font-size:12px; color:var(--text-secondary); font-style:${currentRemarks ? 'normal' : 'italic'};">${currentRemarks || 'No remarks'}</span>
+                            <button type="button" onclick="openRemarksModal(${idx}, '${escapeHTML(row.discipline_name).replace(/'/g,"\\'")}', '${currentRemarks.replace(/'/g,"\\'")}')" style="padding:4px 10px; background:var(--blue-light); color:var(--blue); border:1px solid var(--blue-mid); border-radius:4px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; transition:all 0.15s;" onmouseover="this.style.background='var(--blue)'; this.style.color='white'" onmouseout="this.style.background='var(--blue-light)'; this.style.color='var(--blue)'">✎ Edit</button>
+                            <input type="hidden" id="rem_${idx}" value="${currentRemarks}">
+                        </div>`;
+                    cellStatus = `<select id="stat_${idx}" data-row-id="${row.id}" data-discipline="${escapeHTML(row.discipline_name)}" data-old-status="${status}">
+                        <option value="Pending" ${status === 'Pending' ? 'selected' : ''}>Pending</option>
+                        <option value="Approved" ${status === 'Approved' ? 'selected' : ''}>Approved</option>
+                        <option value="Rejected" ${status === 'Rejected' ? 'selected' : ''}>Rejected</option>
+                    </select>`;
+                } else {
+                    let badgeClass = 'status-pending';
+                    if (normalizedStatus === 'approved') badgeClass = 'status-approved';
+                    if (normalizedStatus === 'rejected') badgeClass = 'status-rejected';
+                    cellStatus = `<span class="badge ${badgeClass}">${status}</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="padding-left:20px;"><strong style="font-size:12px;">${escapeHTML(row.discipline_name)}</strong></td>
+                    <td style="color:var(--text-secondary);">${cellEngineer}</td>
+                    <td>${cellStatus}</td>
+                    <td style="color:var(--text-secondary);">${cellRemarks}</td>
+                `;
+                body.appendChild(tr);
+                idx++;
+            });
+        };
+
+        appendGroup(completeDatasetCache.matrix, "Main Permit Stations", false);
+        if (completeDatasetCache.sub_permits) {
+            completeDatasetCache.sub_permits.forEach(sub => {
+                appendGroup(sub.matrix, `Sub: ${sub.sub_project_title}`, true);
+            });
+        }
+
+        if (globalTotalRows === 0) {
+            body.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">No routing stations configured yet.</td></tr>`;
+            updateWorkflowStatusBadge('pending');
+            return;
+        }
+
+        if (countRejected > 0) updateWorkflowStatusBadge('rejected');
+        else if (countApproved === globalTotalRows) updateWorkflowStatusBadge('approved');
+        else updateWorkflowStatusBadge('pending');
+    }
+
+    function createMdiIcon(name) {
+        return `<svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-${name}"></use></svg>`;
+    }
+
+    function updateWorkflowStatusBadge(state) {
+        const badge = document.getElementById('globalWorkflowStatus');
+        badge.className = 'global-status-badge';
+        if (state === 'approved') { badge.innerHTML = `${createMdiIcon('check-circle-outline')}Clearance Issued`; badge.classList.add('status-approved'); }
+        else if (state === 'rejected') { badge.innerHTML = `${createMdiIcon('close-circle-outline')}Action Required`; badge.classList.add('status-rejected'); }
+        else { badge.innerHTML = `${createMdiIcon('alert-circle-outline')}Routing Underway`; badge.classList.add('status-pending'); }
+    }
+
+    function enableEditingMode() {
+        isEditingMode = true;
+        updateEditingControls(true);
+        renderMatrixRows();
+        FormSafety.remember(document.getElementById('matrixTableBody'));
+    }
+
+    function cancelEditingMode() {
+        if (!FormSafety.discard('matrixTableBody')) return;
+        isEditingMode = false;
+        closeRemarksModal();
+        updateEditingControls(false);
+        renderMatrixRows();
+    }
+
+    function updateEditingControls(editing) {
+        const editButton = document.getElementById('editTriggerBtn');
+        const cancelButton = document.getElementById('cancelEditBtn');
+        const tableBadge = document.getElementById('modeBadgeTable');
+        editButton.innerText = editing ? 'Editing' : 'Edit';
+        editButton.disabled = editing;
+        cancelButton.style.display = editing ? 'inline-grid' : 'none';
+        document.getElementById('saveMatrixBtn').style.display = editing ? 'block' : 'none';
+        tableBadge.innerText = editing ? 'Edit Mode' : 'View Only';
+        tableBadge.classList.toggle('edit-active', editing);
+    }
+
+    document.getElementById('saveMatrixBtn').addEventListener('click', FormSafety.guard('saveMatrixBtn', async () => {
+        let updatedMatrixRows = [];
+        let newHistoricalEntries = [];
+        const selectElements = document.querySelectorAll('#matrixTableBody select');
+
+        for (let i = 0; i < selectElements.length; i++) {
+            const selectEl = selectElements[i];
+            const rowDatabaseId = selectEl.getAttribute('data-row-id');
+            const disciplineName = selectEl.getAttribute('data-discipline');
+            const oldStatus = selectEl.getAttribute('data-old-status');
+            const assignedEng = document.getElementById(`eng_${i}`).value.trim();
+            const selectedStat = selectEl.value;
+            const remarksVal = document.getElementById(`rem_${i}`).value.trim();
+
+            if ((selectedStat === 'Approved' || selectedStat === 'Rejected') && !assignedEng) {
+                alert(`Engineer name is required for "${disciplineName}" before signing off.`);
+                document.getElementById(`eng_${i}`).focus(); return;
+            }
+            if (selectedStat === 'Rejected' && !remarksVal) {
+                alert(`Please provide rejection remarks for "${disciplineName}".`);
+                document.getElementById(`rem_${i}`).focus(); return;
+            }
+            updatedMatrixRows.push({ id: rowDatabaseId, engineer_name: assignedEng, signature_status: selectedStat, feedback_remarks: remarksVal });
+            if (selectedStat === 'Rejected' && oldStatus !== 'Rejected') {
+                newHistoricalEntries.push({ discipline: disciplineName, engineer: assignedEng || 'Unknown', reason: remarksVal });
+            }
+        }
+
+        const res = await RequestFeedback.fetch(`/api/permits/${permitId}/signatures`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ updatedMatrixRows, newHistoricalEntries })
+        });
+
+        const result = await res.json();
+        if (result.duplicate) { FormSafety.clean('matrixTableBody'); showPendingToast(result.message); return; }
+        if (!result.success) { alert(result.message || 'Unable to submit changes.'); return; }
+        if (result.success) {
+            if (result.pending) showPendingToast('Your routing matrix changes have been submitted and are awaiting administrator approval.');
+            FormSafety.clean('matrixTableBody');
+            isEditingMode = false;
+            updateEditingControls(false);
+            await fetchPermitData();
+        }
+    }));
+
+    function renderRejectionTimeline(h) {
+        const wrapper = document.getElementById('historicalTimeline');
+        let logs = [];
+        try { if (h) logs = JSON.parse(h); } catch(e){}
+        if (logs.length === 0) {
+            wrapper.innerHTML = '<em style="color:var(--text-muted); font-size:12px;">No rejection records logged.</em>';
+            return;
+        }
+        wrapper.innerHTML = logs.map(l => `
+            <div class="rejection-entry">
+                <strong>${escapeHTML(l.discipline)} — Rejected</strong>
+                <div class="entry-meta">${escapeHTML(l.timestamp)} &bull; Reviewer: ${escapeHTML(l.engineer)}</div>
+                <div class="entry-reason">"${escapeHTML(l.reason)}"</div>
+            </div>
+        `).join('');
+    }
+
+    function escapeHTML(val) {
+        return val ? val.toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") : '';
+    }
+
+    let _remarksTargetIdx = null;
+
+    function openRemarksModal(idx, disciplineName, currentVal) {
+        _remarksTargetIdx = idx;
+        document.getElementById('remarksModalSubtitle').textContent = disciplineName;
+        document.getElementById('remarksModalTextarea').value = currentVal || '';
+        const overlay = document.getElementById('remarksModalOverlay');
+        overlay.style.display = 'flex';
+        setTimeout(() => document.getElementById('remarksModalTextarea').focus(), 50);
+    }
+
+    function closeRemarksModal() {
+        if (!FormSafety.discard('remarksModalOverlay')) return;
+        document.getElementById('remarksModalOverlay').style.display = 'none';
+        _remarksTargetIdx = null;
+    }
+
+    function applyRemarks() {
+        if (_remarksTargetIdx === null) return;
+        const val = document.getElementById('remarksModalTextarea').value.trim();
+        const hiddenInput = document.getElementById(`rem_${_remarksTargetIdx}`);
+        const preview = document.getElementById(`rem_preview_${_remarksTargetIdx}`);
+        if (hiddenInput) hiddenInput.value = val;
+        if (preview) {
+            preview.textContent = val || 'No remarks';
+            preview.style.fontStyle = val ? 'normal' : 'italic';
+        }
+        FormSafety.clean('remarksModalOverlay'); closeRemarksModal();
+    }
+
+    document.getElementById('remarksModalOverlay').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('remarksModalOverlay')) closeRemarksModal();
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('remarksModalOverlay').style.display === 'flex') closeRemarksModal();
+    });
+</script>
+
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const centerStyle = document.createElement('style');
+        centerStyle.textContent = '.has-philippine-clock{position:relative}.has-philippine-clock .philippine-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;align-items:center;text-align:center}@media(max-width:1100px){.has-philippine-clock{display:flex;flex-wrap:wrap}.has-philippine-clock .philippine-clock{position:static;transform:none;flex-basis:100%;order:99;margin:8px 0;box-sizing:border-box;align-items:center}}';
+        document.head.append(centerStyle);
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script>
+</body>
+</html>

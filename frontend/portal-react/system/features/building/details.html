@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- MAINTAINER GUIDE: permits-edit document/controller source. React mounts the layout before the inline controllers run. Edit this source rather than its published frontend copy. -->
+<script src="/permit-routing.js" data-page="operator"></script>
+<script src="/project-identity.js"></script>
+    <script src="/appearance.js"></script>
+    <script src="/request-feedback.js"></script>
+    <script src="/form-safety.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office of the City Engineer | Building Permit Workspace</title>
+    <link rel="stylesheet" href="edit.css">
+<style>.workspace-record-icon{width:22px;height:22px;object-fit:contain;opacity:.7}.card-heading-icon .mdi-icon{width:20px;height:20px;fill:currentColor}</style>
+<link rel="stylesheet" href="/shared-header.css">
+<link rel="stylesheet" href="/status-badges.css">
+<link rel="stylesheet" href="/login-feedback.css">
+<script src="/login-feedback.js"></script>
+<script src="/workspace-notice.js"></script>
+<link rel="stylesheet" href="/appearance.css">
+<script src="/quick-templates.js" defer></script>
+<link rel="stylesheet" href="/project-records.css">
+<script src="/project-records.js"></script>
+<link rel="stylesheet" href="/permit-sidebar.css">
+<link rel="stylesheet" href="/account-tools.css">
+<link rel="stylesheet" href="/station-dates.css"><script src="/station-dates.js"></script>
+<link rel="stylesheet" href="/remarks-viewer.css"><script src="/remarks-viewer.js"></script>
+<style>
+/* Match the Occupancy routing removal action. */
+.btn-icon-danger{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:4px;line-height:1;transition:opacity .15s}
+.btn-icon-danger:hover{opacity:.6}
+</style>
+<script src="/project-approval.js"></script><link rel="stylesheet" href="/project-approval.css">
+<link rel="stylesheet" href="/permit-responsive.css">
+<script src="/permit-responsive.js" defer></script>
+</head>
+<body>
+<div id="system-react-root" data-page="permits-edit" style="display:contents"></div>
+<script src="/system-react/app.js"></script>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const permitId = urlParams.get('id');
+    let isEditingMode = false;
+    let completeDatasetCache = null;
+    let initializingStations = false;
+
+    window.addEventListener('permit-profile-updated', event => {
+        const rows = [...(completeDatasetCache?.matrix || []), ...(completeDatasetCache?.sub_permits || []).flatMap(sub=>sub.matrix || [])];
+        StationDates.updateEngineers(rows, event.detail);
+    });
+
+    function formatDisplayDate(value) {
+        if (!value) return '—';
+        const datePart = String(value).split('T')[0];
+        const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        return match ? `${match[3]}/${match[2]}/${match[1]}` : datePart;
+    }
+
+    function getStoredUser() {
+        try { return JSON.parse(sessionStorage.getItem('oboUser') || 'null'); } catch (e) { return null; }
+    }
+
+    function getAuthHeaders(extra = {}) {
+        const user = getStoredUser();
+        return {
+            ...(extra || {}),
+            'Content-Type': 'application/json',
+            'x-record-version': completeDatasetCache?._version || '',
+            'x-user-role': user?.role || '',
+            'x-user-id': user?.id ? String(user.id) : ''
+        };
+    }
+
+    const currentUser = getStoredUser();
+    document.getElementById('initializeStandardStations')?.addEventListener('click', initializeStandardStations);
+    if (!currentUser) {
+        window.location.href = '/login';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!permitId) { alert("Missing permit ID."); window.location.href = "/"; return; }
+        fetchPermitData();
+        setupConfigFormListeners();
+    });
+
+    function setupConfigFormListeners() {
+        document.getElementById('addDisciplineForm').addEventListener('submit', FormSafety.guard('addDisciplineForm', async (e) => {
+            e.preventDefault();
+            const disciplineSelect = document.getElementById('disciplineSelect');
+            if(await postStationToMatrix(disciplineSelect.value.toUpperCase())) {
+                disciplineSelect.value = '';
+                FormSafety.clean('addDisciplineForm');
+            }
+        }));
+    }
+
+    function renderStationChips() {
+        const selector = document.getElementById('targetFlowScopeSelector');
+        const wrapper = document.getElementById('disciplineConfigList');
+        const selectedValue = selector.value;
+
+        let activeStations = [];
+        if (selectedValue === 'parent-0') {
+            activeStations = completeDatasetCache.matrix || [];
+        } else {
+            const subId = parseInt(selectedValue.split('-')[1]);
+            const subMatch = (completeDatasetCache.sub_permits || []).find(s => s.id === subId);
+            if (subMatch) activeStations = subMatch.matrix || [];
+        }
+
+        if (activeStations.length === 0) {
+            wrapper.innerHTML = '<em style="color:var(--text-muted); font-size:11px;">No stations assigned. Add one below.</em>';
+            return;
+        }
+
+        wrapper.innerHTML = activeStations.map(d => {
+            const paramsString = selectedValue === 'parent-0' ? `permit_id=${permitId}` : `sub_permit_id=${selectedValue.split('-')[1]}`;
+            return `<span class="station-badge-chip">
+                ${escapeHTML(d.discipline_name)}
+                ${currentUser?.role === 'admin' ? `<button type="button" class="station-delete-btn" onclick="deleteStation('${encodeURIComponent(d.discipline_name).replace(/'/g,'%27')}', '${paramsString}')" aria-label="Remove ${escapeHTML(d.discipline_name)}" title="Remove station"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-close"></use></svg></button>` : ''}
+            </span>`;
+        }).join(' ');
+    }
+
+    async function postStationToMatrix(stationName) {
+        if (!stationName.trim()) return;
+        if (!confirm(`Add "${stationName.trim()}" to the selected workflow?`)) return;
+        if (isEditingMode && !FormSafety.discard('matrixTableBody')) return;
+        const selectorValue = document.getElementById('targetFlowScopeSelector').value;
+        let payload = { discipline_name: stationName.trim() };
+        if (selectorValue === 'parent-0') payload.permit_id = permitId;
+        else payload.sub_permit_id = parseInt(selectorValue.split('-')[1]);
+        try {
+            const res = await RequestFeedback.fetch(`/api/matrix/add`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+            const out = await res.json();
+            if (out.success) { isEditingMode=false; updateEditingControls(false); await fetchPermitData(); return true; }
+            else alert(out.message);
+        } catch(e) { console.error(e); }
+    }
+
+    async function deleteStation(name, params) {
+        if (!confirm(`Remove "${decodeURIComponent(name)}" from this workflow?`)) return;
+        if (isEditingMode && !FormSafety.discard('matrixTableBody')) return;
+        try {
+            const res = await RequestFeedback.fetch(`/api/matrix/remove?discipline_name=${name}&${params}`, { method: 'DELETE', headers: getAuthHeaders() });
+            if ((await res.json()).success) { isEditingMode=false; updateEditingControls(false); await fetchPermitData(); }
+        } catch(e) { console.error(e); }
+    }
+
+    async function fetchPermitData() {
+        const response = await RequestFeedback.fetch(`/api/permits/${permitId}`);
+        if (response.status === 404) { window.location.href = "/"; return; }
+        const data = await response.json();
+        completeDatasetCache = data;
+        isEditingMode = false;
+
+        let lotsList = data.lot_numbers || [];
+        let lotsSidebarHtml = lotsList.map(lot => `<span class="lot-badge-sidebar">${escapeHTML(lot)}</span>`).join(' ');
+        if (lotsList.length === 0) lotsSidebarHtml = '<em style="color:var(--text-muted);">None</em>';
+
+        document.getElementById('permitMetaDetails').innerHTML = `
+            <div class="meta-item"><span class="meta-label">Project ID</span><span class="meta-value">${ProjectIdentity.format('building', data.id)}</span></div><div class="meta-item"><span class="meta-label">Project Title</span><span class="meta-value">${escapeHTML(data.project_title)}</span></div>
+            <div class="meta-item"><span class="meta-label">Location</span><span class="meta-value">${escapeHTML(data.location)}</span></div>
+            <div class="meta-item"><span class="meta-label">Owner</span><span class="meta-value">${escapeHTML(data.owner_name)}</span></div>
+            <div class="meta-item"><span class="meta-label">Designer</span><span class="meta-value">${escapeHTML(data.designer_name)}</span></div>
+            <div class="meta-item"><span class="meta-label">Date Filed</span><span class="meta-value">${formatDisplayDate(data.permit_date)}</span></div>
+            <div class="meta-item"><span class="meta-label">Lot Numbers</span><span class="meta-value" style="margin-top:4px; display:block;">${lotsSidebarHtml}</span></div>
+        `;
+
+        const scopeSelector = document.getElementById('targetFlowScopeSelector');
+        const previousSelection = scopeSelector.value;
+        scopeSelector.innerHTML = '<option value="parent-0">Primary Main Permit</option>';
+        if (data.sub_permits && data.sub_permits.length > 0) {
+            data.sub_permits.forEach(sub => {
+                scopeSelector.innerHTML += `<option value="sub-${sub.id}">Sub: ${escapeHTML(sub.sub_project_title)}</option>`;
+            });
+        }
+        scopeSelector.value = previousSelection || 'parent-0';
+        if (!scopeSelector.value) scopeSelector.value = 'parent-0';
+
+        renderStationChips();
+        const setup = document.getElementById('standardBuildingStations');
+        setup.hidden = data._standardBuildingStationsSupported !== true || (data.matrix.length > 0 && (data.sub_permits || []).every(sub => sub.matrix?.length > 0));
+        renderMatrixRows();
+        renderRejectionTimeline(data.rejection_history);
+        updateEditingControls(false);
+        ProjectApproval.render(data);
+    }
+
+    async function initializeStandardStations() {
+        if (initializingStations || completeDatasetCache?._standardBuildingStationsSupported !== true || document.getElementById('standardBuildingStations').hidden) return;
+        if (isEditingMode && !FormSafety.discard('matrixTableBody')) return;
+        const button = document.getElementById('initializeStandardStations'), feedback = document.getElementById('standardStationsFeedback');
+        initializingStations = true; button.disabled = true; button.textContent = 'Adding stations…'; feedback.textContent = '';
+        try {
+            const response = await RequestFeedback.fetch(`/api/permits/${permitId}/stations/initialize`, {method:'POST', headers:getAuthHeaders(), body:JSON.stringify({})});
+            const result = await response.json();
+            if (!response.ok || !result.success) throw Error(result.message || 'Standard stations could not be added.');
+            await fetchPermitData();
+        } catch(error) { feedback.textContent = error.message || 'Standard stations could not be added. Please try again.'; RequestFeedback.report(error); }
+        finally { initializingStations = false; button.disabled = false; button.textContent = 'Add standard stations'; }
+    }
+
+    function renderMatrixRows() {
+        const body = document.getElementById('matrixTableBody');
+        body.innerHTML = '';
+        let globalTotalRows = 0, countApproved = 0, countRejected = 0, idx = 0;
+
+        const appendGroup = (rowsArray, segmentLabel, isSubVariant, subId=null) => {
+            if (!rowsArray || rowsArray.length === 0) return;
+            const titleRow = document.createElement('tr');
+            titleRow.className = 'stream-header-row';
+            titleRow.innerHTML = `<td colspan="7"><span class="stream-title-header ${isSubVariant ? 'sub-variant' : ''}">${escapeHTML(segmentLabel)}</span></td>`;
+            body.appendChild(titleRow);
+
+            rowsArray.forEach(row => {
+                globalTotalRows++;
+                const status = (row.signature_status || 'Pending').trim();
+                const normalizedStatus = status.toLowerCase();
+                if (normalizedStatus === 'approved') countApproved++;
+                if (normalizedStatus === 'rejected') countRejected++;
+
+                const cellEngineer = StationDates.engineer(row);
+                let cellStatus = '';
+                let cellRemarks = StationDates.remarks(row, 'View remarks') || '—';
+
+                if (isEditingMode && row.can_edit === true) {
+                    const currentRemarks = escapeHTML(row.feedback_remarks || '');
+                    cellRemarks = `
+                        <div class="remarks-control">
+                            <span id="rem_preview_${idx}" class="remarks-preview" data-remarks-station="${escapeHTML(row.discipline_name)}">${StationDates.remarks(row, 'View remarks')}</span>
+                            <button type="button" class="remarks-edit" data-remarks-index="${idx}">Edit remarks</button>
+                            <input type="hidden" id="rem_${idx}" value="${currentRemarks}">
+                        </div>`;
+                    cellStatus = `<select id="stat_${idx}" aria-label="Status for station ${Number(row.id)}" data-row-id="${row.id}" data-discipline="${escapeHTML(row.discipline_name)}" data-old-status="${status}">
+                        <option value="Pending" ${status === 'Pending' ? 'selected' : ''}>Pending</option>
+                        <option value="Approved" ${status === 'Approved' ? 'selected' : ''}>Approved</option>
+                        <option value="Rejected" ${status === 'Rejected' ? 'selected' : ''}>Rejected</option>
+                    </select>`;
+                } else {
+                    let badgeClass = 'status-pending';
+                    if (normalizedStatus === 'approved') badgeClass = 'status-approved';
+                    if (normalizedStatus === 'rejected') badgeClass = 'status-rejected';
+                    cellStatus = `<span class="badge ${badgeClass}">${status}</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="padding-left:20px;"><strong style="font-size:12px;">${escapeHTML(row.discipline_name)}</strong></td>
+                    <td style="color:var(--text-secondary);">${cellEngineer}</td>
+                    <td>${cellStatus}</td>
+                    ${StationDates.cells('permits',permitId,row,isEditingMode && row.can_edit === true)}
+                    <td style="color:var(--text-secondary);">${cellRemarks}</td>
+                    <td>${currentUser?.role === 'admin' ? `<button type="button" class="btn-icon-danger" onclick="deleteStation('${encodeURIComponent(row.discipline_name).replace(/'/g,'%27')}', '${subId ? 'sub_permit_id='+Number(subId) : 'permit_id='+Number(permitId)}')">Remove</button>` : '—'}</td>
+                `;
+                body.appendChild(tr);
+                tr.querySelector('[data-remarks-index]')?.addEventListener('click',event=>{const index=Number(event.currentTarget.dataset.remarksIndex);openRemarksModal(index,row.discipline_name,document.getElementById('rem_'+index).value);});
+                idx++;
+            });
+        };
+
+        appendGroup(completeDatasetCache.matrix, "Main Permit Stations", false);
+        if (completeDatasetCache.sub_permits) {
+            completeDatasetCache.sub_permits.forEach(sub => {
+                appendGroup(sub.matrix, `Sub: ${sub.sub_project_title}`, true, sub.id);
+            });
+        }
+
+        if (globalTotalRows === 0) {
+            body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">No routing stations configured yet.</td></tr>`;
+            updateWorkflowStatusBadge('pending');
+            return;
+        }
+
+        if (countRejected > 0) updateWorkflowStatusBadge('rejected');
+        else if (countApproved === globalTotalRows) updateWorkflowStatusBadge('approved');
+        else updateWorkflowStatusBadge('pending');
+    }
+
+    function createMdiIcon(name) {
+        return `<svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-${name}"></use></svg>`;
+    }
+
+    function updateWorkflowStatusBadge(state) {
+        if (completeDatasetCache?.final_approval) { ProjectApproval.badge(completeDatasetCache); return; }
+        const badge = document.getElementById('globalWorkflowStatus');
+        badge.className = 'global-status-badge';
+        if (state === 'approved') { badge.innerHTML = `${createMdiIcon('check-circle-outline')}Ready for final review`; badge.classList.add('status-approved'); }
+        else if (state === 'rejected') { badge.innerHTML = `${createMdiIcon('close-circle-outline')}Action Required`; badge.classList.add('status-rejected'); }
+        else { badge.innerHTML = `${createMdiIcon('alert-circle-outline')}Routing Underway`; badge.classList.add('status-pending'); }
+    }
+
+    function enableEditingMode() {
+        if (!completeDatasetCache?._stationAccessSupported || !completeDatasetCache?._assignedEngineerProfileSupported || ![...completeDatasetCache.matrix,...(completeDatasetCache.sub_permits || []).flatMap(s=>s.matrix || [])].some(r=>r.can_edit === true)) return;
+        isEditingMode = true;
+        updateEditingControls(true);
+        renderMatrixRows();
+        FormSafety.remember(document.getElementById('matrixTableBody'));
+    }
+
+    function cancelEditingMode() {
+        if (!FormSafety.discard('matrixTableBody')) return;
+        isEditingMode = false;
+        closeRemarksModal();
+        updateEditingControls(false);
+        renderMatrixRows();
+    }
+
+    function updateEditingControls(editing) {
+        const editButton = document.getElementById('editTriggerBtn');
+        const cancelButton = document.getElementById('cancelEditBtn');
+        const tableBadge = document.getElementById('modeBadgeTable');
+        editButton.textContent = 'Edit';
+        editButton.style.display = editing || !completeDatasetCache?._stationAccessSupported || !completeDatasetCache?._assignedEngineerProfileSupported || ![...(completeDatasetCache?.matrix || []),...(completeDatasetCache?.sub_permits || []).flatMap(s=>s.matrix || [])].some(r=>r.can_edit === true) ? 'none' : '';
+        editButton.disabled = editing;
+        cancelButton.style.display = editing ? 'inline-grid' : 'none';
+        document.getElementById('saveMatrixBtn').style.display = editing ? 'block' : 'none';
+        tableBadge.innerText = editing ? 'Edit Mode' : 'View Only';
+        tableBadge.classList.toggle('edit-active', editing);
+    }
+
+    document.getElementById('saveMatrixBtn').addEventListener('click', FormSafety.guard('saveMatrixBtn', async () => {
+        let updatedMatrixRows = [];
+        let newHistoricalEntries = [];
+        const selectElements = document.querySelectorAll('#matrixTableBody select');
+
+        for (let i = 0; i < selectElements.length; i++) {
+            const selectEl = selectElements[i];
+            const rowDatabaseId = selectEl.getAttribute('data-row-id');
+            const disciplineName = selectEl.getAttribute('data-discipline');
+            const oldStatus = selectEl.getAttribute('data-old-status');
+            const editorIndex = selectEl.id.slice(5);
+            const selectedStat = selectEl.value;
+            const remarksVal = document.getElementById(`rem_${editorIndex}`).value.trim();
+
+            if (selectedStat === 'Rejected' && !remarksVal) {
+                alert(`Please provide rejection remarks for "${disciplineName}".`);
+                document.getElementById(`rem_${editorIndex}`).focus(); return;
+            }
+            const dates = StationDates.read(selectEl.closest('tr'));
+            if (!dates) return;
+            updatedMatrixRows.push({ id: rowDatabaseId, signature_status: selectedStat, feedback_remarks: remarksVal, ...dates });
+            if (selectedStat === 'Rejected' && oldStatus !== 'Rejected') {
+                newHistoricalEntries.push({ discipline: disciplineName, reason: remarksVal });
+            }
+        }
+
+        const originalRows = [...completeDatasetCache.matrix, ...(completeDatasetCache.sub_permits || []).flatMap(sub=>sub.matrix || [])];
+        updatedMatrixRows = StationDates.changedRows(updatedMatrixRows, originalRows);
+        if (!updatedMatrixRows.length) {
+            FormSafety.clean('matrixTableBody');
+            isEditingMode = false;
+            updateEditingControls(false);
+            renderMatrixRows();
+            alert('No signature changes to save.');
+            return;
+        }
+        if (StationDates.hasDateChanges(updatedMatrixRows, originalRows) && !completeDatasetCache._signatureDatesSupported) {
+            alert('The running permit server needs to be restarted before it can save these dates. Your edits are kept.');
+            return;
+        }
+        const res = await RequestFeedback.fetch(`/api/permits/${permitId}/signatures`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ updatedMatrixRows, newHistoricalEntries })
+        });
+
+        const result = await res.json();
+        if (result.duplicate) { FormSafety.clean('matrixTableBody'); showPendingToast(result.message); return; }
+        if (!result.success) { alert(result.message || 'Unable to submit changes.'); return; }
+        if (result.success) {
+            if (result.pending) showPendingToast('Your routing matrix changes have been submitted and are awaiting administrator approval.');
+            FormSafety.clean('matrixTableBody');
+            isEditingMode = false;
+            updateEditingControls(false);
+            await fetchPermitData();
+        }
+    }));
+
+    function renderRejectionTimeline(h) {
+        const wrapper = document.getElementById('historicalTimeline');
+        let logs = [];
+        try { if (h) logs = JSON.parse(h); } catch(e){}
+        if (logs.length === 0) {
+            wrapper.innerHTML = '<em style="color:var(--text-muted); font-size:12px;">No rejection records logged.</em>';
+            return;
+        }
+        wrapper.innerHTML = logs.map(l => `
+            <div class="rejection-entry">
+                <strong>${escapeHTML(l.discipline)} — Rejected</strong>
+                <div class="entry-meta">${escapeHTML(l.timestamp)} &bull; Reviewer: ${escapeHTML(l.engineer)}</div>
+                <div class="entry-reason">"${escapeHTML(l.reason)}"</div>
+            </div>
+        `).join('');
+    }
+
+    function escapeHTML(val) {
+        return val ? val.toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;") : '';
+    }
+
+    let _remarksTargetIdx = null;
+
+    function openRemarksModal(idx, disciplineName, currentVal) {
+        _remarksTargetIdx = idx;
+        document.getElementById('remarksModalSubtitle').textContent = disciplineName;
+        document.getElementById('remarksModalTextarea').value = currentVal || '';
+        const overlay = document.getElementById('remarksModalOverlay');
+        overlay.style.display = 'flex';
+        setTimeout(() => document.getElementById('remarksModalTextarea').focus(), 50);
+    }
+
+    function closeRemarksModal() {
+        if (!FormSafety.discard('remarksModalOverlay')) return;
+        document.getElementById('remarksModalOverlay').style.display = 'none';
+        _remarksTargetIdx = null;
+    }
+
+    function applyRemarks() {
+        if (_remarksTargetIdx === null) return;
+        const val = document.getElementById('remarksModalTextarea').value.trim();
+        const hiddenInput = document.getElementById(`rem_${_remarksTargetIdx}`);
+        const preview = document.getElementById(`rem_preview_${_remarksTargetIdx}`);
+        if (hiddenInput) hiddenInput.value = val;
+        if (preview) {
+            preview.innerHTML = StationDates.remarks({discipline_name:preview.dataset.remarksStation, feedback_remarks:val}, 'View remarks');
+        }
+        FormSafety.clean('remarksModalOverlay'); closeRemarksModal();
+    }
+
+    document.getElementById('remarksModalOverlay').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('remarksModalOverlay')) closeRemarksModal();
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('remarksModalOverlay').style.display === 'flex') closeRemarksModal();
+    });
+</script>
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const centerStyle = document.createElement('style');
+        centerStyle.textContent = '.has-philippine-clock{position:relative}.has-philippine-clock .philippine-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;align-items:center;text-align:center}@media(max-width:1100px){.has-philippine-clock{display:flex;flex-wrap:wrap}.has-philippine-clock .philippine-clock{position:static;transform:none;flex-basis:100%;order:99;margin:8px 0;box-sizing:border-box;align-items:center}}';
+        document.head.append(centerStyle);
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script></body>
+</html>

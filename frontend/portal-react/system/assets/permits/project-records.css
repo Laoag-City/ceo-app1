@@ -1,0 +1,49 @@
+.project-records { --record-accent:#0969b6; margin-top:24px; padding:22px; border:1px solid #d7e2eb; border-radius:14px; background:#fff; color:#17344a; }
+.project-records[data-project-records='occupancy'], .occ-page .project-records { --record-accent:#047857; }
+.records-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+.records-heading h2 { font-size:17px; margin:0 0 6px; }
+.records-heading p, .records-comment-form > p { margin:0; color:#6b8194; font-size:12px; line-height:1.6; }
+.records-controls { display:flex; gap:8px; flex-wrap:wrap; }
+.records-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:8px 11px; border:1px solid #ccd9e2; background:transparent; color:var(--record-accent); border-radius:7px; font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
+.records-button:hover { background:#f1f6f9; }
+.records-button:disabled { opacity:.55; cursor:wait; }
+.records-button:focus-visible { outline:2px solid var(--record-accent); outline-offset:3px; }
+.records-comment-icon { width:17px; height:16px; background:currentColor; mask:url('/assets/comment-edit-16-regular.svg') center/contain no-repeat; }
+.records-comment-form { display:grid; gap:10px; margin-top:18px; padding:16px; background:#f5f8fa; border-radius:9px; }
+.records-comment-form label { font-size:13px; font-weight:600; }
+.records-comment-form textarea { width:100%; box-sizing:border-box; resize:vertical; padding:10px; border:1px solid #c5d5e1; border-radius:7px; font:inherit; font-size:13px; color:inherit; background:#fff; }
+.records-submit { justify-self:start; }
+.project-records [hidden] { display:none!important; }
+.records-feedback, .records-empty { font-size:13px; color:#6b8194; line-height:1.6; }
+.records-feedback:empty { display:none; }
+.records-entry { border-top:1px solid #e0e8ee; padding:11px 0; }
+.records-entry:first-child { margin-top:18px; }
+.records-meta { display:flex; gap:8px; flex-wrap:wrap; align-items:baseline; font-size:12px; color:#6b8194; }
+.records-meta strong { color:inherit; }
+.records-meta time { margin-left:auto; font-size:11px; }
+.records-tag { display:inline-block; font-size:10px; padding:3px 6px; border:1px solid #d7e2eb; border-radius:5px; margin-top:9px; color:var(--record-accent); }
+.records-entry p { margin:7px 0 0; font-size:13px; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.65; }
+.records-detail { color:#6b8194; }
+html[data-theme='dark'] .project-records { background:#2e353e; border-color:#485360; color:#e3e9ef; --record-accent:#9ecbf4; }
+html[data-theme='dark'] .occ-page .project-records, html[data-theme='dark'] [data-project-records='occupancy'] { --record-accent:#6ee7b7; }
+html[data-theme='dark'] .records-comment-form, html[data-theme='dark'] .records-button:hover { background:#252c34; }
+html[data-theme='dark'] .records-comment-form textarea { background:#222a32; border-color:#53606d; }
+html[data-theme='dark'] .records-heading p, html[data-theme='dark'] .records-comment-form > p, html[data-theme='dark'] .records-meta, html[data-theme='dark'] .records-detail, html[data-theme='dark'] .records-feedback, html[data-theme='dark'] .records-empty { color:#b0c0ce; }
+html[data-theme='dark'] .records-button, html[data-theme='dark'] .records-tag, html[data-theme='dark'] .records-entry { border-color:#495563; }
+@media(max-width:600px) { .project-records { padding:15px; } .records-meta time { margin-left:0; } }
+.records-disclosure { margin:20px 0; border:1px solid #d7e2eb; border-radius:10px; background:#fff; color:#17344a; }
+.records-disclosure > summary { padding:14px 18px; font-size:13px; font-weight:600; cursor:pointer; }
+.records-disclosure .project-records { border:0; margin:0; padding:0 18px 14px; background:transparent; }
+.records-disclosure .records-heading h2 { display:none; }
+.records-disclosure .records-heading { justify-content:flex-end; }
+.records-changes { margin-top:8px; font-size:12px; }
+.records-changes summary { cursor:pointer; color:var(--record-accent); }
+html[data-theme='dark'] .records-disclosure { background:#2e353e; border-color:#485360; color:#e3e9ef; }
+[data-project-records='occupancy'] .project-records { --record-accent:#047857; }
+html[data-theme='dark'] [data-project-records='occupancy'] .project-records { --record-accent:#6ee7b7; }
+
+/* Keep authors and record content readable in both themes. */
+.project-records .records-meta strong { color:#17344a; font-weight:800; }
+.project-records .records-entry p { color:#243f53; font-weight:500; }
+html[data-theme="dark"] .project-records .records-meta strong { color:#f1f5f9; }
+html[data-theme="dark"] .project-records .records-entry p { color:#e3e9ef; }

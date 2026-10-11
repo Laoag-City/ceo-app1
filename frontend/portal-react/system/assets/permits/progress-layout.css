@@ -1,0 +1,85 @@
+/* Shared Progress layout for building and occupancy. */
+body #permitProgressDialog {
+    --progress-accent:#1468a6;
+    position:fixed; inset:0; margin:auto; width:min(1120px,calc(100vw - 48px));
+    max-height:90dvh; padding:0; overflow:auto; border:1px solid #d8e3eb;
+    border-radius:18px; background:#f4f7fa; color:#18364c;
+    box-shadow:0 24px 90px #102a4333;
+}
+body.occ-page #permitProgressDialog { --progress-accent:#078264; }
+#permitProgressDialog::backdrop { background:#10233480; backdrop-filter:blur(4px); }
+#permitProgressDialog .progress-dialog-header { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; padding:24px 28px 18px; background:#fff; border-bottom:1px solid #dfe7ee; }
+#permitProgressDialog .progress-title-block { min-width:0; flex:1; }
+#permitProgressDialog .progress-eyebrow { color:var(--progress-accent); font-size:10px; letter-spacing:.14em; font-weight:700; }
+#permitProgressDialog #progressHeading { font-size:23px; line-height:1.25; letter-spacing:-.5px; margin:5px 0 6px; }
+#permitProgressDialog #progressProjectTitle { margin:0; color:#526b7e; font-size:13px; overflow-wrap:anywhere; }
+#permitProgressDialog .progress-close { width:32px; height:32px; padding:0; display:grid; place-items:center; border:1px solid #dce5ec; border-radius:8px; background:#f7f9fb; color:#526b7e; font-size:22px; cursor:pointer; }
+#permitProgressDialog .progress-close:hover { background:#e9f0f5; color:#18364c; }
+#permitProgressDialog .progress-header-meta { flex-basis:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+#permitProgressDialog #progressSummary { margin:0; font-size:12px; font-weight:600; color:#36566d; }
+#permitProgressDialog .progress-legend { display:flex; flex-wrap:wrap; gap:16px; margin:0; font-size:11px; }
+#permitProgressDialog .legend-approved { color:#13785f; }
+#permitProgressDialog .legend-pending { color:#9b6a21; }
+#permitProgressDialog .legend-rejected { color:#c14b58; }
+#permitProgressDialog .progress-dialog-body { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(0,1fr); align-items:start; gap:22px; padding:26px 28px 28px; background:#f4f7fa; }
+#permitProgressDialog #progressContent { min-width:0; }
+#permitProgressDialog .wrapper-stream-box { display:grid; gap:18px!important; width:100%; }
+#permitProgressDialog #progressContent .route-line { display:block; padding:20px; border:1px solid #dce5ec; border-radius:13px; background:#fff; box-shadow:0 3px 12px #17344a04; margin:0; transform:none; }
+#permitProgressDialog #progressContent .route-label { padding:0 0 16px; margin:0; }
+#permitProgressDialog .route-label :is(.badge-stream-type,.badge-stream-sub) { display:block; background:transparent; border:0; padding:0; margin:0; color:#18364c; font-size:16px; font-weight:700; text-transform:none; letter-spacing:-.2px; white-space:normal; overflow-wrap:anywhere; }
+#permitProgressDialog #progressContent :is(.route-stations,.status-track-container) { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 20px; border:0; padding:0; background:transparent; }
+#permitProgressDialog #progressContent .track-item { display:flex; align-items:center; gap:8px; min-width:0; min-height:66px; padding:12px 0; border:0; border-top:1px solid #e8eef3; border-radius:0; background:transparent; font-size:12px; font-weight:600; color:#36566d; text-transform:none; letter-spacing:0; }
+#permitProgressDialog .progress-station-name { flex:1; min-width:0; overflow-wrap:anywhere; }
+#permitProgressDialog .station-remarks { flex-basis:100%; min-width:0; margin-left:22px; }
+#permitProgressDialog .remarks-view-trigger { color:var(--progress-accent); }
+#permitProgressDialog .station-remarks-notice { margin:0 0 12px; font-size:12px; color:var(--text-secondary,#526779); }
+#permitProgressDialog .track-item > svg { flex-shrink:0; width:15px; height:15px; }
+#permitProgressDialog .station-date-help { flex-shrink:0; margin-left:auto; }
+#permitProgressDialog #progressRecords { margin:0; padding:20px; min-width:0; border:1px solid #dce5ec; border-radius:13px; background:#fff; box-shadow:0 3px 12px #17344a04; }
+#permitProgressDialog .records-heading { gap:12px; }
+#permitProgressDialog .records-heading h2 { font-size:16px; margin:0; }
+#permitProgressDialog .records-controls { gap:6px; }
+#permitProgressDialog .records-button { font-size:11px; padding:7px 9px; }
+#permitProgressDialog .records-feed { max-height:440px; overflow:auto; scrollbar-width:thin; }
+#permitProgressDialog .records-meta { gap:6px; }
+#permitProgressDialog .records-meta time { font-size:10px; }
+#permitProgressDialog .records-entry p { font-size:12px; }
+#permitProgressDialog .progress-empty { font-size:12px; color:#6b8194; padding:16px 0; }
+html[data-theme='dark'] #permitProgressDialog { --progress-accent:#93c6ee; }
+html[data-theme='dark'] .occ-page #permitProgressDialog { --progress-accent:#6ee7b7; }
+html[data-theme='dark'] #permitProgressDialog #progressContent .route-line,
+html[data-theme='dark'] #permitProgressDialog #progressRecords { background:#2e3741!important; border-color:#495563!important; }
+html[data-theme='dark'] #permitProgressDialog #progressContent .track-item { background:transparent!important; border-color:#465360!important; color:#d6e2ed; }
+html[data-theme='dark'] #permitProgressDialog :is(#progressHeading,.badge-stream-type,.badge-stream-sub) { color:#f0f5fa; }
+html[data-theme='dark'] #permitProgressDialog :is(#progressProjectTitle,#progressSummary) { color:#bbccda; }
+html[data-theme='dark'] #permitProgressDialog .progress-close { background:#303c48; color:#d6e2ed; border-color:#506070; }
+html[data-theme='dark'] #permitProgressDialog .legend-approved { color:#7ed9b4; }
+html[data-theme='dark'] #permitProgressDialog .legend-pending { color:#edc279; }
+html[data-theme='dark'] #permitProgressDialog .legend-rejected { color:#f59da6; }
+@media(max-width:820px) {
+    #permitProgressDialog .progress-dialog-body { grid-template-columns:1fr; padding:20px; gap:18px; }
+    #permitProgressDialog .records-feed { max-height:300px; }
+}
+@media(max-width:480px) {
+    body #permitProgressDialog { width:calc(100vw - 20px); max-height:94dvh; border-radius:12px; }
+    #permitProgressDialog .progress-dialog-header { padding:20px; }
+    #permitProgressDialog #progressContent :is(.route-stations,.status-track-container) { grid-template-columns:1fr; }
+    #permitProgressDialog #progressContent .route-line,#permitProgressDialog #progressRecords { padding:16px; }
+}
+
+/* Keep long remark lists within their panel instead of growing the dialog. */
+body #permitProgressDialog[open] { display:flex; flex-direction:column; height:min(800px,90dvh); overflow:hidden; }
+#permitProgressDialog .progress-dialog-header { flex:0 0 auto; }
+#permitProgressDialog .progress-dialog-body { flex:1; min-height:0; overflow:hidden; align-items:stretch; }
+#permitProgressDialog #progressContent { min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+#permitProgressDialog #progressRecords { display:flex; flex-direction:column; min-height:0; overflow:auto; box-sizing:border-box; overscroll-behavior:contain; }
+#permitProgressDialog #progressRecords > :not(.records-feed) { flex-shrink:0; }
+#permitProgressDialog #progressRecords .records-feed { flex:1 1 auto; min-height:72px; max-height:none; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; padding-right:6px; }
+#permitProgressDialog #progressRecords .records-heading { padding-bottom:12px; }
+#permitProgressDialog #progressRecords .records-entry:first-child { margin-top:0; }
+@media(max-width:820px) {
+    #permitProgressDialog .progress-dialog-body { grid-template-rows:minmax(0,.8fr) minmax(0,1.2fr); }
+}
+@media(max-width:480px) {
+    body #permitProgressDialog[open] { height:94dvh; }
+}

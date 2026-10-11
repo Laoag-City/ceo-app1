@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- MAINTAINER GUIDE: permits-index document/controller source. React mounts the layout before the inline controllers run. Edit this source rather than its published frontend copy. -->
+<script src="/permit-routing.js" data-page="operator"></script>
+<script src="/project-identity.js"></script>
+    <script src="/appearance.js"></script>
+    <script src="/destructive-action.js"></script>
+    <script src="/request-feedback.js"></script>
+    <script src="/form-safety.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office of the City Engineer | Building Permit Registry</title>
+    <link rel="stylesheet" href="/index.css">
+    <link rel="stylesheet" href="/bulk-deletion.css">
+    <style>
+        body.bp-page { background: var(--surface); }
+
+        /* Compact registry presentation, consistent with the occupancy registry. */
+        .bp-page .registry-card{overflow:hidden;border:1px solid #dce5e9;box-shadow:0 8px 28px rgba(25,52,65,.05)}
+        .bp-page .registry-card .filter-tabs{max-width:none;padding:16px 20px 0;gap:24px;border-bottom:1px solid #e7edef;background:white}
+        .bp-page .registry-card .filter-tab{min-width:0;padding:10px 2px 15px;border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;box-shadow:none;color:#71818b;font-size:13px}
+        .bp-page .registry-card .filter-tab.active{color:var(--blue);border-bottom-color:var(--blue);background:transparent;box-shadow:none}
+        .bp-page .registry-card .filter-tab:hover{color:var(--blue);background:transparent}
+        .bp-page .registry-card .registry-toolbar{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:18px;padding:18px 20px;background:white}
+        .bp-page .registry-card .search-block{display:block;flex:1;max-width:540px;min-width:0}
+        .bp-page .registry-card .search-block>label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+        .bp-page .registry-card .search-row{width:100%;min-width:0}
+        .bp-page .registry-card .search-row input{background:#f7f9fa;border-color:#e1e8ec!important;border-radius:9px;min-height:42px}
+        .bp-page .registry-card .record-count-badge{padding:0;border:0;background:transparent;color:#71818b;font-weight:500;order:0;align-self:center}
+        .bp-page .registry-card .table-wrap{padding:0 20px;background:white;border-top:0}
+        .bp-page .registry-card th{background:#f6f8f9;padding:12px 14px;color:#7b8a94;font-size:10px;letter-spacing:.07em}
+        .bp-page .registry-card .main-data-row td{padding:20px 14px;font-size:13px;border-top-color:#e7edef}
+        .bp-page .registry-card .main-data-row.is-expanded td{background:white}
+        .bp-page .registry-card .project-title-main{font-size:15px;line-height:1.4}
+        .bp-page .registry-card .permit-title-line{gap:10px}
+        .bp-page .registry-card .permit-status-chip{font-size:10px;font-weight:600;text-transform:none;letter-spacing:0;border:0;padding:5px 8px}
+        .bp-page .registry-card .permit-progress-summary{margin-top:7px;font-size:11px;font-weight:400;color:#71818b}
+        .bp-page .registry-card .permit-toggle{border-color:#e1e8ec;background:#f7f9fa;box-shadow:none}
+        .bp-page .registry-card .permit-toggle:hover{background:var(--blue-light);color:var(--blue)}
+        .bp-page .registry-card .lot-badge-inline{background:#f1f5f7;border:0;color:#536777;padding:5px 8px}
+        .bp-page .registry-card .status-track-cell{padding:0 14px 18px!important}
+        .bp-page .registry-card .wrapper-stream-box{padding:14px;background:#f8fafb;border-radius:9px;gap:14px!important}
+        .bp-page .registry-card .route-line{display:block;border:0;background:transparent;border-radius:0}
+        .bp-page .registry-card .route-label{padding:0 0 9px}
+        .bp-page .registry-card .badge-stream-type,.bp-page .registry-card .badge-stream-sub{background:transparent;color:#607481;padding:0;font-size:11px;text-transform:none;letter-spacing:0;font-weight:600}
+        .bp-page .registry-card .route-stations{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;border:0;padding:0}
+        .bp-page .registry-card .track-item{padding:9px 10px;background:white;border:1px solid #e6ecef;border-radius:7px;font-size:11px;font-weight:500;color:#607481;gap:6px}
+        .bp-page .registry-card .pagination-bar{background:white;border-top:1px solid #e7edef;padding:14px 20px;color:#7b8a94}
+        @media(max-width:600px){
+            .bp-page .registry-card .filter-tabs{gap:20px;padding:10px 14px 0}
+            .bp-page .registry-card .registry-toolbar{padding:14px;gap:12px}
+            .bp-page .registry-card .table-wrap{padding:0 8px}
+        }
+
+        .bp-page .top-bar { background: var(--navy); }
+
+        .status-track-row { background-color: var(--white); }
+        .status-track-cell { padding: 0 18px 18px !important; border-bottom: 1px solid var(--border) !important; }
+        .wrapper-stream-box { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+        .track-item { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+        .track-icon { width: 16px; height: 16px; display: inline-grid; place-items: center; flex: 0 0 16px; font-size: 13px; font-weight: 800; }
+        .mdi-icon { width: 1.1em; height: 1.1em; display: block; fill: currentColor; flex: 0 0 auto; }
+        .track-icon .mdi-icon { width: 16px; height: 16px; }
+        .mdi-filter-icon { width: 15px; height: 15px; margin-right: 4px; fill: currentColor; vertical-align: -3px; }
+        .icon-approved { color: var(--green); }
+        .icon-rejected { color: var(--red); }
+        .icon-pending { color: var(--amber); }
+        .main-data-row td { border-bottom: none !important; }
+        .btn-delete-record:hover { background: var(--red) !important; color: white !important; border-color: var(--red) !important; }
+
+        /* Top bar and return button */
+        .top-bar { position: relative; display:flex; align-items:center; gap:18px; }
+        .top-bar-meta { margin-left:auto; color: #b9d6e9; font-weight:600; font-size:12px; white-space:nowrap; }
+        .top-bar-actions { margin-left:auto; display:flex; align-items:center; gap:10px; }
+        .btn-return { display:inline-flex; align-items:center; justify-content:center; gap:7px; background: transparent; color: #e7f1f7; border: 1px solid rgba(255,255,255,.28); padding:9px 13px; border-radius:8px; text-decoration:none; font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; transition:.2s ease; }
+        .btn-return:hover { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.5); }
+        .btn-return.btn-create { background:var(--gold); color:var(--navy); border-color:var(--gold); box-shadow:0 5px 14px rgba(7,26,44,.2); }
+        .btn-return.btn-create:hover { background:#f0b83f; border-color:#f0b83f; transform:translateY(-1px); }
+        .btn-return.btn-logout:hover { background:#a93636; border-color:#c95b5b; color:#fff; }
+
+        .page-intro { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:20px; padding:0 2px; }
+        .page-intro-kicker { display:flex; align-items:center; gap:8px; color:var(--blue); font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; margin-bottom:7px; }
+        .page-intro-kicker::before { content:""; width:25px; height:2px; background:var(--gold); }
+        .page-intro h1 { font-family:'Libre Franklin',sans-serif; color:var(--navy); font-size:28px; line-height:1.2; letter-spacing:-.035em; }
+        .page-intro p { color:var(--text-secondary); font-size:13px; margin-top:6px; }
+        .page-note { display:flex; align-items:center; gap:8px; color:var(--text-secondary); font-size:11px; font-weight:600; padding:8px 11px; border:1px solid var(--border); background:white; border-radius:8px; }
+        .page-note-dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 0 3px rgba(22,120,91,.11); }
+        .registry-header { border-bottom:none; padding-bottom:10px; }
+        .registry-header h2 { font-size:16px; }
+        .card-body { padding-top:10px; }
+        .search-row input { min-height:44px; border-color:var(--border) !important; border-radius:9px; background:#fbfcfd; }
+        .filter-tabs { max-width:650px; }
+        .table-wrap { border-top:1px solid var(--border); }
+        .pagination-bar { background:white; }
+
+        #createPermitModal { backdrop-filter:blur(5px); background:rgba(7,26,44,.74) !important; }
+        #createPermitModal > div { border-radius:16px !important; border:none !important; box-shadow:0 30px 80px rgba(7,26,44,.35) !important; }
+        #createPermitModal > div > div:first-child { background:var(--white) !important; padding:19px 22px !important; border-bottom:1px solid var(--border); }
+        #createPermitModal > div > div:nth-child(2) { padding:26px !important; }
+        
+        @media (max-width:800px) {
+            .top-bar-meta { display:none; }
+            .top-bar { height:auto; min-height:70px; padding:12px 16px; flex-wrap:wrap; }
+            .top-bar-actions { width:100%; margin-left:0; }
+            .btn-return { flex:1; }
+            .page-intro { align-items:flex-start; flex-direction:column; }
+        }
+
+        @media (max-width:520px) {
+            .top-bar-title { font-size:14px; }
+            .top-bar-subtitle { font-size:10px; }
+            .page-wrapper { padding:24px 12px; }
+            .page-intro h1 { font-size:24px; }
+            .page-note { display:none; }
+            .card { border-radius:12px; }
+            .filter-tabs { overflow-x:auto; justify-content:flex-start; }
+            .filter-tab { flex:0 0 auto; min-width:105px; }
+        }
+
+        #createPermitModal .form-group label {
+            color: #000000 !important;
+            font-weight: 900 !important;
+            font-size: 14px !important;
+            margin-bottom: 8px !important;
+            display: block !important;
+        }
+        #createPermitModal .optional-tag {
+            font-weight: 600 !important;
+            color: #475569 !important;
+            font-size: 12px !important;
+        }
+        #createPermitModal .form-group input {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border: 2px solid #475569 !important; 
+            border-radius: 6px !important;
+            padding: 12px 14px !important;
+            font-size: 15px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+        }
+        #createPermitModal .form-group input::placeholder {
+            color: #64748b !important;
+            opacity: 1 !important;
+            font-weight: 500 !important;
+        }
+        #createPermitModal .form-group input:focus {
+            border-color: #2563eb !important;
+            outline: none !important;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25) !important;
+        }
+
+        /* Create permit workspace */
+        #createPermitModal.permit-modal-overlay{position:fixed;inset:0;z-index:300;align-items:center;justify-content:center;padding:24px;overflow:hidden;background:rgba(7,26,44,.72);backdrop-filter:blur(6px)}
+        #createPermitModal .permit-modal{display:flex;flex-direction:column;width:min(820px,100%);max-height:calc(100vh - 48px);overflow:hidden;border:1px solid rgba(255,255,255,.18)!important;border-radius:16px!important;background:#fff;box-shadow:0 30px 90px rgba(7,26,44,.38)!important}
+        #createPermitModal .permit-modal-header{display:flex;align-items:center;justify-content:space-between;gap:20px;flex:0 0 auto;padding:20px 24px!important;border-bottom:1px solid var(--border)!important;background:var(--white)!important;color:var(--text-primary)}
+        .permit-modal-heading{display:flex;align-items:center;gap:14px;min-width:0}
+        .permit-modal-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text-secondary);font-size:21px;font-weight:800}
+        .permit-modal-icon .mdi-icon{width:22px;height:22px}
+        .permit-modal-kicker{margin-bottom:2px;color:var(--text-muted);font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+        #createPermitModal .permit-modal-heading h2{margin:0;color:var(--text-primary);font-family:'Libre Franklin',sans-serif;font-size:21px;letter-spacing:-.02em}
+        .permit-modal-heading p{margin:3px 0 0;color:var(--text-secondary);font-size:11px}
+        .permit-modal-close{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;padding:0;border:1px solid var(--border);border-radius:8px;background:var(--white);color:var(--text-secondary);font-family:inherit;font-size:23px;line-height:1;cursor:pointer;transition:background .15s,border-color .15s}
+        .permit-modal-close:hover{background:var(--surface);border-color:var(--border-strong)}
+        #createPermitModal .permit-modal-body{min-height:0;overflow-y:auto;padding:24px!important;background:#f8fafb}
+        .permit-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:17px 20px}
+        .permit-form-grid .form-group{margin:0}
+        .permit-form-grid .field-wide{grid-column:1/-1}
+        #createPermitModal .permit-form-grid label{margin-bottom:6px!important;color:#425563!important;font-size:10px!important;font-weight:800!important;letter-spacing:.07em!important}
+        #createPermitModal .permit-form-grid input{min-height:45px!important;padding:11px 13px!important;border:1px solid #bdcad3!important;border-radius:8px!important;background:#fff!important;color:var(--text-primary)!important;font-size:13px!important;box-shadow:0 1px 2px rgba(16,42,67,.025)!important}
+        #createPermitModal .permit-form-grid input:focus{border-color:var(--blue)!important;box-shadow:0 0 0 3px rgba(23,105,170,.12)!important}
+        #createPermitModal .optional-tag{color:#7b8c97!important;font-size:10px!important;font-weight:500!important}
+        .permit-modal-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:23px;padding-top:18px;border-top:1px solid var(--border)}
+        .permit-modal-footer>p{display:flex;align-items:center;margin:0;color:var(--text-muted);font-size:10px}
+        .permit-modal-footer>p span{display:inline-flex;margin-right:5px;color:var(--gold)}
+        .permit-modal-footer>p .mdi-icon{width:15px;height:15px}
+        .permit-modal-close .mdi-icon{width:19px;height:19px}
+        .permit-modal-actions{display:flex;justify-content:flex-end;gap:10px}
+        #createPermitModal .permit-modal-actions button{width:auto;margin:0;padding:10px 18px;border-radius:7px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer}
+        #createPermitModal .permit-modal-actions .btn-secondary{border:1px solid var(--border-strong);background:#fff;color:var(--text-secondary)}
+        #createPermitModal .permit-modal-actions .btn-secondary:hover{background:#eef2f5;color:var(--navy)}
+        #createPermitModal .permit-modal-actions .btn-primary{border:1px solid var(--navy);background:var(--navy);color:#fff;box-shadow:none}
+        #createPermitModal .permit-modal-actions .btn-primary:hover{background:var(--blue);border-color:var(--blue)}
+
+        @media(max-width:620px){
+            #createPermitModal.permit-modal-overlay{padding:10px}
+            #createPermitModal .permit-modal{max-height:calc(100vh - 20px);border-radius:12px!important}
+            #createPermitModal .permit-modal-header{padding:16px!important}
+            .permit-modal-heading p{display:none}
+            #createPermitModal .permit-modal-body{padding:18px 16px!important}
+            .permit-form-grid{grid-template-columns:1fr;gap:14px}
+            .permit-form-grid .field-wide{grid-column:auto}
+            .permit-modal-footer{align-items:stretch;flex-direction:column;gap:12px}
+            .permit-modal-actions{display:grid;grid-template-columns:1fr 1.4fr}
+            #createPermitModal .permit-modal-actions button{width:100%}
+        }
+
+        .bp-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}
+        .bp-summary-card{display:flex;align-items:center;gap:14px;padding:17px 18px;background:white;border:1px solid var(--border);border-radius:13px;box-shadow:var(--shadow-sm)}
+        .bp-summary-icon{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:10px}
+        .bp-summary-icon .mdi-icon{width:23px;height:23px}
+        .bp-summary-total{background:#eff6ff;color:var(--blue)}
+        .bp-summary-pending{background:var(--amber-light);color:var(--amber)}
+        .bp-summary-approved{background:var(--green-light,#ecfdf5);color:var(--green)}
+        .bp-summary-rejected{background:var(--red-light);color:var(--red)}
+        .bp-summary-label{font-size:12px;font-weight:700;line-height:1.4;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);margin-bottom:3px}
+        .bp-summary-value{font-family:'Libre Franklin',sans-serif;font-size:24px;font-weight:800;color:var(--navy);line-height:1.1}
+        @media(max-width:900px){.bp-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:480px){.bp-summary{gap:8px}.bp-summary-card{padding:13px 12px;gap:9px}.bp-summary-icon{width:36px;height:36px;flex-basis:36px}.bp-summary-value{font-size:22px}}
+    
+        .bp-page .bp-summary{gap:14px;margin-bottom:18px;align-items:stretch}
+        .bp-page .bp-summary-card{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;overflow:hidden;min-width:0;background:white;border:1px solid #e5e9ec;border-radius:18px;box-shadow:none}
+        .bp-page .bp-stat-body{padding:14px 18px 16px;flex:1}
+        .bp-page .bp-stat-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+        .bp-page .bp-summary-label{margin:0;color:#74808a;font-size:13px;font-weight:500;line-height:1.5;letter-spacing:0;text-transform:none}
+        .bp-page .bp-summary-icon{width:24px;height:24px;flex:0 0 24px;background:transparent;border-radius:0}
+        .bp-page .bp-summary-icon .mdi-icon{width:19px;height:19px}
+        .bp-page .bp-summary-value{font-family:inherit;font-size:26px;font-weight:650;line-height:1.15;letter-spacing:-.045em;color:#172a35;font-variant-numeric:tabular-nums}
+        .bp-page .bp-stat-footer{padding:10px 18px;border-top:1px solid #e9edef;color:#87929b;font-size:11px;line-height:1.5;background:white}
+        @media(max-width:560px){.bp-page .bp-summary{gap:10px}.bp-page .bp-stat-body{padding:12px 14px}.bp-page .bp-stat-heading{gap:6px;margin-bottom:8px}.bp-page .bp-summary-label{font-size:11px}.bp-page .bp-summary-value{font-size:24px}.bp-page .bp-stat-footer{padding:8px 14px;font-size:10px}}
+        @media(max-width:360px){.bp-page .bp-summary{grid-template-columns:1fr}}
+
+    
+        .bp-page .registry-card .btn-progress{padding:7px 12px;border:1px solid #d7e4ef;border-radius:6px;background:#edf5fc;color:var(--blue);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+        .bp-page .registry-card .action-group{flex-wrap:nowrap}
+        #permitProgressDialog{position:fixed;inset:0;margin:auto;box-sizing:border-box;overflow:auto;width:min(820px,calc(100vw - 40px));max-height:85dvh;padding:0;border:1px solid #e0e7ed;border-radius:18px;color:#243f53;box-shadow:0 24px 80px #102a4333}
+        #permitProgressDialog::backdrop{background:rgba(7,26,44,.5);backdrop-filter:blur(3px)}
+        .progress-dialog-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:22px 24px;border-bottom:1px solid #e6edf2}
+        .progress-dialog-header h2{margin:0;font-size:20px}
+        #progressProjectTitle{margin:7px 0 0;font-size:13px;color:#728594;overflow-wrap:anywhere}
+        .progress-close{width:32px;height:32px;border:1px solid #dfe7ed;border-radius:8px;background:#f5f8fa;color:#526d80;font-size:24px;cursor:pointer}
+        .progress-dialog-body{padding:20px 24px 24px}
+        #progressSummary{margin:0 0 12px;font-size:13px;font-weight:600}
+        .progress-legend{display:flex;gap:18px;font-size:11px;color:#758895;margin-bottom:20px}
+        #progressContent .route-line{display:block;background:#f7f9fb;border:1px solid #e3eaf0;border-radius:10px;padding:16px}
+        #progressContent .route-label{padding:0 0 12px}
+        #progressContent .route-stations{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:0;padding:0;gap:10px}
+        #progressContent .track-item{font-size:12px;text-transform:none;letter-spacing:0;padding:10px;background:white;border:1px solid #e3eaf0;border-radius:7px;overflow-wrap:anywhere}
+        @media(max-width:600px){#progressContent .route-stations{grid-template-columns:1fr}.progress-dialog-header,.progress-dialog-body{padding:18px}}
+    .bp-page .bp-project-icon{width:26px;height:26px;flex:0 0 26px;object-fit:contain;margin-top:2px}
+    
+        /* Condensed white registry, consistent with the permit workspace. */
+        .bp-page .registry-card{--text-muted:#7c8c98;--text-secondary:#637987;background:#ffffff;border:1px solid #e1e8ed;border-radius:12px;box-shadow:none;overflow:hidden;color:#334e63}
+        .bp-page .registry-list-heading{padding:26px 28px 12px}
+        .bp-page .registry-list-heading h2{margin:0 0 8px;color:#243f53;font-size:17px;font-weight:650;letter-spacing:-.02em}
+        .bp-page .registry-list-heading p{margin:0;color:#7c8c98;font-size:12px;line-height:1.6}
+        .bp-page .registry-card .registry-controls{background:transparent;padding:0}
+        .bp-page .registry-card .filter-tabs{background:transparent;border-bottom:1px solid #e8edf1;padding:8px 28px 0;gap:22px}
+        .bp-page .registry-card .filter-tab{background:transparent;color:#6e8291;border-bottom-color:transparent;padding:10px 0 12px;font-size:12px;box-shadow:none}
+        .bp-page .registry-card .filter-tab.active{color:#1769aa;border-bottom-color:#1769aa;background:transparent}
+        .bp-page .registry-card .filter-tab:hover{color:#244b68;background:transparent}
+        .bp-page .registry-card .registry-toolbar{background:transparent;padding:16px 28px;gap:18px}
+        .bp-page .registry-card .search-row input{background:#f7f9fb;border-color:#dce5ec!important;color:#334e63;min-height:38px;font-size:12px;border-radius:7px}
+        .bp-page .registry-card .search-row input::placeholder{color:#8b9ba7}
+        .bp-page .registry-card .search-icon{color:#7d94a5}
+        .bp-page .registry-card .search-row input:focus{border-color:#1769aa!important;box-shadow:0 0 0 3px #1769aa18;outline:none}
+        .bp-page .registry-card .record-count-badge{color:#7c8c98;background:transparent;border:0}
+        .bp-page .registry-card .table-wrap{padding:0 28px;background:transparent;border:0;overflow:auto}
+        .bp-page .registry-card table{width:100%;min-width:1040px;border-collapse:collapse;background:transparent}
+        .bp-page .registry-card th{padding:13px 10px;background:transparent;color:#607887;border-bottom:1px solid #dde6ed;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0}
+        .bp-page .registry-card .main-data-row td{padding:11px 10px;background:transparent!important;color:#687f90!important;border:0;border-bottom:1px solid #edf1f4!important;font-size:12px;line-height:1.4}
+        .bp-page .registry-card .main-data-row:hover td{background:#f8fafc!important}
+        .bp-page .registry-card .main-data-row:last-child td{border-bottom:0!important}
+        .bp-page .registry-card .permit-heading{gap:10px;min-width:240px;align-items:center}
+        .bp-page .registry-card .bp-project-icon{width:22px;height:22px;flex-basis:22px;opacity:.65;margin-top:0}
+        .bp-page .registry-card .project-title-main{font-size:12px;line-height:1.4;color:#233e51;font-weight:600}
+        .bp-page .registry-card .permit-title-line{gap:8px}
+        .bp-page .registry-card .permit-progress-summary{margin-top:4px;color:#8999a5;font-size:10px;line-height:1.3}
+        .bp-page .registry-card .sub-title-row{color:#7c8c98;font-size:10px;margin-top:4px}
+        .bp-page .registry-card .sub-label{background:#edf3f8;color:#6a8396;border:0}
+        .bp-page .registry-card .permit-status-chip{font-size:9px;padding:3px 6px;border:0;line-height:1.3}
+        .bp-page .registry-card .permit-status-pending{color:#9b762d;background:#fff7e8}
+        .bp-page .registry-card .permit-status-approved{color:#278259;background:#edf8f1}
+        .bp-page .registry-card .permit-status-rejected{color:#ad5656;background:#fff1f1}
+        .bp-page .registry-card .lot-badge-inline{background:transparent;border:0;color:#687f90;padding:2px 4px;font-size:11px}
+        .bp-page .registry-card .action-group{justify-content:flex-end;gap:12px;flex-wrap:nowrap}
+        .bp-page .registry-card .btn-progress,.bp-page .registry-card .btn-details,.bp-page .registry-card .btn-delete-record{padding:5px 0;min-height:28px;border:0;border-radius:3px;background:transparent!important;box-shadow:none;color:#1769aa;font-family:inherit;font-size:11px;font-weight:600;text-decoration:none}
+        .bp-page .registry-card .btn-delete-record{color:#b56666}
+        .bp-page .registry-card .btn-progress:hover,.bp-page .registry-card .btn-details:hover{color:#0e4e80;text-decoration:underline}
+        .bp-page .registry-card .btn-delete-record:hover{color:#943f3f!important;text-decoration:underline}
+        .bp-page .registry-card .pagination-bar{padding:16px 28px;background:transparent;border-top:1px solid #e8edf1;color:#7c8c98}
+        .bp-page .registry-card .pagination-btn{background:transparent;border:1px solid #dce5ec;color:#6d8394;border-radius:6px;padding:7px 12px;font-size:11px}
+        .bp-page .registry-card .pagination-btn:disabled{opacity:.4}
+        .bp-page .registry-card .pagination-info{color:#7c8c98;font-size:11px}
+        .bp-page .registry-card button:focus-visible,.bp-page .registry-card a:focus-visible{outline:2px solid #1769aa;outline-offset:4px}
+        @media(max-width:600px){.bp-page .registry-list-heading{padding:20px 16px 10px}.bp-page .registry-card .filter-tabs{padding-left:16px;padding-right:16px;gap:18px}.bp-page .registry-card .registry-toolbar{padding:14px 16px}.bp-page .registry-card .table-wrap{padding:0 16px}.bp-page .registry-card .pagination-bar{padding:14px 16px}}
+
+    
+        .bp-page .registry-card .action-group{display:flex;align-items:center;justify-content:flex-end;gap:12px}
+        .bp-page .registry-card .btn-progress,.bp-page .registry-card .btn-details,.bp-page .registry-card .btn-delete-record{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:30px;min-height:30px;margin:0;padding:0 2px;line-height:1;font-family:inherit;font-size:11px;font-weight:600;vertical-align:middle;border:0;text-decoration:none}
+    
+        .bp-page .registry-card .permit-status-chip{display:inline-flex;align-items:center;gap:6px;padding:0;border:0;border-radius:0;background:transparent;font-size:11px;font-weight:500;white-space:nowrap;text-transform:none;letter-spacing:0}
+        .bp-page .registry-card .permit-status-chip::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+        .bp-page .registry-card .permit-status-pending{color:#b08740}
+        .bp-page .registry-card .permit-status-approved{color:#429a67}
+        .bp-page .registry-card .permit-status-rejected{color:#c56767}
+    /* Key record fields need foreground contrast rather than muted metadata color. */
+.bp-page .registry-card .main-data-row td.permit-detail-text{color:#243e53!important;font-weight:600}
+html[data-theme='dark'] .bp-page .registry-card .main-data-row td.permit-detail-text{color:var(--theme-text,#e3e9ef)!important}
+.bp-page .registry-card .main-data-row .lot-badge-inline{color:#243e53!important;font-weight:600}
+html[data-theme='dark'] .bp-page .registry-card .main-data-row .lot-badge-inline{color:var(--theme-text,#e3e9ef)!important}
+</style>
+<link rel="stylesheet" href="/shared-header.css">
+<link rel="stylesheet" href="/status-badges.css">
+<link rel="stylesheet" href="/registry-filters.css">
+<script src="/registry-filters.js"></script>
+<link rel="stylesheet" href="/appearance.css">
+<link rel="stylesheet" href="/project-records.css">
+<script src="/project-records.js"></script>
+<link rel="stylesheet" href="/station-dates.css"><script src="/station-dates.js"></script>
+<link rel="stylesheet" href="/remarks-viewer.css"><script src="/remarks-viewer.js"></script>
+<link rel="stylesheet" href="/progress-layout.css">
+<link rel="stylesheet" href="/location-picker.css">
+<script src="/permit-barangays.js" defer></script><script src="/location-picker.js" defer></script>
+<link rel="stylesheet" href="/permit-sidebar.css">
+<link rel="stylesheet" href="/account-tools.css">
+<link rel="stylesheet" href="/permit-responsive.css">
+<script src="/permit-responsive.js" defer></script>
+</head>
+<body class="bp-page">
+<div id="system-react-root" data-page="permits-index" style="display:contents"></div>
+<script src="/system-react/app.js"></script>
+<script>
+    let globalPermitsCache = [];
+    let filteredPermitsList = [];
+    let currentStatusFilter = 'all';
+    let currentPage = 1;
+    const recordsPerPage = 5;
+    const registryFilters = RegistryFilters.create({
+        kind: 'building', searchId: 'dashboardSearchInput', statuses: ['all', 'pending', 'approved', 'rejected'],
+        status: () => currentStatusFilter, page: () => currentPage,
+        restore: state => { currentStatusFilter = state.status; currentPage = state.page; },
+        change: () => { currentPage = 1; filterPermitLogs(); }
+    });
+    let stagedLotNumbersArray = [];
+    const permitProgressViews = new Map();
+
+    function getStoredUser() {
+        try { return JSON.parse(sessionStorage.getItem('oboUser') || 'null'); } catch (e) { return null; }
+    }
+
+    function getAuthHeaders(extra = {}) {
+        const user = getStoredUser();
+        return {
+            ...(extra || {}),
+            'Content-Type': 'application/json',
+            'x-user-role': user?.role || '',
+            'x-user-id': user?.id ? String(user.id) : ''
+        };
+    }
+
+    const currentUser = getStoredUser();
+    if (!currentUser) {
+        window.location.href = '/login';
+    }
+
+    function handleLogout() { if (!FormSafety.leave()) return;
+        return PermitRouting.logout();
+    }
+
+    function openCreatePermitModal() {
+        document.getElementById('createPermitModal').style.display = 'flex';
+    }
+
+    function closeCreatePermitModal() { if (!FormSafety.discard('permitForm')) return;
+        document.getElementById('createPermitModal').style.display = 'none';
+        document.getElementById('permitForm').reset();
+    }
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+        getPermitLogs();
+    });
+
+    document.getElementById('permitForm').addEventListener('submit', FormSafety.guard('permitForm', async (e) => {
+        e.preventDefault();
+        const lotVal = document.getElementById('lot_input_field').value.trim();
+        const dataPayload = {
+            project_title: document.getElementById('project_title').value,
+            sub_project_title: document.getElementById('sub_project_title').value,
+            location: document.getElementById('location').value,
+            owner_name: document.getElementById('owner_name').value,
+            designer_name: document.getElementById('designer_name').value,
+            permit_date: document.getElementById('permit_date').value,
+            lot_numbers: lotVal ? [lotVal] : []
+        };
+        const res = await RequestFeedback.fetch('/api/permits', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(dataPayload)
+        });
+        const result=await res.json();
+        if (!res.ok || !result.success) { alert(result.message || 'Unable to create permit.'); return; }
+        if (result.success) {
+            FormSafety.clean('permitForm'); closeCreatePermitModal();
+            stagedLotNumbersArray = [];
+            getPermitLogs();
+        }
+    }));
+
+    async function getPermitLogs() {
+        try {
+            const res = await RequestFeedback.fetch('/api/permits');
+            globalPermitsCache = await res.json();
+            filterPermitLogs();
+            window.dispatchEvent(new Event('permit-registry-changed'));
+        } catch(e) { console.error("Fetch logs failure:", e); }
+    }
+
+    function setStatusFilter(filterType) {
+        currentStatusFilter = filterType;
+        document.querySelectorAll('.filter-tab').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`btn-filter-${filterType}`).classList.add('active');
+        currentPage = 1;
+        filterPermitLogs();
+    }
+
+    function getBuildingPermitStatus(rowItem) {
+        let subsList = [];
+        try { if(rowItem.sub_permits) subsList = JSON.parse(rowItem.sub_permits) || []; } catch(e){}
+        let tracks = rowItem.routing_tracks;
+        if (typeof tracks === 'string') { try { tracks = JSON.parse(tracks); } catch(e) { tracks = []; } }
+        if (!Array.isArray(tracks)) tracks = [];
+        let unifiedTracks = [...tracks];
+        subsList.forEach(s => {
+            let subTracks = [];
+            try { if(s.tracks) subTracks = JSON.parse(s.tracks) || []; } catch(e){}
+            unifiedTracks.push(...subTracks);
+        });
+        let computedStatus = 'pending';
+        if (unifiedTracks.length > 0) {
+            const anyRejected = unifiedTracks.some(t => t && t.status && t.status.toLowerCase() === 'rejected');
+            if (rowItem.final_approval?.status === 'approved') computedStatus = 'approved';
+            else if (anyRejected || ['returned','correction'].includes(rowItem.final_approval?.status)) computedStatus = 'rejected';
+        }
+        return computedStatus;
+    }
+
+    function updateBuildingPermitSummary() {
+        const permits = (globalPermitsCache || []).filter(Boolean);
+        const counts = { total: permits.length, pending: 0, approved: 0, rejected: 0 };
+        permits.forEach(permit => counts[getBuildingPermitStatus(permit)]++);
+        Object.entries(counts).forEach(([status, count]) => {
+            document.getElementById('bpSummary-' + status).textContent = count;
+        });
+    }
+
+// Export the complete filtered list, not just the visible pagination slice.
+window.permitExportIds = () => filteredPermitsList.map(p => p.id);
+    function filterPermitLogs() {
+        updateBuildingPermitSummary();
+        filteredPermitsList = RegistryFilters.select(globalPermitsCache || [], registryFilters.state(), 'building', getBuildingPermitStatus);
+        const maxPages = Math.ceil(filteredPermitsList.length / recordsPerPage) || 1;
+        if (currentPage > maxPages) currentPage = maxPages;
+        displayPaginatedRows();
+    }
+
+    function changePage(dir) { currentPage += dir; displayPaginatedRows(); }
+
+    function formatDisplayDate(value) {
+        if (!value) return '—';
+        const datePart = String(value).split('T')[0];
+        const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        return match ? `${match[3]}/${match[2]}/${match[1]}` : datePart;
+    }
+
+    function createMdiIcon(name, className = 'mdi-icon') {
+        return `<svg class="${className}" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-${name}"></use></svg>`;
+    }
+
+    function createPendingDisciplineIcon() {
+        return `<span class="track-icon icon-pending" data-icon="mdi:alert-circle-outline" title="Pending review">${createMdiIcon('alert-circle-outline')}</span>`;
+    }
+
+    function createDisciplineIcon(status) {
+        if (!status) return createPendingDisciplineIcon();
+        const n = status.toString().toLowerCase();
+        if (n === 'approved') return `<span class="track-icon icon-approved">${createMdiIcon('check-circle-outline')}</span>`;
+        if (n === 'rejected') return `<span class="track-icon icon-rejected">${createMdiIcon('close-circle-outline')}</span>`;
+        return createPendingDisciplineIcon();
+    }
+
+    function openPermitProgress(permitId) {
+        const view = permitProgressViews.get(permitId);
+        if (!view) return;
+        document.getElementById('progressProjectTitle').textContent = view.title;
+        document.getElementById('progressSummary').textContent = view.summary;
+        document.getElementById('progressContent').innerHTML = view.html;
+        StationDates.loadRemarks(document.getElementById('progressContent'), 'permits', permitId);
+        document.getElementById('permitProgressDialog').showModal();
+        let recordsHost = document.getElementById('progressRecords');
+        if (!recordsHost) { recordsHost = document.createElement('section'); recordsHost.id = 'progressRecords'; document.querySelector('#permitProgressDialog .progress-dialog-body').append(recordsHost); }
+        recordsHost.dataset.projectRecords = 'permits';
+        ProjectRecords.mount(recordsHost, 'permits', permitId);
+    }
+
+    function displayPaginatedRows() {
+        const tableBody = document.getElementById('permitTableBody');
+        const pageIndicator = document.getElementById('paginationPageIndicator');
+        tableBody.innerHTML = '';
+        permitProgressViews.clear();
+        const totalPages = Math.ceil(filteredPermitsList.length / recordsPerPage) || 1;
+        currentPage = Math.max(1, Math.min(currentPage, totalPages));
+        registryFilters.sync();
+        pageIndicator.innerText = `Page ${currentPage} of ${totalPages}`;
+        document.getElementById('btnPrevPage').disabled = (currentPage === 1);
+        document.getElementById('btnNextPage').disabled = (currentPage === totalPages);
+        document.getElementById('recordCounter').innerText = `${filteredPermitsList.length} of ${globalPermitsCache.length} records`;
+
+        if (filteredPermitsList.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">No matching permit records found.</td></tr>`;
+            return;
+        }
+
+        const subset = filteredPermitsList.slice((currentPage - 1) * recordsPerPage, currentPage * recordsPerPage);
+        subset.forEach(rowItem => {
+            const formattedDate = formatDisplayDate(rowItem.permit_date);
+            let subsList = [];
+            try { if(rowItem.sub_permits) subsList = JSON.parse(rowItem.sub_permits) || []; } catch(e){}
+            let lotsList = [];
+            try { if(rowItem.lot_numbers) lotsList = JSON.parse(rowItem.lot_numbers) || []; } catch(e){}
+
+            let parentTracks = [];
+            try { if (rowItem.routing_tracks) parentTracks = JSON.parse(rowItem.routing_tracks) || []; } catch(e){}
+            const allTracks = [...parentTracks];
+            subsList.forEach(s => {
+                let subTracks = [];
+                try { if (s.tracks) subTracks = JSON.parse(s.tracks) || []; } catch(e){}
+                allTracks.push(...subTracks);
+            });
+
+            const approvedCount = allTracks.filter(t => t && t.status && t.status.toLowerCase() === 'approved').length;
+            const hasRejected = allTracks.some(t => t && t.status && t.status.toLowerCase() === 'rejected');
+            const permitStatus = rowItem.final_approval?.status === 'approved' ? 'approved' : (['returned','correction'].includes(rowItem.final_approval?.status) || hasRejected ? 'rejected' : 'pending');
+            const statusLabel = rowItem.final_approval?.label || (permitStatus === 'rejected' ? 'Action needed' : 'In review');
+            const progressLabel = allTracks.length ? `${approvedCount} of ${allTracks.length} stations approved` : 'No routing stations configured';
+
+
+            let subSummaryHtml = '';
+            if (subsList.length === 1) subSummaryHtml = `<div class="sub-title-row"><span class="sub-label">SUB</span><span>${escapeInputHTML(subsList[0].title)}</span></div>`;
+            else if (subsList.length > 1) subSummaryHtml = `<div class="sub-title-row"><span class="sub-label">SUB</span><span>${subsList.length} sub-permits</span></div>`;
+
+            const titleHtml = `<div class="permit-heading">
+                <img class="bp-project-icon" src="/assets/building-project-icon.png" alt="" aria-hidden="true">
+                <div class="permit-heading-copy">
+                    <div class="permit-title-line"><span class="project-title-main">${escapeInputHTML(rowItem.project_title)}</span></div>
+                    <div class="permit-progress-summary">${progressLabel}</div>
+                    ${subSummaryHtml}
+                </div>
+            </div>`;
+
+            let lotsHtml = lotsList.map(lot => `<span class="lot-badge-inline">${escapeInputHTML(lot)}</span>`).join('');
+            if (lotsList.length === 0) lotsHtml = '<em style="color:var(--text-muted);">—</em>';
+
+            const dataRow = document.createElement('tr');
+            dataRow.id = `permit-summary-${rowItem.id}`;
+            dataRow.className = 'main-data-row permit-group-row';
+            dataRow.innerHTML = `
+                <td class="project-id-column"><span class="project-reference">${ProjectIdentity.format('building', rowItem.id)}</span></td>
+                <td>${titleHtml}</td>
+                <td class="permit-detail-text">${escapeInputHTML(rowItem.location)}</td>
+                <td class="permit-detail-text">${escapeInputHTML(rowItem.owner_name)}</td>
+                <td class="permit-detail-text" style="white-space:nowrap;">${formattedDate}</td>
+                <td><div style="display:flex;flex-wrap:wrap;gap:2px;max-width:180px;">${lotsHtml}</div></td>
+                <td><span class="permit-status-chip permit-status-${permitStatus}">${statusLabel}</span></td>
+                <td>
+                    <div class="action-group">
+                        <button type="button" class="btn-progress" onclick="openPermitProgress(${rowItem.id})" aria-haspopup="dialog">Progress</button>
+                        <a class="btn-details" href="/edit?id=${rowItem.id}">Details</a>
+                        <button type="button" class="btn-delete-record">Delete</button>
+                    </div>
+                </td>
+            `;
+            dataRow.querySelector('.btn-delete-record').addEventListener('click', () => executePermitRemoval(rowItem.id, rowItem.project_title));
+            tableBody.appendChild(dataRow);
+
+            let htmlStreams = `<div class="wrapper-stream-box">`;
+
+            let parentItemsHtml = parentTracks.map(t => `
+                <div class="track-item" data-progress-station="${Number(t.id)}">${createDisciplineIcon(t.status)} <span class="progress-station-name">${escapeInputHTML(t.discipline)}</span> ${StationDates.summary(t)}</div>
+            `).join('');
+            if (parentTracks.length === 0) parentItemsHtml = '<div style="grid-column: 1 / -1;"><em style="font-size:11px; color:var(--text-muted);">No routing stations assigned.</em></div>';
+            
+            htmlStreams += `<div class="route-line route-line-main">
+                <div class="route-label"><span class="badge-stream-type">Main permit</span></div>
+                <div class="route-stations">${parentItemsHtml}</div>
+            </div>`;
+
+            subsList.forEach(s => {
+                let subTracks = [];
+                try { if(s.tracks) subTracks = JSON.parse(s.tracks) || []; } catch(e){}
+                let subItemsHtml = subTracks.map(t => `
+                    <div class="track-item" data-progress-station="${Number(t.id)}">${createDisciplineIcon(t.status)} <span class="progress-station-name">${escapeInputHTML(t.discipline)}</span> ${StationDates.summary(t)}</div>
+                `).join('');
+                if (subTracks.length === 0) subItemsHtml = '<div style="grid-column: 1 / -1;"><em style="font-size:11px;color:var(--text-muted);">No stations.</em></div>';
+                
+                htmlStreams += `<div class="route-line route-line-sub">
+                    <div class="route-label"><span class="badge-stream-sub">Sub: ${escapeInputHTML(s.title)}</span></div>
+                    <div class="route-stations">${subItemsHtml}</div>
+                </div>`;
+            });
+
+            htmlStreams += `</div>`;
+            permitProgressViews.set(rowItem.id, { title: rowItem.project_title, summary: progressLabel, html: htmlStreams });
+        });
+    }
+
+    async function executePermitRemoval(id,title) {
+    return DestructiveAction.run({
+        title:'Request permit deletion?',
+        message:'Request deletion of “'+title+'” (Permit #'+id+')? The permit stays available until an administrator approves its deletion.',
+        confirmLabel:'Request deletion',
+        action:async()=>{
+            const response=await RequestFeedback.fetch('/api/permits/'+id,{method:'DELETE',headers:getAuthHeaders()});
+            const data=await response.json();
+            if(!data.success)throw new Error(data.message||'Deletion request was not accepted.');
+            alert(data.message||'Deletion request submitted. The permit remains until approval.');
+            await getPermitLogs();
+        }
+    });
+}
+
+    function escapeInputHTML(val) {
+        return val ? val.toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") : '';
+    }
+</script>
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const centerStyle = document.createElement('style');
+        centerStyle.textContent = '.has-philippine-clock{position:relative}.has-philippine-clock .philippine-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;align-items:center;text-align:center}@media(max-width:1100px){.has-philippine-clock{display:flex;flex-wrap:wrap}.has-philippine-clock .philippine-clock{position:static;transform:none;flex-basis:100%;order:99;margin:8px 0;box-sizing:border-box;align-items:center}}';
+        document.head.append(centerStyle);
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script></body>
+</html>

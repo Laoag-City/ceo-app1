@@ -1,0 +1,33 @@
+# Dependencies, local tools and diagnostics
+node_modules/
+.feature-backups/
+.deployment/
+.vscode/
+*.log
+**/*test-results.json
+.DS_Store
+Thumbs.db
+
+# Credentials and private database snapshots
+.env
+.env.*
+!.env.example
+*.backup
+*.dump
+*.bak
+*.pgpass
+*.pem
+*.key
+backups/
+PermitManagementConfig/
+backend/migration/preview-uploads/
+# Local migration reports and historical client data are not application source.
+backend/migration/cutover-comparison.json
+backend/migration/mysql-schema-inventory.json
+backend/migration/postgres-live-transfer.json
+backend/migration/postgres-schema-verification.json
+backend/monitorBP backend/maintenance/queue-archive-*.json
+frontend/queue frontend/videos/
+frontend/queue frontend/uploads/
+
+# Keep frontend/monitorBP frontend tracked: Render serves these published files.

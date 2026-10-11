@@ -1,0 +1,92 @@
+[
+  {
+    "id": "permits-login",
+    "folder": "monitorBP frontend",
+    "file": "login.html",
+    "source": "features/auth/login"
+  },
+  {
+    "id": "permits-occupancy_login",
+    "folder": "monitorBP frontend",
+    "file": "occupancy_login.html",
+    "source": "features/auth/legacy-occupancy-login"
+  },
+  {
+    "id": "permits-admin-login",
+    "folder": "monitorBP frontend",
+    "file": "admin-login.html",
+    "source": "features/auth/legacy-admin-login"
+  },
+  {
+    "id": "permits-index",
+    "folder": "monitorBP frontend",
+    "file": "index.html",
+    "source": "features/building/registry"
+  },
+  {
+    "id": "permits-occupancy",
+    "folder": "monitorBP frontend",
+    "file": "occupancy.html",
+    "source": "features/occupancy/registry"
+  },
+  {
+    "id": "permits-edit",
+    "folder": "monitorBP frontend",
+    "file": "edit.html",
+    "source": "features/building/details"
+  },
+  {
+    "id": "permits-occupancy_edit",
+    "folder": "monitorBP frontend",
+    "file": "occupancy_edit.html",
+    "source": "features/occupancy/details"
+  },
+  {
+    "id": "permits-superadmin",
+    "folder": "monitorBP frontend",
+    "file": "superadmin.html",
+    "source": "features/administration/dashboard"
+  },
+  {
+    "id": "queue-log-in",
+    "folder": "queue frontend",
+    "file": "log-in.html",
+    "source": "features/queue/login"
+  },
+  {
+    "id": "queue-kiosk",
+    "folder": "queue frontend",
+    "file": "kiosk.html",
+    "source": "features/queue/service-desk"
+  },
+  {
+    "id": "queue-monitor",
+    "folder": "queue frontend",
+    "file": "monitor.html",
+    "source": "features/queue/monitor"
+  },
+  {
+    "id": "queue-audit-logs",
+    "folder": "queue frontend",
+    "file": "audit-logs.html",
+    "source": "features/queue/audit-logs"
+  },
+  {
+    "id": "queue-secret-management",
+    "folder": "queue frontend",
+    "file": "secret-management.html",
+    "source": "features/queue/management"
+  },
+  {
+    "id": "queue-client-history",
+    "folder": "queue frontend",
+    "file": "client-history.html",
+    "source": "features/queue/client-history"
+  },
+  {
+    "id": "queue-reports",
+    "folder": "queue frontend",
+    "file": "reports.html",
+    "source": "features/queue/reports"
+  }
+]

@@ -1,0 +1,42 @@
+/* Compact remarks controls never expose long text in a routing row. */
+body .remarks-control { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+body .remarks-preview:empty { display:none; }
+body :is(.remarks-view-trigger,.remarks-edit) {
+    display:inline-flex; align-items:center; justify-content:center; padding:7px 10px;
+    border:1px solid var(--border-strong,#bfd1df); border-radius:7px;
+    background:var(--card-bg,#fff); color:var(--blue,#1468a6);
+    font:inherit; font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer;
+}
+body :is(.remarks-view-trigger,.remarks-edit):hover { background:var(--blue-light,#eaf3fb); }
+body :is(.remarks-view-trigger,.remarks-edit):focus-visible { outline:2px solid var(--blue,#1468a6); outline-offset:3px; }
+body #stationRemarksDialog {
+    position:fixed; inset:0; margin:auto; padding:0; box-sizing:border-box;
+    width:min(620px,calc(100vw - 32px)); max-width:none; max-height:min(680px,calc(100dvh - 40px));
+    border:1px solid var(--border,#d8e3eb); border-radius:16px;
+    background:var(--card-bg,#fff); color:var(--text-primary,#18364c);
+    box-shadow:0 24px 80px #102a4340; overflow:hidden; font:inherit;
+}
+body #stationRemarksDialog[open] { display:flex; flex-direction:column; }
+#stationRemarksDialog::backdrop { background:#10233480; backdrop-filter:blur(3px); }
+#stationRemarksDialog .remarks-viewer-header {
+    display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+    padding:22px 24px 18px; border-bottom:1px solid var(--border,#d8e3eb); flex-shrink:0;
+}
+#stationRemarksDialog .remarks-viewer-header > div { min-width:0; }
+#stationRemarksDialog .remarks-viewer-eyebrow { margin:0 0 6px; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text-secondary,#526b7e); }
+#stationRemarksDialog h2 { margin:0; font-size:21px; line-height:1.35; overflow-wrap:anywhere; }
+#stationRemarksDialog button { font:inherit; cursor:pointer; }
+#stationRemarksDialog .remarks-viewer-close { display:grid; place-items:center; flex-shrink:0; width:36px; height:36px; padding:0; border:1px solid var(--border,#d8e3eb); border-radius:8px; background:transparent; color:inherit; font-size:24px; }
+#stationRemarksDialog .remarks-viewer-body { min-height:0; padding:22px 24px; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+#stationRemarksDialog #stationRemarksText { margin:0; font-size:14px; line-height:1.75; white-space:pre-wrap; overflow-wrap:anywhere; }
+#stationRemarksDialog .remarks-viewer-footer { display:flex; justify-content:flex-end; padding:16px 24px; border-top:1px solid var(--border,#d8e3eb); flex-shrink:0; }
+#stationRemarksDialog .remarks-viewer-done { border:1px solid var(--border-strong,#bfd1df); border-radius:8px; padding:9px 20px; background:transparent; color:inherit; font-weight:600; }
+#stationRemarksDialog button:hover { background:var(--blue-light,#eaf3fb); }
+#stationRemarksDialog :focus-visible { outline:2px solid var(--blue,#1468a6); outline-offset:-3px; }
+html[data-theme='dark'] :is(.remarks-view-trigger,.remarks-edit) { background:var(--theme-card,#2e3741); color:#a8cfee; border-color:var(--theme-line,#495563); }
+html[data-theme='dark'] #stationRemarksDialog { --border:var(--theme-line,#495563); --border-strong:var(--theme-line,#495563); --text-secondary:var(--theme-muted,#bbccda); --blue-light:#34495a; --blue:#a8cfee; }
+@media(max-width:480px) {
+    body #stationRemarksDialog { width:calc(100vw - 24px); max-height:calc(100dvh - 24px); border-radius:12px; }
+    #stationRemarksDialog :is(.remarks-viewer-header,.remarks-viewer-body,.remarks-viewer-footer) { padding:18px; }
+    #stationRemarksDialog .remarks-viewer-close { width:44px; height:44px; }
+}

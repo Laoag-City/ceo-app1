@@ -1,0 +1,227 @@
+[
+  {
+    "folder": "monitorBP frontend",
+    "file": "admin-console.css",
+    "hash": "09a2582abed3058cf70adc8c46b02fcc5d6a7597ba43b007975247377d32d49f"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "admin-request-cards.js",
+    "hash": "7d30445420c52ab7c3655bea5c86b8b86b021f887ff2c84e0fa330606739e776"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "appearance.css",
+    "hash": "1335393b30dc387f6646426f1c55c14f5e4bd0aba29f0871ca103c814ac6fa71"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "appearance.js",
+    "hash": "cd879fbad8809a97455d50ef5adad64adcb67b8108e71f0946d5a35b0176224e"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "approval-preview.js",
+    "hash": "58f894d9dc2efcbdb9ac6cb2f2416dc025ba6d0401c57b673657ea62f905d8dc"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "destructive-action.js",
+    "hash": "004a8d7c1924a2bd9ae3423de6cb5723ef4e2a062902af8715024e8a011e2d00"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "edit.css",
+    "hash": "f4f7ae7c8bbc1962f0d4d1507ba25f7a45fe9105a1909b1f6dc378ce661776f8"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "form-safety.js",
+    "hash": "bf178763d9804430e88ddacd32e1b77cead453ab7108f39489e307835cd60bfd"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "index.css",
+    "hash": "6b023b5b72fc2c8948ec73d234447bfc5f00b4c16d4463024a777f4f8f27f0b7"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "location-picker.css",
+    "hash": "4f43e5e9d994f3e20fa1b62efc18e5edc5cd28fdd65d903a673b974124c020f1"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "location-picker.js",
+    "hash": "680dab4ed0dcb3cac5af7fdfac4b80123f7367d5c3e2e2744053fa497938cd0b"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "login-feedback.css",
+    "hash": "f2ebd12900c0e6aa659cd6506b9837a20dcb7f1df7d9d6fb21b2ce1e023fb1c7"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "login-feedback.js",
+    "hash": "b6a9f5c7da21d6fbb1cd7ad6077470c72814eca4b1a8b22b13a1e2f1c12e2ee3"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "occupancy-checklist.js",
+    "hash": "299ed31cc0d0c37602183b5f83a7d7a699a7e2d54c64f62bc7b5a7d9940aaef3"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "occupancy-templates.js",
+    "hash": "77def3e03262c45a0a4c473ebc6cfbb67ae010177b1648ef58cad3dbe275eee7"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "permit-barangays.js",
+    "hash": "5f1555555c677be29365c6b267ab67c44eb3bc7fcf69acc1809a95bcc607c995"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "permit-routing.js",
+    "hash": "6b9ff53d7b68ceeb9ad3f03dc422cc35948861bfb4ece0d6476fe81cfa0eb704"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "permit-sidebar.css",
+    "hash": "def958d162d5cef056ff223203dcbefaa68502ee68a69b7d49692149f537b6c1"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "progress-layout.css",
+    "hash": "1b984c26f3e35536370a512e410917c48e62144a79d647f47b993016b82cd887"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "project-identity.js",
+    "hash": "945a9745b70b20bbe2d354fbf9fc084c16293b2553245624a931d3cf91b7277d"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "project-records.css",
+    "hash": "289ef307b8d49c17f2651ee88016cdadcb1309cb2ec7772f8bf0729c3caad517"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "project-records.js",
+    "hash": "d204ffcdf9fdad294ecb79c9a51c2466ff39bbd02e6fb8c6a969b4a9d8368176"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "project-summary.css",
+    "hash": "d98619a1567bdaddc42a53d40e4a5591333af0552299b31359db746c8be0505a"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "project-summary.js",
+    "hash": "3d504bc53fdc1bc7a125f607a2031754cdd26bace3153f219554f65def549153"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "quick-templates.js",
+    "hash": "4b29ce2fc2f4146190f670d0fe716186c585cc3cc26a342f2fe60deb2065304e"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "registry-filters.css",
+    "hash": "ec65ec34e641d3bd73018385cd3fe190bbf01786e1b860520fa3616e2a4ff03f"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "registry-filters.js",
+    "hash": "bbb069864bf5b3dfd81866dad30378779d620893e95fe4d0c8ccb8637a7c1101"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "request-feedback.js",
+    "hash": "124cc7518a4743804473a730c0502db65e506c9ca58d7124a620fa442b2a5c01"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "shared-header.css",
+    "hash": "944587b6f34ec26368582402af9786407ad46a536f0810d4e2b63a60df3c4fa1"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "station-dates.css",
+    "hash": "2eb4512bf1f159afd4a88d5957afe357734916b2e2015c9dd4fa2a122f18526c"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "station-dates.js",
+    "hash": "10ffd603faa9aad5e25c4b42a4b95eaabefc42c086c252016cd7da9bdd6c706e"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "status-badges.css",
+    "hash": "018d5fe7176b0b39f4dd5eac654cced45a25195715ed9aeecd9a03c98a136100"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "workspace-layout.js",
+    "hash": "1ff5a84f6fa247530f2a83484a21e2d396551e4db5ae916e4f96bdc6e3c204d7"
+  },
+  {
+    "folder": "monitorBP frontend",
+    "file": "workspace-notice.js",
+    "hash": "224effc9a599d5910ab5ee161b425294ac4d82890e3fa48b51dfa84a15707c20"
+  },
+  {
+    "folder": "queue frontend",
+    "file": "appearance.css",
+    "hash": "1335393b30dc387f6646426f1c55c14f5e4bd0aba29f0871ca103c814ac6fa71"
+  },
+  {
+    "folder": "queue frontend",
+    "file": "appearance.js",
+    "hash": "b4bcc95025071c386111728bd5489b6f509c911dd8e5c36dd2f335ccdeb4e4f2"
+  },
+  {
+    "folder": "queue frontend",
+    "file": "destructive-action.js",
+    "hash": "004a8d7c1924a2bd9ae3423de6cb5723ef4e2a062902af8715024e8a011e2d00"
+  },
+  {
+    "folder": "queue frontend",
+    "file": "form-safety.js",
+    "hash": "e57dbb198c77d24c1b07418494a3a548cf3ac6b9c509ba4665f233c649a90955"
+  },
+  {
+    "folder": "queue frontend",
+    "file": "kiosk-style.css",
+    "hash": "b0f3cbe5970653b3b7659e40bb79f32905015d9b70b9ab160b5bad0ce4cab894"
+  },
+  {
+    "folder": "queue frontend",
+    "file": "monitor-style.css",
+    "hash": "56b906b501ac9dad1e3a5edfa76604f82806d58f87c2b690618bcd34b5d364b9"
+  },
+  {
+    "folder": "queue frontend",
+    "file": "queue-ui.css",
+    "hash": "4c8612f15002341f1bfad6b8c598ad333fc289b5adc08a442c2270b7364453c3"
+  },
+  {
+    "folder": "queue frontend",
+    "file": "queue-workspace.css",
+    "hash": "cd6bb02e57fc559165caee6e26f84d73fffd76b548c4632f0281fa7500992362"
+  },
+  {
+    "folder": "queue frontend",
+    "file": "request-feedback.js",
+    "hash": "c77c3a3e24a2b7dfffba290abb0a82ba4a4a86e2c00937ac36e6677e2152cf61"
+  },
+  {
+    "folder": "queue frontend",
+    "file": "shared-header.css",
+    "hash": "944587b6f34ec26368582402af9786407ad46a536f0810d4e2b63a60df3c4fa1"
+  },
+  {
+    "folder": "queue frontend",
+    "file": "status-badges.css",
+    "hash": "018d5fe7176b0b39f4dd5eac654cced45a25195715ed9aeecd9a03c98a136100"
+  }
+]

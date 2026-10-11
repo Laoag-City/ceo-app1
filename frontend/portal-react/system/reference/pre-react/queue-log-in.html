@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/appearance.js"></script>
+    <script src="/request-feedback.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office of the City Engineer | Queue Sign In</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="kiosk-style.css">
+    <style>
+        .login-container { 
+            margin-top: 3vh; 
+            max-width: 650px; 
+            margin-left: auto; 
+            margin-right: auto; 
+            padding: 20px;
+        }
+        .welcome-text { 
+            text-align: center; 
+            color: var(--ink-soft); 
+            font-size: 15px; 
+            margin-bottom: 25px; 
+        }
+        
+        .station-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .station-card {
+            background-color: #ffffff;
+            border: 2px solid var(--line);
+            border-radius: 12px;
+            padding: 20px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .station-card:hover {
+            border-color: var(--civic-blue);
+            background-color: #fbfaf6;
+            transform: translateY(-2px);
+        }
+        
+        .station-card.selected {
+            border-color: var(--gold);
+            background-color: #fdf6e7;
+            box-shadow: 0 4px 12px rgba(193, 135, 47, 0.18);
+        }
+        
+        .station-card i {
+            font-size: 2.5rem;
+            color: var(--ink-soft);
+            margin-bottom: 12px;
+            transition: color 0.2s;
+        }
+        
+        .station-card.selected i {
+            color: var(--gold-dark);
+        }
+        
+        .station-label {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--ink);
+            line-height: 1.3;
+        }
+
+        .station-sublabel {
+            display: block;
+            font-weight: 500;
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        
+        /* Responsive adjust for smaller screens */
+        @media (max-width: 480px) {
+            .station-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="queue-ui.css">
+<link rel="stylesheet" href="shared-header.css">
+<link rel="stylesheet" href="status-badges.css">
+<link rel="stylesheet" href="/appearance.css">
+<link rel="stylesheet" href="/queue-workspace.css">
+</head>
+<body class="queue-login-page">
+
+<div class="app-header-bar site-header queue-site-header">
+    <div class="brand">
+        <img class="brand-mark" src="assets/laoag-city-official-seal.png" alt="Laoag City official seal">
+        <div>
+            <h1>Office of the City Engineer</h1>
+            <p class="brand-subtitle">City Government of Laoag</p>
+        </div>
+    </div>
+    <div class="header-context">Queue management</div>
+</div>
+
+<div class="container login-container">
+    <a href="../portal.html" class="outline-action btn-return-monitor">
+        <svg data-icon="inline-start" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2Z"/></svg> Portal
+    </a>
+    <div class="login-heading">
+        <div class="login-kicker">Queue operations</div>
+        <h2>Choose your workstation</h2>
+        <p class="welcome-text">Click the desk or display assigned to this device to open it.</p>
+    </div>
+    
+    <form id="loginForm">
+        <div class="station-grid">
+            <div class="station-card" data-value="Kiosk">
+                <span class="station-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 16h6"/><circle cx="12" cy="10" r="2"/></svg></span><svg class="station-open-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+                <span class="station-label">Registration Kiosk
+                    <span class="station-sublabel">Register visitors and issue queue tickets</span>
+                </span>
+            </div>
+            
+            <div class="station-card" data-value="PC1">
+                <span class="station-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V3h12v18M2 21h20M16 10h4v11M7 7h2m2 0h2M7 11h2m2 0h2M7 15h2m2 0h2M9 21v-3h3v3"/></svg></span><svg class="station-open-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+                <span class="station-label">Window 1
+                    <span class="station-sublabel">Building permit releasing</span>
+                </span>
+            </div>
+            <div class="station-card" data-value="PC2">
+                <span class="station-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/></svg></span><svg class="station-open-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+                <span class="station-label">Window 2
+                    <span class="station-sublabel">Occupancy permit releasing</span>
+                </span>
+            </div>
+            <div class="station-card" data-value="PC3">
+                <span class="station-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10M13 3v6h6M13 3l6 6m-8 8 7-7 3 3-7 7-4 1z"/></svg></span><svg class="station-open-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+                <span class="station-label">Window 3
+                    <span class="station-sublabel">Receive building and occupancy applications</span>
+                </span>
+            </div>
+            <div class="station-card" data-value="Monitor">
+                <span class="station-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg></span><svg class="station-open-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+                <span class="station-label">Monitor Display
+                    <span class="station-sublabel">Ticket announcements and office videos</span>
+                </span>
+            </div>
+        </div>
+        
+        <input type="hidden" id="workspaceSelect" required>
+        
+        <p id="sessionStatus" role="status" aria-live="polite"></p>
+    </form>
+</div>
+
+<script>
+    const BACKEND_URL = 'http://localhost:5000';
+    const cards = document.querySelectorAll('.station-card');
+    const hiddenInput = document.getElementById('workspaceSelect');
+    let sessionStarting = false;
+
+    cards.forEach(card => {
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+        card.addEventListener('click', function() {
+            if (sessionStarting) return;
+            cards.forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
+            hiddenInput.value = this.getAttribute('data-value');
+            document.getElementById('loginForm').requestSubmit();
+        });
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (sessionStarting) return;
+        const selectedWorkspace = hiddenInput.value;
+        
+        if (!selectedWorkspace) {
+            alert("Please select a station before logging in.");
+            return;
+        }
+        
+        sessionStarting = true;
+        cards.forEach(card => card.setAttribute('aria-disabled', 'true'));
+        document.getElementById('sessionStatus').textContent = 'Opening workstation…';
+        RequestFeedback.fetch(`${BACKEND_URL}/api/workstations/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workspace: selectedWorkspace })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.allowed) {
+                alert(data.message);
+            } else {
+                sessionStorage.setItem('currentWorkspace', selectedWorkspace);
+                window.location.href = (selectedWorkspace === 'Monitor') ? 'monitor.html' : 'kiosk.html';
+            }
+        })
+        .catch(err => RequestFeedback.report(err))
+        .finally(() => {
+            sessionStarting = false;
+            cards.forEach(card => card.removeAttribute('aria-disabled'));
+            document.getElementById('sessionStatus').textContent = '';
+        });
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const activeSession = sessionStorage.getItem('currentWorkspace');
+        if (activeSession) {
+            window.location.href = (activeSession === 'Monitor') ? 'monitor.html' : 'kiosk.html';
+        }
+    });
+</script>
+
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script>
+</body>
+</html>

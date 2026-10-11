@@ -1,0 +1,99 @@
+/* Shared permit navigation. Content retains normal page scrolling and existing modal ownership. */
+body.permit-navigation { --permit-nav-width: 224px; --permit-header-bottom: 90px; padding-top:0; }
+/* Office controls stay in normal document flow and scroll away with the page. */
+body.permit-navigation .site-header { position:relative!important; top:auto; left:auto; right:auto; z-index:auto; background:transparent!important; }
+body.permit-navigation-collapsed { --permit-nav-width: 76px; }
+.permit-sidebar { --nav-bg:#fff; --nav-text:#29445a; --nav-muted:#758696; --nav-line:#e1e8ef; --nav-active:#edf5fd; --nav-accent:#176db7; position:fixed; top:var(--permit-header-bottom); bottom:0; left:0; width:var(--permit-nav-width); z-index:80; display:flex; flex-direction:column; padding:24px 14px 16px; background:var(--nav-bg); color:var(--nav-text); border-right:1px solid var(--nav-line); font-family:'DM Sans','Segoe UI',sans-serif; overflow-y:auto; }
+.permit-sidebar.is-occupancy { --nav-active:#eaf7f1; --nav-accent:#087d61; }
+.permit-nav-heading { display:flex; align-items:center; gap:6px; padding:0 4px 26px; }
+.permit-nav-heading>div { flex:1; min-width:0; }
+.permit-nav-heading strong { display:block; font-size:15px; letter-spacing:-.02em; }
+.permit-nav-heading span { display:block; margin-top:5px; font-size:10px; color:var(--nav-muted); }
+.permit-sidebar svg,.permit-nav-mobile svg { width:20px; height:20px; flex:0 0 20px; }
+.permit-sidebar .walkthrough-help-mark { display:inline-flex; align-items:center; justify-content:center; width:20px; flex:0 0 20px; font:inherit; }
+.permit-nav-heading button { display:grid; place-items:center; flex:0 0 30px; width:30px; height:34px; padding:0; border:0; border-radius:7px; background:transparent; color:var(--nav-muted); cursor:pointer; }
+.permit-nav-label { padding:0 12px; margin:0 0 10px; font-size:9px; letter-spacing:.14em; font-weight:700; color:var(--nav-muted); }
+.permit-sidebar .permit-nav-link { display:flex; align-items:center; gap:11px; width:100%; min-height:46px; margin:5px 0; padding:12px 11px; border:1px solid transparent; border-radius:9px; text-decoration:none; color:var(--nav-text); background:transparent; font:500 12px/1.4 'DM Sans','Segoe UI',sans-serif; text-align:left; cursor:pointer; white-space:nowrap; }
+.permit-sidebar .permit-nav-link:hover,.permit-nav-heading button:hover { background:var(--nav-active); color:var(--nav-accent); }
+.permit-sidebar .permit-nav-link.is-current { background:var(--nav-active); color:var(--nav-accent); font-weight:700; }
+.permit-nav-link i { width:5px; height:5px; border-radius:50%; background:currentColor; margin-left:auto; }
+.permit-nav-footer { margin-top:auto; padding-top:22px; }
+.permit-nav-footer::before { content:''; display:block; border-top:1px solid var(--nav-line); margin:0 10px 16px; }
+.permit-nav-caption { color:var(--nav-muted); font-size:10px; text-align:center; margin:20px 0 0; }
+.permit-sidebar .permit-nav-logout:hover { color:#bf4250; background:#fff1f2; }
+.permit-sidebar button:disabled { opacity:.6; cursor:wait; }
+.permit-sidebar :is(a,button):focus-visible,.permit-nav-mobile:focus-visible { outline:2px solid var(--nav-accent,#176db7); outline-offset:2px; }
+.permit-nav-mobile,.permit-nav-backdrop { display:none; }
+/* Align workspace content with its navigation rail. */
+body.permit-navigation .page-wrapper { margin-left:var(--permit-nav-width); margin-right:0; width:calc(100% - var(--permit-nav-width)); max-width:none; padding-left:28px; padding-right:28px; }
+body.permit-navigation .hero-content,body.permit-navigation .occupancy-intro-band .hero-content { margin-left:calc(var(--permit-nav-width) + 28px); margin-right:28px; width:calc(100% - var(--permit-nav-width) - 56px); max-width:none; }
+body.permit-navigation .site-header .btn-logout { display:none!important; }
+html[data-theme='dark'] .permit-sidebar { --nav-bg:#28323e; --nav-text:#dce6ef; --nav-muted:#9cafc0; --nav-line:#404e5d; --nav-active:#304960; --nav-accent:#a2d3fc; }
+html[data-theme='dark'] .permit-sidebar.is-occupancy { --nav-active:#254a43; --nav-accent:#92dfc4; }
+html[data-theme='dark'] .permit-sidebar .permit-nav-logout:hover { background:#49343e; color:#ffb4bd; }
+@media(min-width:1001px) {
+ .permit-navigation-collapsed .permit-nav-heading>div,.permit-navigation-collapsed .permit-nav-label,.permit-navigation-collapsed .permit-nav-link span,.permit-navigation-collapsed .permit-nav-link i,.permit-navigation-collapsed .permit-nav-caption { display:none; }
+ .permit-navigation-collapsed .permit-nav-link span.walkthrough-help-mark { display:inline-flex; }
+ .permit-navigation-collapsed .permit-nav-heading { justify-content:center; padding-bottom:26px; }
+ .permit-navigation-collapsed .permit-nav-heading svg { transform:rotate(180deg); }
+ .permit-navigation-collapsed .permit-nav-link { justify-content:center; padding:12px 0; }
+}
+/* Two existing detail columns need a little more room when navigation is expanded. */
+@media(min-width:1001px) and (max-width:1400px) {
+ body.permit-navigation .main-grid { grid-template-columns:280px minmax(0,1fr); gap:22px; }
+ body.permit-navigation .matrix-table-wrap { overflow-x:auto; }
+}
+@media(max-width:1000px) {
+ body.permit-navigation .page-wrapper { margin-left:0; width:100%; padding-left:20px; padding-right:20px; }
+ body.permit-navigation .hero-content,body.permit-navigation .occupancy-intro-band .hero-content { margin-left:20px; margin-right:20px; width:calc(100% - 40px); padding-top:68px; }
+ body.permit-navigation .page-wrapper:has(>.workspace-intro) { padding-top:68px; }
+ .permit-sidebar { top:0; width:260px; max-width:calc(100vw - 48px); z-index:1001; transform:translateX(-100%); visibility:hidden; }
+ .permit-sidebar.is-open { transform:translateX(0); visibility:visible; }
+ .permit-nav-mobile { position:absolute; top:calc(var(--permit-header-bottom) + 12px); left:20px; z-index:81; display:flex; align-items:center; gap:8px; border:1px solid #ccd9e4; border-radius:8px; background:#fff; color:#29445a; padding:9px 12px; box-shadow:0 2px 8px #102a4310; cursor:pointer; font:600 12px 'DM Sans','Segoe UI',sans-serif; }
+ .permit-nav-backdrop { display:block; position:fixed; inset:0; background:#10223580; z-index:1000; }
+ html[data-theme='dark'] .permit-nav-mobile { background:#28323e; color:#dce6ef; border-color:#485a6d; }
+}
+@media print { body.permit-navigation { padding-top:0; } body.permit-navigation .site-header { position:relative!important; } .permit-sidebar,.permit-nav-mobile,.permit-nav-backdrop { display:none!important; } body.permit-navigation .page-wrapper,body.permit-navigation .hero-content,body.permit-navigation .occupancy-intro-band .hero-content { margin-left:0; width:100%; } }
+
+body.permit-navigation .container{margin-left:var(--permit-nav-width);max-width:none;width:calc(100% - var(--permit-nav-width));box-sizing:border-box}body.permit-navigation .header-logout{display:none}body.permit-navigation :is(#adminOverview,#buildingReview,#occupancyReview,#accountSection,#accountListSection){scroll-margin-top:25px}
+@media(max-width:1000px){body.permit-navigation .container{margin-left:0;width:100%;padding-top:68px}}
+
+/* Shared full-height sidebar shell: the office identity belongs in the rail. */
+body.permit-panel-shell { --permit-nav-width:256px; }
+body.permit-panel-shell.permit-navigation-collapsed { --permit-nav-width:76px; }
+.permit-panel-shell .permit-nav-heading { align-items:flex-start; padding-top:2px; padding-bottom:32px; }
+.permit-panel-shell .permit-nav-identity { display:flex; align-items:center; gap:10px; }
+.permit-panel-shell .permit-nav-identity img { width:38px; height:38px; flex:0 0 38px; object-fit:contain; border-radius:50%; background:white; }
+.permit-panel-shell .permit-nav-identity-copy { min-width:0; }
+.permit-panel-shell .permit-nav-identity strong { font-size:15px; line-height:1.35; }
+.permit-panel-shell .permit-nav-identity span { font-size:10px; line-height:1.5; margin-top:6px; }
+/* Registry, detail and administration titles use the same rounded panel. */
+body.permit-panel-shell :is(.registry-hero,.occupancy-intro-band) { background:transparent; border:0; padding-top:16px; }
+body.permit-panel-shell :is(.registry-hero .hero-content,.occupancy-intro-band .hero-content,.workspace-intro,.topbar) {
+ box-sizing:border-box; padding:24px 28px; border:1px solid var(--border,#dce5e9);
+ border-radius:18px; background:var(--white,#fff); box-shadow:0 4px 14px #102a4305;
+}
+body.permit-panel-shell :is(.page-intro-kicker,.workspace-kicker,.page-kicker)::before { display:none; }
+html[data-theme='dark'] body.permit-panel-shell :is(.registry-hero .hero-content,.occupancy-intro-band .hero-content,.workspace-intro,.topbar) {
+ background:var(--theme-card); border-color:var(--theme-line);
+}
+html[data-theme='dark'] body.permit-panel-shell :is(.hero-copy,.workspace-intro,.topbar) h1 { color:var(--theme-text); }
+@media(max-width:1000px) {
+ body.permit-panel-shell :is(.registry-hero,.occupancy-intro-band) .hero-content { margin-top:56px; padding:24px; }
+}
+@media(max-width:600px) {
+ body.permit-panel-shell :is(.registry-hero .hero-content,.occupancy-intro-band .hero-content,.workspace-intro,.topbar) { padding:22px 20px; border-radius:16px; }
+}
+@media(min-width:1001px) {
+ body.permit-panel-shell .permit-sidebar { top:0; padding-top:24px; }
+ body.permit-panel-shell .site-header { left:auto!important; margin-left:var(--permit-nav-width)!important; width:calc(100% - var(--permit-nav-width))!important; }
+ body.permit-panel-shell .site-header :is(.top-bar-brand,.brand) { display:none!important; }
+ body.permit-panel-shell.permit-navigation-collapsed .permit-nav-heading { flex-direction:column; align-items:center; gap:12px; padding-left:0; padding-right:0; }
+ body.permit-panel-shell.permit-navigation-collapsed .permit-nav-heading .permit-nav-identity { display:flex; flex:none; }
+ body.permit-panel-shell.permit-navigation-collapsed .permit-nav-identity-copy { display:none; }
+ body.permit-panel-shell.permit-navigation-collapsed .permit-nav-identity img { width:32px; height:32px; flex-basis:32px; }
+}
+@media print {
+ body.permit-panel-shell .site-header { left:0!important; margin-left:0!important; width:100%!important; }
+ body.permit-panel-shell .site-header :is(.top-bar-brand,.brand) { display:flex!important; }
+}

@@ -1,0 +1,109 @@
+/* Permit management only. Desktop presentation and queue pages retain their layouts. */
+body.permit-navigation :is(.main-grid,.left-col,.right-col,.console-grid,.registry-card,.card,.hero-copy,.workspace-intro>div,.topbar>div,.fr-filters label,.fr-projects article>div) { min-width:0; }
+body.permit-navigation :is(.table-wrap,.matrix-table-wrap,.data-region,.fr-table) { max-width:100%; }
+body.permit-navigation :is(.meta-value,.title-crumb,.fr-meta dd,.fr-history p,.project-final-approval p) { overflow-wrap:anywhere; }
+body.permit-navigation .rejection-history-card { margin-top:0; }
+body.permit-navigation .rejection-history-card .card-body { overflow-wrap:anywhere; }
+body.permit-navigation .rejection-history-card :is(p,em,strong) { white-space:pre-wrap; overflow-wrap:anywhere; }
+
+@media screen and (max-width:1000px) {
+    body.permit-navigation .main-grid { grid-template-columns:minmax(0,1fr); }
+    body.permit-navigation .left-col { display:flex; flex-direction:column; }
+    body.permit-navigation :is(.permit-modal,.modal-window) { max-height:calc(100dvh - 32px); overflow-y:auto; overscroll-behavior:contain; }
+    body.permit-navigation :is(.account-dialog,.ao-history-dialog) { max-height:calc(100dvh - 24px); overflow-y:auto; overscroll-behavior:contain; }
+}
+
+@media screen and (max-width:700px) {
+    body.permit-navigation { --permit-mobile-space:14px; }
+    body.permit-navigation :is(.page-wrapper,.container) { margin-left:0; width:100%; padding:18px var(--permit-mobile-space) 32px; }
+    body.permit-navigation .page-wrapper:has(>.workspace-intro) { padding-top:18px; }
+    body.permit-navigation :is(.registry-hero,.occupancy-intro-band) .hero-content { margin:12px var(--permit-mobile-space) 0; width:calc(100% - 28px); padding:20px; }
+    body.permit-navigation :is(.registry-hero,.occupancy-intro-band) { padding-top:0; }
+    body.permit-navigation .site-header { display:grid!important; grid-template-columns:minmax(0,1fr) auto; gap:12px 8px!important; padding:14px!important; }
+    body.permit-navigation .site-header :is(.top-bar-brand,.brand) { grid-column:1/-1; grid-row:1; margin-left:54px; gap:10px!important; }
+    body.permit-navigation .site-header :is(.top-bar-brand,.brand)>div { min-width:0; overflow-wrap:anywhere; }
+    body.permit-navigation .site-header .philippine-clock { grid-column:1; grid-row:2; align-items:flex-start!important; flex:none!important; order:0; padding:0!important; }
+    body.permit-navigation .site-header .philippine-clock time { font-size:17px!important; }
+    body.permit-navigation .site-header :is(.top-bar-actions,.top-bar-controls,.header-context) { grid-column:2; grid-row:2; justify-self:end; gap:8px!important; margin:0!important; min-width:0; }
+    body.permit-navigation .site-header .theme-toggle { width:44px; min-height:44px!important; padding:10px!important; flex-shrink:0; }
+    body.permit-navigation .site-header .outline-action { min-height:44px!important; }
+    body.permit-navigation .permit-nav-mobile { top:16px; left:14px; width:44px; height:44px; padding:0; justify-content:center; }
+    body.permit-navigation .permit-nav-mobile>span { display:none; }
+    body.permit-navigation .permit-nav-heading button { width:44px; height:44px; flex-basis:44px; }
+    body.permit-navigation :is(.hero-copy h1,.workspace-intro h1,.topbar h1) { font-size:25px; line-height:1.25; overflow-wrap:anywhere; }
+    body.permit-navigation :is(.topbar,.workspace-intro,.action-bar,.fr-heading,.ao-heading) { flex-wrap:wrap; gap:14px; }
+    body.permit-navigation :is(.action-bar-left,.action-bar-right,.matrix-header-actions,.matrix-actions,.insp-actions,.summary-badges) { flex-wrap:wrap; gap:8px; }
+    body.permit-navigation :is(.card-header,.matrix-card-header,.registry-header) { padding:16px; flex-wrap:wrap; gap:12px; }
+    body.permit-navigation :is(.card-body,.final-reviews,.data-region) { padding:16px; }
+    body.permit-navigation :is(.bp-summary,.occ-stats,.stats-row) { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    body.permit-navigation :is(.registry-toolbar,.toolbar) { flex-direction:column; align-items:stretch; padding:16px; }
+    body.permit-navigation :is(.search-block,.search-wrap) { min-width:0; width:100%; }
+    body.permit-navigation :is(.filter-tabs,.workspace-tabs) { min-width:0; max-width:100%; overflow-x:auto; flex-wrap:nowrap; justify-content:flex-start; }
+    body.permit-navigation :is(.filter-tab,.ws-tab) { flex-shrink:0; min-height:44px; }
+    body.permit-navigation :is(.pagination-bar,.pagination-controls,.records-heading,.records-controls,.account-pagination,.account-profile-actions,.account-form-actions) { flex-wrap:wrap; gap:10px; }
+    body.permit-navigation :is(button,.btn-back,.btn-action,.records-button),body.permit-login-page :is(button,.header-back) { min-height:44px; }
+    body.permit-navigation :is(input:not([type=checkbox]):not([type=radio]),select,textarea),body.permit-login-page :is(input,select) { min-width:0; max-width:100%; font-size:16px!important; }
+    body.permit-navigation :is(.permit-form-grid,.occ-permit-form-grid,.form-row-2,.insp-meta-grid) { grid-template-columns:minmax(0,1fr); }
+    body.permit-navigation :is(.permit-form-grid,.occ-permit-form-grid) .field-wide { grid-column:auto; }
+    body.permit-navigation :is(.permit-modal-overlay,.modal-overlay) { padding:12px; }
+    body.permit-navigation :is(.permit-modal,.modal-window) { max-height:calc(100dvh - 24px); border-radius:14px; }
+    body.permit-navigation :is(.permit-modal-header,.modal-header,.permit-modal-body,.modal-body,.permit-modal-footer,.occ-modal-footer) { padding:16px; }
+    body.permit-navigation :is(.permit-modal-actions,.occ-modal-actions,.modal-footer,.fr-actions) { display:flex; flex-wrap:wrap; gap:10px; }
+    body.permit-navigation :is(.permit-modal-actions,.occ-modal-actions,.modal-footer,.fr-actions)>button { flex:1 1 160px; white-space:normal; }
+    body.permit-navigation :is(.fr-filters,.create-account-form) { flex-direction:column; align-items:stretch; gap:14px; }
+    body.permit-navigation :is(.fr-filters label,.create-account-form label) { min-width:0; width:100%; }
+    body.permit-navigation .create-account-form :is(input,select) { width:100%; }
+    body.permit-navigation .fr-projects article { flex-direction:column; align-items:stretch; gap:12px; }
+    body.permit-navigation .ao-history-filters { display:grid; grid-template-columns:minmax(0,1fr); }
+    body.permit-navigation .ao-history-filters label { min-width:0; }
+    body.permit-navigation :is(.fr-dialog,.account-dialog,.ao-history-dialog) { width:calc(100vw - 24px); max-height:calc(100dvh - 24px); }
+    body.permit-navigation .fr-dialog>.fr-heading,body.permit-navigation .fr-dialog-body { padding:16px; }
+    body.permit-navigation .fr-dialog>.fr-heading { flex-wrap:nowrap; }
+    body.permit-navigation .fr-dialog>.fr-heading>button { min-width:44px; flex-shrink:0; }
+    body.permit-navigation .fr-meta { grid-template-columns:minmax(0,1fr); gap:10px; }
+    body.permit-navigation .fr-table { overflow:visible; border:0; }
+    body.permit-navigation :is(.account-colors,.account-form-actions) { flex-wrap:wrap; }
+    body.permit-navigation .account-colors label { width:44px; height:44px; }
+    body.permit-navigation .station-assignment-menu { max-height:calc(100dvh - 28px); }
+    body.permit-navigation .station-assignment-options label { min-height:44px; }
+
+    /* Preserve table headings for assistive technology, with visible labels on each card. */
+    body.permit-navigation .permit-mobile-table { display:block; width:100%!important; min-width:0!important; margin:0; table-layout:auto; border:0; }
+    body.permit-navigation .permit-mobile-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+    body.permit-navigation .permit-mobile-table tbody { display:block; width:100%; }
+    body.permit-navigation .permit-mobile-table tbody tr { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:0 0 12px; padding:16px; border:1px solid var(--border,#dce5ed); border-radius:12px; background:var(--white,#fff); }
+    body.permit-navigation .permit-mobile-table tbody td { display:block; grid-column:1/-1; width:auto!important; min-width:0!important; max-width:none!important; padding:0!important; border:0; text-align:left!important; white-space:normal; overflow-wrap:anywhere; font-size:14px; }
+    body.permit-navigation .registry-card .permit-mobile-table tbody td { padding:0!important; border:0!important; font-size:14px; }
+    body.permit-navigation .permit-mobile-table td[data-label]::before { content:attr(data-label); display:block; margin-bottom:5px; font-size:11px; font-weight:600; line-height:1.4; letter-spacing:.03em; color:var(--text-secondary,var(--muted,#617689)); }
+    body.permit-navigation .permit-mobile-table td:is([data-field=date-checked],[data-field=date-approved],[data-field=status],[data-field=role]) { grid-column:auto; }
+    body.permit-navigation :is(.matrix-table-wrap,.fr-table) .permit-mobile-table td[data-field=status] { grid-column:1/-1; }
+    body.permit-navigation .permit-mobile-table td[colspan] { grid-column:1/-1; }
+    body.permit-navigation .permit-mobile-table :is(.permit-heading,.project-title-main,.station-engineer-name,.fr-remarks) { min-width:0; max-width:100%; }
+    body.permit-navigation .permit-mobile-table :is(.btn-action-group,.request-actions,.actions-cell) { display:flex; flex-wrap:wrap; gap:8px; }
+    body.permit-navigation .permit-mobile-table :is(select,.station-date-input) { width:100%; min-width:0!important; }
+    body.permit-navigation .registry-card .permit-mobile-table :is(.project-title-main,.permit-detail-text,.btn-progress,.btn-details,.btn-delete-record,.btn-action) { font-size:14px; }
+    body.permit-navigation .registry-card .permit-mobile-table :is(button,a.btn-action,a.btn-details) { min-height:44px; }
+    body.permit-navigation .matrix-table-wrap,body.permit-navigation .registry-card .table-wrap { padding:12px; overflow:visible; }
+    body.permit-navigation .permit-mobile-table tr:has(td[colspan]) { background:var(--surface,#f4f7fa); }
+    html[data-theme=dark] body.permit-navigation .permit-mobile-table tbody tr { background:var(--theme-card); border-color:var(--theme-line); }
+    html[data-theme=dark] body.permit-navigation :is(.meta-value,.meta-value a,.station-engineer-name,.title-crumb) { color:var(--theme-text)!important; }
+    html[data-theme=dark] body.permit-navigation .permit-mobile-table td { color:var(--theme-text)!important; }
+
+    /* One document scroller avoids two tiny independently scrolling panels on a phone. */
+    body.permit-navigation #permitProgressDialog .progress-dialog-body { display:block; overflow-y:auto; padding:16px; }
+    body.permit-navigation #permitProgressDialog #progressContent { overflow:visible; }
+    body.permit-navigation #permitProgressDialog #progressRecords { overflow:visible; margin-top:16px; }
+    body.permit-navigation #permitProgressDialog #progressRecords .records-feed { overflow:visible; max-height:none; }
+    body.permit-navigation #permitProgressDialog .progress-close { width:44px; height:44px; }
+    body.permit-login-page .hero { padding:24px; }
+    body.permit-login-page .hero h1 { font-size:28px; }
+    body.permit-login-page .feature-list { display:none; }
+    body.permit-login-page .panel { padding:24px; }
+}
+
+@media screen and (max-width:380px) {
+    body.permit-navigation .site-header { grid-template-columns:minmax(0,1fr); }
+    body.permit-navigation .site-header .philippine-clock { grid-column:1; align-items:center!important; }
+    body.permit-navigation .site-header :is(.top-bar-actions,.top-bar-controls,.header-context) { grid-column:1; grid-row:3; justify-self:center; }
+    body.permit-navigation .permit-mobile-table td:is([data-field=date-checked],[data-field=date-approved],[data-field=status],[data-field=role]) { grid-column:1/-1; }
+}

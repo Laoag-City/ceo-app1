@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- MAINTAINER GUIDE: queue-monitor document/controller source. React mounts the layout before the inline controllers run. Edit this source rather than its published frontend copy. -->
+    <script src="/appearance.js"></script>
+    <script src="/request-feedback.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Queue Monitor — Office of the City Engineer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="monitor-style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="queue-ui.css">
+<link rel="stylesheet" href="shared-header.css">
+<link rel="stylesheet" href="status-badges.css">
+<link rel="stylesheet" href="/appearance.css">
+<link rel="stylesheet" href="/queue-workspace.css">
+<link rel="stylesheet" href="/monitor-calls.css">
+</head>
+<body class="queue-monitor-page">
+<div id="system-react-root" data-page="queue-monitor" style="display:contents"></div>
+<script src="/system-react/app.js"></script>
+<script>
+    const BACKEND_URL = window.location.origin;
+    // This is a public display; opening it directly does not require staff login.
+    const socket = io(BACKEND_URL);
+    const announced = new Map();
+    const lobbyVideo = document.getElementById('lobbyVideo');
+    let audioContext;
+    let soundEnabled = false;
+    const announcements = [];
+    let speaking = false;
+    let latestServing = [];
+    function enableMonitorSound() {
+        lobbyVideo.muted = false;
+        try {
+            const Context = window.AudioContext || window.webkitAudioContext;
+            if (Context) {
+                audioContext ||= new Context();
+                if (audioContext.state === 'running') {
+                    soundEnabled = true;
+                    announceNext();
+                } else {
+                    audioContext.resume().then(() => {
+                        soundEnabled = audioContext.state === 'running';
+                        announceNext();
+                    }).catch(() => {});
+                }
+            } else {
+                soundEnabled = true;
+                announceNext();
+            }
+        } catch (error) {
+            // Video audio and speech can still work if Web Audio is unavailable.
+            soundEnabled = true;
+            announceNext();
+        }
+        playMonitorVideo();
+    }
+    function playMonitorVideo() {
+        if (speaking || !lobbyVideo.src) return;
+        const source = lobbyVideo.getAttribute('src');
+        lobbyVideo.play().catch(error => {
+            if (source !== lobbyVideo.getAttribute('src')) return;
+            if (error.name === 'NotAllowedError' && !lobbyVideo.muted) {
+                // Keep the video visible until a normal page interaction unlocks audio.
+                lobbyVideo.muted = true;
+                lobbyVideo.play().catch(retryError => {
+                    if (retryError.name !== 'NotAllowedError') skipFailedVideo(source);
+                });
+            } else if (error.name !== 'NotAllowedError' && error.name !== 'AbortError') {
+                skipFailedVideo(source);
+            }
+        });
+    }
+    document.addEventListener('click', enableMonitorSound);
+    document.addEventListener('keydown', enableMonitorSound);
+    lobbyVideo.addEventListener('canplay', enableMonitorSound);
+    function enqueueAnnouncement(ticket) {
+        announcements.push(ticket);
+        announceNext();
+    }
+    function announceNext() {
+        if (!soundEnabled || speaking || !announcements.length) return;
+        const ticket = announcements.shift();
+        if (!latestServing.some(t => t.id === ticket.id && t.recallStamp === ticket.recallStamp)) { announceNext(); return; }
+        speaking = true;
+        clearVideoStall();
+        lobbyVideo.pause();
+        playChime();
+        setTimeout(() => speakTicket(ticket.id, ticket.calledBy), 1600);
+    }
+    function finishAnnouncement() {
+        speaking = false;
+        if (soundEnabled && announcements.length) announceNext();
+        else playMonitorVideo();
+    }
+    let premiumVoice = null;
+
+    const displayContainer = document.getElementById('mainDisplayContainer');
+
+    let playlist = [];
+    let currentVideoIndex = 0;
+    let playlistRevision = 0;
+    let playlistRequest = 0;
+    const failedVideos = new Set();
+    let videoStallTimer = null;
+    const videoFallback = lobbyVideo.parentElement.querySelector('.video-empty-state p');
+    function clearVideoStall() {
+        if (videoStallTimer !== null) clearTimeout(videoStallTimer);
+        videoStallTimer = null;
+    }
+    function clearVideoSource() {
+        clearVideoStall();
+        lobbyVideo.pause();
+        lobbyVideo.removeAttribute('src');
+        lobbyVideo.load();
+    }
+    function skipFailedVideo(source = lobbyVideo.getAttribute('src')) {
+        if (!source || source !== lobbyVideo.getAttribute('src')) return;
+        failedVideos.add(source);
+        advanceVideo();
+    }
+    function advanceVideo() {
+        clearVideoStall();
+        for (let offset = 1; offset <= playlist.length; offset++) {
+            const next = (currentVideoIndex + offset) % playlist.length;
+            if (failedVideos.has(playlist[next])) continue;
+            currentVideoIndex = next;
+            lobbyVideo.src = playlist[next];
+            playMonitorVideo();
+            return;
+        }
+        clearVideoSource();
+        if (playlist.length && videoFallback) videoFallback.textContent = 'Office videos are temporarily unavailable. Please check the playlist.';
+    }
+    function watchVideoStall() {
+        clearVideoStall();
+        if (speaking || !lobbyVideo.getAttribute('src')) return;
+        const source = lobbyVideo.getAttribute('src');
+        videoStallTimer = setTimeout(() => skipFailedVideo(source), 20000);
+    }
+    lobbyVideo.addEventListener('error', () => skipFailedVideo());
+    lobbyVideo.addEventListener('loadstart', watchVideoStall);
+    lobbyVideo.addEventListener('waiting', watchVideoStall);
+    lobbyVideo.addEventListener('stalled', watchVideoStall);
+    lobbyVideo.addEventListener('playing', clearVideoStall);
+    lobbyVideo.addEventListener('pause', clearVideoStall);
+
+    function applyVideoPlaylist(items) {
+        clearVideoStall();
+        failedVideos.clear();
+        if (videoFallback) videoFallback.textContent = 'Office videos will appear here when available.';
+        const current = lobbyVideo.getAttribute('src');
+        playlist = items;
+        playlistRevision += 1;
+        if (!playlist.length) {
+            currentVideoIndex = 0;
+            clearVideoSource();
+            return;
+        }
+        const retainedIndex = playlist.indexOf(current);
+        currentVideoIndex = retainedIndex >= 0 ? retainedIndex : 0;
+        if (current !== playlist[currentVideoIndex]) lobbyVideo.src = playlist[currentVideoIndex];
+        playMonitorVideo();
+    }
+    async function refreshVideoPlaylist() {
+        const revision = playlistRevision, request = ++playlistRequest;
+        try {
+            const response = await RequestFeedback.fetch(`${BACKEND_URL}/api/videos/playlist`);
+            const data = await response.json();
+            if (response.ok === false || !data.success || !Array.isArray(data.playlist)) throw Error('Video playlist is unavailable.');
+            // A late initial response must not overwrite a newer socket update.
+            if (revision === playlistRevision && request === playlistRequest) applyVideoPlaylist(data.playlist);
+        } catch (error) { console.error('Could not fetch the video playlist:', error.message); }
+    }
+
+    // Monitor track completion, increment target array position, and proceed to next file
+    lobbyVideo.addEventListener('ended', function() {
+        if (playlist.length > 0) {
+            advanceVideo();
+        }
+    });
+
+    lobbyVideo.addEventListener('loadedmetadata', function() {
+        // Match the frame to each playlist video's shape without letterboxing or cropping.
+        if (this.videoWidth > 0 && this.videoHeight > 0) {
+            document.body.style.setProperty('--monitor-video-ratio', String(this.videoWidth / this.videoHeight));
+            this.parentElement.classList.toggle('is-portrait', this.videoHeight > this.videoWidth);
+        }
+    });
+
+    function loadBestVoice() {
+        if (!('speechSynthesis' in window)) return;
+        
+        const voices = window.speechSynthesis.getVoices();
+        const premiumIdentifiers = [
+            'Natural', 'Premium', 'Microsoft Aria', 'Zira', 'Hazel', 'Samantha', 'en-US', 'en-GB'
+        ];
+
+        for (let identifier of premiumIdentifiers) {
+            let found = voices.find(voice => voice.name.includes(identifier));
+            if (found) {
+                premiumVoice = found;
+                break;
+            }
+        }
+
+        if (!premiumVoice) {
+            premiumVoice = voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+        }
+    }
+
+    if ('speechSynthesis' in window) {
+        loadBestVoice();
+        window.speechSynthesis.onvoiceschanged = loadBestVoice;
+    }
+
+    function playChime() {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = audioContext;
+        if (!ctx || ctx.state !== 'running') return;
+        [0.0, 0.5, 1.0].forEach((startTime) => {
+            const osc = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            osc.frequency.setValueAtTime(880.00, ctx.currentTime + startTime);
+            gainNode.gain.setValueAtTime(0, ctx.currentTime + startTime);
+            gainNode.gain.linearRampToValueAtTime(0.8, ctx.currentTime + startTime + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + 0.35);
+            osc.connect(gainNode); gainNode.connect(ctx.destination);
+            osc.start(ctx.currentTime + startTime); osc.stop(ctx.currentTime + startTime + 0.35);
+        });
+    }
+
+    function cleanAndFormatTicketNumber(ticketId) {
+        if (!ticketId) return '';
+        let onlyNumbers = ticketId.toString().replace(/\D/g, '');
+        return onlyNumbers.split('').join(' ');
+    }
+
+    function speakTicket(ticketId, stationName) {
+        if (!('speechSynthesis' in window)) { finishAnnouncement(); return; }
+        window.speechSynthesis.cancel(); 
+        
+        const translationMap = {
+            PC1: 'Window 1',
+            PC2: 'Window 2',
+            PC3: 'Window 3'
+        };
+        
+        const formattedCounter = translationMap[stationName] || stationName;
+        const numericTicket = cleanAndFormatTicketNumber(ticketId);
+        const phrasing = `Now serving ticket ${numericTicket}. Please proceed to ${formattedCounter}.`;
+        
+        const utterance = new SpeechSynthesisUtterance(phrasing);
+        if (premiumVoice) {
+            utterance.voice = premiumVoice;
+        }
+
+        utterance.rate = 0.75;  
+        utterance.pitch = 1.0;  
+        utterance.volume = 1.0; 
+        
+        utterance.onend = finishAnnouncement;
+        utterance.onerror = function(event) {
+            if (event.error === 'not-allowed') {
+                soundEnabled = false;
+                const ticket = latestServing.find(ticket => ticket.id === ticketId);
+                if (ticket) announcements.unshift(ticket);
+            }
+            finishAnnouncement();
+        };
+        window.speechSynthesis.speak(utterance);
+    }
+
+    const monitorWindows = [
+        {code:'PC1', title:'Window 1', service:'Building permit releasing', reasons:['Releasing Bldg. Permit']},
+        {code:'PC2', title:'Window 2', service:'Occupancy permit releasing', reasons:['Releasing Bldg. Occupancy']},
+        {code:'PC3', title:'Window 3', service:'Receiving & inquiries', reasons:['Receiving Bldg. Permit','Receiving Bldg. Occupancy','Inquire']}
+    ];
+    let waitingTickets = [];
+    let heldTickets = [];
+    let waitingPage = 0;
+
+    function ticketWindow(ticket) {
+        return monitorWindows.find(station => station.reasons.includes(ticket.reason)) || monitorWindows[2];
+    }
+
+    function renderWaitingTickets(pageSizeLimit = 8) {
+        const list = document.getElementById('waitingQueueList');
+        const hold = document.getElementById('monitorHoldList');
+        const holdLabel = document.createElement('strong');
+        holdLabel.textContent = 'On hold';
+        const holdPage = waitingPage % Math.max(1, Math.ceil(heldTickets.length / 6));
+        hold.hidden = heldTickets.length === 0;
+        hold.replaceChildren(holdLabel, ...heldTickets.slice(holdPage * 6, holdPage * 6 + 6).map(ticket => {
+            const item = document.createElement('span');
+            item.textContent = ticket.id + ' · ' + ticketWindow(ticket).title;
+            return item;
+        }));
+        const pageSize = list.clientHeight ? Math.max(1, Math.min(pageSizeLimit, Math.floor((list.clientHeight - 94) / 48))) : 5;
+        let rotates = heldTickets.length > 6;
+        list.replaceChildren(...monitorWindows.map(station => {
+            // The server sends FIFO order. Positions belong to this service window.
+            const tickets = waitingTickets.filter(ticket => ticketWindow(ticket).code === station.code);
+            const page = waitingPage % Math.max(1, Math.ceil(tickets.length / pageSize));
+            const start = page * pageSize;
+            rotates ||= tickets.length > pageSize;
+            const column = document.createElement('section');
+            column.className = 'monitor-waiting-window';
+            column.setAttribute('aria-label', station.title + ' waiting tickets');
+            const heading = document.createElement('div');
+            heading.className = 'monitor-waiting-window-heading';
+            const title = document.createElement('h3');
+            title.textContent = station.title;
+            const count = document.createElement('span');
+            count.textContent = tickets.length + ' waiting';
+            const service = document.createElement('p');
+            service.textContent = station.service;
+            heading.append(title, count, service);
+            const rows = document.createElement('ol');
+            rows.className = 'monitor-waiting-tickets';
+            rows.start = start + 1;
+            for (const [offset, ticket] of tickets.slice(start, start + pageSize).entries()) {
+                const row = document.createElement('li');
+                row.className = 'monitor-waiting-ticket';
+                const position = document.createElement('span');
+                position.className = 'monitor-ticket-position';
+                position.textContent = String(start + offset + 1);
+                position.setAttribute('aria-label', 'Queue position ' + position.textContent);
+                const number = document.createElement('strong');
+                number.textContent = ticket.id;
+                const status = document.createElement('span');
+                status.className = 'monitor-ticket-status';
+                status.textContent = start + offset === 0 ? 'Next' : 'Waiting';
+                row.append(position, number, status);
+                rows.append(row);
+            }
+            if (!tickets.length) {
+                const empty = document.createElement('li');
+                empty.className = 'monitor-waiting-empty';
+                empty.textContent = 'No waiting tickets';
+                rows.append(empty);
+            }
+            const pageNote = document.createElement('small');
+            pageNote.className = 'monitor-queue-page-note';
+            pageNote.textContent = tickets.length > pageSize ? 'Showing ' + (start + 1) + '–' + Math.min(start + pageSize, tickets.length) + ' of ' + tickets.length : '';
+            column.append(heading, rows, pageNote);
+            return column;
+        }));
+        document.getElementById('waitingQueueCount').textContent = waitingTickets.length + ' waiting';
+        document.getElementById('waitingPaginationNote').textContent = rotates ? 'Find your ticket below. More tickets rotate every 8 seconds.' : 'Find your ticket number under your service window.';
+        // Hold chips and wrapping labels can reduce the available row space.
+        // Fit the final layout before painting so pagination never advertises
+        // a waiting ticket that is hidden below its column.
+        if (window.innerWidth > 1000 && list.clientHeight) {
+            const board = list.closest('.monitor-waiting-board');
+            const boardStyle = getComputedStyle(board);
+            const pixels = value => parseFloat(value) || 0;
+            const columnMinimum = Math.max(...[...list.children].map(column => {
+                const row = column.querySelector('.monitor-waiting-ticket');
+                // Empty rows stretch to fill spare space, so use their minimum
+                // instead of feeding the stretched size back into the layout.
+                const rowHeight = row ? row.getBoundingClientRect().height : pixels(getComputedStyle(column.querySelector('.monitor-waiting-empty')).minHeight);
+                return column.querySelector('.monitor-waiting-window-heading').getBoundingClientRect().height + rowHeight +
+                    column.querySelector('.monitor-queue-page-note').getBoundingClientRect().height + 2 * pixels(getComputedStyle(column).rowGap);
+            }));
+            const minimum = Math.ceil(columnMinimum + board.querySelector('.monitor-waiting-heading').getBoundingClientRect().height +
+                (hold.hidden ? 0 : hold.getBoundingClientRect().height) + (hold.hidden ? 1 : 2) * pixels(boardStyle.rowGap) +
+                pixels(boardStyle.paddingTop) + pixels(boardStyle.paddingBottom) + pixels(boardStyle.borderTopWidth) + pixels(boardStyle.borderBottomWidth));
+            // Reserve one visible waiting row for each window even when a hold
+            // strip wraps. Tiny screens can scroll instead of concealing clients.
+            document.body.style.setProperty('--monitor-waiting-min-height', minimum + 'px');
+            const rows = [...list.querySelectorAll('.monitor-waiting-tickets')].filter(rows => rows.querySelector('.monitor-waiting-ticket'));
+            const fits = rows.map(rows => {
+                const rowHeight = rows.querySelector('.monitor-waiting-ticket').getBoundingClientRect().height;
+                const gap = parseFloat(getComputedStyle(rows).rowGap) || 0;
+                return Math.max(1, Math.floor((rows.clientHeight + gap) / (rowHeight + gap)));
+            });
+            const fittedSize = Math.min(pageSize, ...fits);
+            if (fittedSize < pageSize) renderWaitingTickets(fittedSize);
+        }
+    }
+
+    setInterval(() => { waitingPage += 1; renderWaitingTickets(); }, 8000);
+    window.addEventListener('resize', () => renderWaitingTickets());
+    renderWaitingTickets();
+
+    function updateMonitorConnection(connected) {
+        const badge = document.getElementById('monitorConnection');
+        badge.dataset.connectionState = connected ? 'online' : 'offline';
+        badge.querySelector('b').textContent = connected ? 'Live queue' : 'Reconnecting';
+    }
+    socket.on('connect', () => { updateMonitorConnection(true); refreshVideoPlaylist(); });
+    socket.on('disconnect', () => updateMonitorConnection(false));
+
+    socket.on('queueUpdate', (data) => {
+        waitingTickets = data.queue || data.waiting || [];
+        heldTickets = data.onHold || [];
+        updateMonitorConnection(true);
+        // The full serving snapshot is authoritative, including an empty array.
+        // Keep the legacy single-call fallback for older queue servers.
+        latestServing = (Array.isArray(data.serving) ? data.serving : data.nowServing ? [data.nowServing] : [])
+            .filter(ticket => ticket && monitorWindows.some(station => station.code === ticket.calledBy));
+        updateDisplay(latestServing);
+        renderWaitingTickets();
+        for (const ticket of [...latestServing].reverse()) {
+            if (announced.get(ticket.id) !== ticket.recallStamp) {
+                announced.set(ticket.id, ticket.recallStamp);
+                enqueueAnnouncement(ticket);
+            }
+        }
+    });
+
+    const callingCards = new Map();
+    const displayedCalls = new Map();
+    function updateDisplay(serving) {
+        const host = document.getElementById('callingWindowList');
+        document.getElementById('servingCard').classList.toggle('is-idle', !serving.length);
+        for (const station of monitorWindows) {
+            let card = callingCards.get(station.code);
+            if (!card) {
+                card = document.createElement('article');
+                card.className = 'monitor-calling-window';
+                card.dataset.window = station.code;
+                card.setAttribute('role', 'listitem');
+                const heading = document.createElement('div');
+                heading.className = 'monitor-calling-window-heading';
+                const title = document.createElement('h3');
+                title.textContent = station.title;
+                const status = document.createElement('span');
+                status.className = 'monitor-call-status';
+                const number = document.createElement('strong');
+                number.className = 'monitor-call-ticket';
+                const reason = document.createElement('p');
+                reason.className = 'monitor-call-reason';
+                heading.append(title, status); card.append(heading, number, reason);
+                card.addEventListener('animationend', () => card.classList.remove('is-new-call'));
+                callingCards.set(station.code, card); host.append(card);
+            }
+            const ticket = serving.find(t => t.calledBy === station.code);
+            const signature = ticket ? ticket.id + ':' + (ticket.recallStamp ?? '') : null;
+            // Leave unchanged cards alone so other windows' updates do not repeat
+            // announcements or restart the call highlight.
+            if (displayedCalls.has(station.code) && displayedCalls.get(station.code) === signature) continue;
+            const number = card.querySelector('.monitor-call-ticket');
+            const reason = card.querySelector('.monitor-call-reason');
+            card.classList.toggle('is-serving', !!ticket);
+            card.querySelector('.monitor-call-status').textContent = ticket ? 'Now calling' : 'Available';
+            number.textContent = ticket ? ticket.id : '---';
+            reason.textContent = ticket ? 'Purpose: ' + (ticket.reason || station.service) : 'Waiting for the next ticket.';
+            card.setAttribute('aria-label', station.title + (ticket ? ': ' + ticket.id + '. Proceed to ' + station.title + '.' : ': Available.'));
+            card.classList.remove('is-new-call');
+            if (ticket) {
+                // Restart the brief highlight on a new call or recall only.
+                void card.offsetWidth;
+                card.classList.add('is-new-call');
+            }
+            displayedCalls.set(station.code, signature);
+        }
+    }
+    updateDisplay([]);
+
+    refreshVideoPlaylist();
+
+    socket.on('playlistUpdate', (data) => {
+        if (Array.isArray(data.playlist)) applyVideoPlaylist(data.playlist);
+    });
+
+    enableMonitorSound();
+
+    function handleMonitorBack() {
+        sessionStorage.removeItem('currentWorkspace');
+        window.location.href = 'workstations.html';
+    }
+    document.getElementById('logoutBtn').addEventListener('click', handleMonitorBack);
+
+
+</script>
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script></body>
+</html>

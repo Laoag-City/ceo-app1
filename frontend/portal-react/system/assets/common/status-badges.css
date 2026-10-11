@@ -1,0 +1,48 @@
+/* Compact connection badges; independent of permit approval/status indicators. */
+body :is([data-service-status], .page-note, .workspace-note, .queue-live-note, .monitor-live) {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px!important;
+    width:fit-content;
+    min-height:24px;
+    padding:2px 7px!important;
+    background:#073b30!important;
+    border:1px solid #17634e!important;
+    border-radius:8px!important;
+    color:#6ee7b7!important;
+    font-size:12px!important;
+    font-weight:500!important;
+    line-height:18px!important;
+    letter-spacing:0!important;
+    text-transform:none!important;
+    white-space:nowrap;
+    box-shadow:none!important;
+}
+body :is([data-service-status], .page-note, .workspace-note, .queue-live-note, .monitor-live) > :is(.indicator, .page-note-dot, span:empty) {
+    width:6px!important;
+    height:6px!important;
+    flex:0 0 6px!important;
+    border-radius:50%!important;
+    background:currentColor!important;
+    box-shadow:none!important;
+}
+body :is([data-service-status], .page-note, .workspace-note, .queue-live-note, .monitor-live):is(.offline, [data-connection-state="offline"]) {
+    background:#451d26!important;
+    border-color:#873543!important;
+    color:#fda4af!important;
+}
+body [data-service-status].checking {
+    background:#303943!important;
+    border-color:#596675!important;
+    color:#d1dae5!important;
+}
+@media(prefers-reduced-motion:reduce) {
+    body [data-service-status] .indicator { animation:none!important; }
+}
+
+/* Light workspace surfaces use soft badges; portal service badges stay unchanged. */
+body :is(.page-note,.workspace-note,.queue-live-note,.monitor-live) { background:#ecfdf5!important; border-color:#b9e5d1!important; color:#167453!important; }
+body :is(.page-note,.workspace-note,.queue-live-note,.monitor-live):is(.offline,[data-connection-state="offline"]) { background:#fff1f2!important; border-color:#fecdd3!important; color:#be3449!important; }
+body .site-header :is(.page-note,.workspace-note,.queue-live-note,.monitor-live) { background:#6ee7b714!important; border-color:#6ee7b738!important; color:#8ee3c0!important; }
+body .site-header :is(.page-note,.workspace-note,.queue-live-note,.monitor-live):is(.offline,[data-connection-state="offline"]) { background:#fda4af14!important; border-color:#fda4af38!important; color:#fda4af!important; }

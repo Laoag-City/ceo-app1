@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/occupancy-checklist.js"></script>
+<!-- MAINTAINER GUIDE: permits-occupancy_edit document/controller source. React mounts the layout before the inline controllers run. Edit this source rather than its published frontend copy. -->
+<script src="/permit-routing.js" data-page="operator"></script>
+<script src="/project-identity.js"></script>
+    <script src="/appearance.js"></script>
+    <script src="/request-feedback.js"></script>
+    <script src="/form-safety.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Occupancy Permit Workspace — Office of the City Engineer</title>
+    <link rel="stylesheet" href="/edit.css">
+    <style>
+        :root { --occ:#059669; --occ-dark:#047857; --occ-light:#ecfdf5; --occ-mid:#a7f3d0; }
+
+        /* ── Top bar accent ── */
+        .top-bar { border-bottom:4px solid var(--gold); }
+        .top-bar-logo { display:block;object-fit:cover;background:white!important; }
+        .btn-edit-trigger { background:var(--occ); }
+        .btn-edit-trigger:hover { background:var(--occ-dark); }
+        select:focus,input:focus { box-shadow:0 0 0 3px rgba(5,150,105,.12)!important; border-color:var(--occ)!important; }
+        .btn-add { background:var(--occ); }
+        .btn-add:hover { background:var(--occ-dark); }
+        .btn-quick-add:hover { background:var(--occ); border-color:var(--occ); }
+        .btn-save-matrix { background:var(--occ); }
+        .btn-save-matrix:hover { background:var(--occ-dark); }
+        .station-badge-chip { background:#d1fae5; color:#065f46; }
+        .station-delete-btn { color:var(--occ); }
+
+        .status-chip { display:inline-flex; align-items:center; padding:5px 12px; border-radius:4px; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+        .status-pending  { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
+        .status-approved { background:var(--green-light); color:var(--green); border:1px solid var(--green-mid); }
+        .status-rejected { background:var(--red-light);   color:var(--red);   border:1px solid var(--red-mid); }
+
+        .btn-icon-danger { background:none; border:none; color:var(--red); cursor:pointer; font-size:14px; padding:4px; line-height:1; transition:opacity .15s; }
+        .btn-icon-danger:hover { opacity:.6; }
+        .btn-icon-edit   { background:none; border:none; color:var(--occ); cursor:pointer; font-size:14px; padding:4px; line-height:1; transition:opacity .15s; }
+        .btn-icon-edit:hover { opacity:.6; }
+
+        /* ══════════════════════════════
+           TAB SYSTEM
+        ══════════════════════════════ */
+        .workspace-tabs {
+            display:flex; background:var(--white);
+            border:1px solid var(--border); border-radius:15px 15px 0 0;
+            overflow:hidden; box-shadow:var(--shadow-sm);
+        }
+        .ws-tab {
+            flex:1; padding:13px 8px; background:var(--surface); border:none;
+            border-right:1px solid var(--border); font-size:11px; font-weight:700;
+            color:var(--text-secondary); cursor:pointer; transition:all .15s;
+            display:flex; align-items:center; justify-content:center; gap:6px;
+            letter-spacing:.01em;
+        }
+        .ws-tab:last-child { border-right:none; }
+        .ws-tab:hover { background:var(--white); color:var(--text-primary); }
+        .ws-tab.active { background:var(--white); color:var(--occ); border-bottom:2px solid var(--occ); }
+        .tab-badge {
+            background:var(--surface); border:1px solid var(--border);
+            border-radius:20px; font-size:10px; padding:1px 7px; font-weight:700;
+        }
+        .ws-tab.active .tab-badge { background:var(--occ-light); border-color:var(--occ-mid); color:var(--occ); }
+
+        .tab-panel { display:none; }
+        .tab-panel.active { display:block; }
+        .panel-card { border-top:none; border-radius:0 0 15px 15px!important; }
+
+        /* ══════════════════════════════
+           INSPECTION PANEL
+        ══════════════════════════════ */
+        .insp-toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+        .btn-add-insp { padding:9px 14px; background:var(--occ); color:white; border:none; border-radius:8px; font-family:inherit;font-size:12px; font-weight:700; cursor:pointer; transition:background .15s; }
+        .btn-add-insp:hover { background:var(--occ-dark); }
+
+        .summary-badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+        .sbadge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:5px; font-size:11px; font-weight:700; text-transform:uppercase; }
+        .sb-passed     { background:var(--occ-light); color:var(--occ); border:1px solid var(--occ-mid); }
+        .sb-failed     { background:var(--red-light); color:var(--red); border:1px solid var(--red-mid); }
+        .sb-scheduled  { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
+        .sb-conditional{ background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; }
+
+        .insp-card { background:var(--white); border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; transition:box-shadow .15s; }
+        .insp-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.07); }
+        .insp-card-head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); background:var(--surface); }
+        .insp-card-body { padding:14px 16px; }
+
+        .type-badge { display:inline-flex; align-items:center; padding:4px 10px; border-radius:5px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+        .tb-preliminary{ background:#eff6ff; color:#1d4ed8; border:1px solid #dbeafe; }
+        .tb-final      { background:var(--navy); color:white; }
+        .tb-followup   { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
+        .tb-special    { background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; }
+
+        .result-badge { display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:700; text-transform:uppercase; }
+        .rb-passed    { background:var(--occ-light); color:var(--occ); border:1px solid var(--occ-mid); }
+        .rb-failed    { background:var(--red-light); color:var(--red); border:1px solid var(--red-mid); }
+        .rb-scheduled { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
+        .rb-conditional{ background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; }
+
+        .insp-meta-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px; }
+        .insp-meta-item .iml { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:2px; }
+        .insp-meta-item .imv { font-size:12px; color:var(--text-primary); font-weight:600; }
+        .insp-findings { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px 12px; font-size:12px; color:var(--text-secondary); line-height:1.5; }
+
+        .insp-empty { text-align:center; padding:50px 20px; }
+        .insp-empty .ie-icon { font-size:36px; opacity:.3; margin-bottom:10px; }
+
+        /* ══════════════════════════════
+           CHECKLIST PANEL
+        ══════════════════════════════ */
+        .checklist-progress-bar {
+            background:#f8fafb; border:1px solid var(--border); border-radius:10px;
+            padding:14px 16px; margin-bottom:18px; display:flex; align-items:center; gap:14px;
+        }
+        .ring-wrap { position:relative; width:52px; height:52px; flex-shrink:0; }
+        .ring-wrap svg { transform:rotate(-90deg); }
+        .ring-text { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:var(--occ); }
+        .cp-details { flex:1; }
+        .cp-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:3px; }
+        .cp-value { font-size:14px; font-weight:700; color:var(--text-primary); }
+        .bar-thin { height:6px; background:var(--border); border-radius:99px; margin-top:8px; overflow:hidden; }
+        .bar-thin-fill { height:100%; background:var(--occ); border-radius:99px; transition:width .4s; }
+
+        .cl-section { margin-bottom:22px; }
+        .cl-section-title {
+            font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.07em;
+            color:var(--text-muted); margin-bottom:10px; padding-bottom:6px;
+            border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;
+        }
+        .cl-item {
+            display:flex; align-items:flex-start; gap:10px; padding:10px 12px;
+            background:var(--white); border:1px solid var(--border); border-radius:9px;
+            margin-bottom:6px; cursor:pointer; transition:all .15s;
+        }
+        .cl-item:hover { border-color:var(--occ); }
+        .cl-item.checked { background:var(--occ-light); border-color:var(--occ-mid); }
+        .cl-item.checked .cl-title { text-decoration:line-through; color:var(--occ-dark); opacity:.7; }
+        .cl-checkbox {
+            width:18px; height:18px; border-radius:4px; border:2px solid var(--border-strong);
+            display:flex; align-items:center; justify-content:center; flex-shrink:0;
+            font-size:11px; font-weight:900; margin-top:1px; transition:all .15s;
+        }
+        .cl-item.checked .cl-checkbox { background:var(--occ); border-color:var(--occ); color:white; }
+        .cl-content { flex:1; }
+        .cl-title { font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:2px; }
+        .cl-note  { font-size:11px; color:var(--text-muted); }
+        .cl-tag { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; padding:2px 6px; border-radius:3px; flex-shrink:0; margin-top:2px; }
+        .tag-req { background:var(--red-light); color:var(--red); border:1px solid var(--red-mid); }
+        .tag-opt { background:var(--surface); color:var(--text-muted); border:1px solid var(--border); }
+
+        .btn-save-checklist { width:100%; padding:12px; background:var(--occ); color:white; border:none; border-radius:8px; font-family:inherit;font-size:13px; font-weight:700; cursor:pointer; transition:background .15s; margin-top:8px; }
+        .btn-save-checklist:hover { background:var(--occ-dark); }
+        .btn-save-checklist:disabled { opacity:.6; cursor:not-allowed; }
+
+        .mini-progress { height:5px; background:var(--border); border-radius:99px; margin-top:8px; overflow:hidden; }
+        .mini-progress-fill { height:100%; background:var(--occ); border-radius:99px; transition:width .4s; }
+
+        /* ══════════════════════════════
+           MODAL
+        ══════════════════════════════ */
+        .modal-overlay { display:none; position:fixed; inset:0; background:rgba(7,26,44,.72);backdrop-filter:blur(5px); align-items:center; justify-content:center; z-index:200; padding:20px; }
+        .modal-window  { background:var(--white); border-radius:16px; width:100%; max-width:520px; box-shadow:0 30px 80px rgba(7,26,44,.35); overflow:hidden; }
+        .modal-header  { padding:19px 22px; background:var(--navy); color:white; display:flex; align-items:center; justify-content:space-between; border-bottom:4px solid var(--gold); }
+        .modal-header h3 { font-family:'Libre Franklin',sans-serif;font-size:15px; font-weight:700; }
+        .modal-close   { background:none; border:none; color:#cbd5e1; font-size:22px; line-height:1; cursor:pointer; }
+        .modal-close:hover { color:white; }
+        .modal-body    { padding:22px; }
+        .modal-body .form-group { margin-bottom:14px; }
+        .modal-body label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-secondary); margin-bottom:5px; }
+        .modal-body input,.modal-body select,.modal-body textarea { width:100%; padding:10px 12px; border:1px solid var(--border-strong); border-radius:8px; font-size:13px; color:var(--text-primary); background:var(--white); font-family:inherit; }
+        .modal-body textarea { resize:vertical; min-height:80px; line-height:1.5; }
+        .modal-footer  { display:flex; gap:10px; justify-content:flex-end; padding:0 22px 22px; }
+        .btn-mc { padding:10px 16px; background:var(--white); color:var(--text-secondary); border:1px solid var(--border-strong); border-radius:8px; font-family:inherit;font-size:12px; font-weight:700; cursor:pointer; }
+        .btn-ms { padding:10px 18px; background:var(--occ); color:white; border:none; border-radius:8px; font-family:inherit;font-size:12px; font-weight:700; cursor:pointer; }
+        .btn-ms:hover { background:var(--occ-dark); }
+        .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .title-crumb { font-size:12px;font-weight:700;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px; }
+        .occ-card-copy p { color:var(--text-muted);font-size:10px;margin-top:2px; }
+        .matrix-table-wrap { overflow-x:auto;border-top:1px solid var(--border); }
+        .standard-stations-setup { margin:12px 0; padding:12px; border:1px solid var(--border); border-radius:9px; background:var(--surface); }
+        .standard-stations-setup p { color:var(--text-secondary); font-size:12px; line-height:1.6; margin-bottom:10px; }
+        .standard-stations-setup .btn-add { width:auto; }
+        .standard-stations-setup .btn-add:disabled { opacity:.6; cursor:wait; }
+        #standardStationsFeedback:empty { display:none; }
+        #standardStationsFeedback { margin:8px 0 0; }
+        .checklist-summary-row { display:flex;align-items:center;justify-content:space-between; }
+        .checklist-summary-label { font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px; }
+        #sideClPct { font-family:'Libre Franklin',sans-serif; }
+        @media(max-width:760px){.workspace-tabs{overflow-x:auto;justify-content:flex-start}.ws-tab{flex:0 0 auto;min-width:145px}.title-crumb{display:none}.form-row-2,.insp-meta-grid{grid-template-columns:1fr}.insp-card-head{align-items:flex-start;flex-direction:column;gap:10px}.insp-card-head>div{flex-wrap:wrap}.modal-overlay{padding:12px}.modal-body{padding:18px}}
+    </style>
+<style>.workspace-record-icon{width:22px;height:22px;object-fit:contain;opacity:.7}.card-heading-icon .mdi-icon{width:20px;height:20px;fill:currentColor}</style>
+<link rel="stylesheet" href="/shared-header.css">
+<link rel="stylesheet" href="/status-badges.css">
+<link rel="stylesheet" href="/login-feedback.css">
+<script src="/login-feedback.js"></script>
+<script src="/workspace-notice.js"></script>
+<link rel="stylesheet" href="/appearance.css">
+<script src="/occupancy-templates.js" defer></script>
+<link rel="stylesheet" href="/project-records.css">
+<script src="/project-records.js"></script>
+<script src="/workspace-layout.js" defer></script>
+<link rel="stylesheet" href="/permit-sidebar.css">
+<link rel="stylesheet" href="/account-tools.css">
+<link rel="stylesheet" href="/station-dates.css"><script src="/station-dates.js"></script>
+<link rel="stylesheet" href="/remarks-viewer.css"><script src="/remarks-viewer.js"></script>
+<script src="/project-approval.js"></script><link rel="stylesheet" href="/project-approval.css">
+<link rel="stylesheet" href="/permit-responsive.css">
+<script src="/permit-responsive.js" defer></script>
+</head>
+<body>
+<div id="system-react-root" data-page="permits-occupancy_edit" style="display:contents"></div>
+<script src="/system-react/app.js"></script>
+<script>
+/* ══════════════════════════
+   BOOTSTRAP
+══════════════════════════ */
+const urlParams  = new URLSearchParams(window.location.search);
+const permitId   = urlParams.get('id');
+let matrixState  = [], isEditing = false;
+let projectData = null;
+let initializingStations = false;
+window.addEventListener('permit-profile-updated', event => StationDates.updateEngineers(matrixState, event.detail));
+let signatureDatesSupported = false;
+let inspections  = [], checklistState = {};
+// Keep the version loaded with each editor; never replace it on a failed save.
+let permitVersion = "", checklistVersion = "", inspectionVersion = "";
+
+function getStoredUser() { try { return JSON.parse(sessionStorage.getItem('oboUser') || 'null'); } catch(e) { return null; } }
+function getAuthHeaders(version = permitVersion) {
+    const user = getStoredUser();
+    return { 'Content-Type': 'application/json', 'x-record-version': version || '', 'x-user-role': user?.role || '', 'x-user-id': user?.id ? String(user.id) : '' };
+}
+function isAdminOrAbove() { const u = getStoredUser(); return u && (u.role === 'admin' || u.role === 'superadmin'); }
+function currentUserRole() { const u = getStoredUser(); return u ? u.role : ''; }
+
+const CHECKLIST = window.OccupancyChecklist;
+
+if (!permitId) { alert('No Occupancy ID in URL.'); window.location.href='/occupancy'; }
+
+document.getElementById('initializeStandardStations')?.addEventListener('click', initializeStandardStations);
+
+document.addEventListener('DOMContentLoaded', () => {
+    const user = getStoredUser();
+    if (!user) { window.location.href = '/login'; return; }
+    if (user.role === 'admin' || user.role === 'superadmin') {
+        window.location.replace(PermitRouting.home(user));
+        return;
+    }
+    if (user.role !== 'operator') { window.location.replace('/login'); return; }
+
+    // Set default mode badge label based on role
+    if (isAdminOrAbove()) {
+        // Admins see "Admin Mode" and a different colored edit button
+        ['modeBadgeTable'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.textContent = 'Admin Mode'; el.style.background='#ecfdf5'; el.style.color='#065f46'; el.style.borderColor='#a7f3d0'; }
+        });
+        document.getElementById('editTriggerBtn').textContent = 'Edit';
+        // Admin can also see a "Return to Registry" note
+        const addDiscForm = document.getElementById('addDisciplineForm');
+        if (addDiscForm) addDiscForm.style.display = 'block';
+    } else {
+        // Operators begin in view mode and submit edits for approval.
+        ['modeBadgeTable'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.textContent = 'View Only'; }
+        });
+        document.getElementById('editTriggerBtn').textContent = 'Edit';
+        // Hide the discipline select form label note for operators
+        const addDiscForm = document.getElementById('addDisciplineForm');
+        if (addDiscForm) {
+            const note = document.createElement('p');
+            note.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:6px;font-style:italic;';
+            note.textContent = 'Only your assigned station details can be edited. Station removal requires the admin.';
+            addDiscForm.after(note);
+        }
+    }
+
+    fetchPermitData();
+    loadInspections();
+    loadChecklist();
+    document.getElementById('addDisciplineForm').addEventListener('submit', FormSafety.guard('addDisciplineForm', async e => { e.preventDefault(); await appendStation(); }));
+});
+
+/* ══ TAB SWITCHING ══ */
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.ws-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-'+name).classList.add('active');
+    btn.classList.add('active');
+}
+
+/* ══════════════════════════
+   ROUTING MATRIX
+══════════════════════════ */
+async function fetchPermitData() {
+    try {
+        const r = await RequestFeedback.fetch('/api/occupancy/'+permitId);
+        if (!r.ok) throw new Error();
+        const p = await r.json();
+        permitVersion = p._version || "";
+        signatureDatesSupported = p._signatureDatesSupported === true;
+        document.getElementById('profileProjectId').textContent = ProjectIdentity.format('occupancy', p.id);
+        document.getElementById('profileTitle').textContent       = p.project_title;
+        document.getElementById('profileLocation').textContent    = p.location;
+        document.getElementById('profileOwner').textContent       = p.owner_name;
+        document.getElementById('profileBpRef').textContent       = p.bp_reference_no;
+        document.getElementById('profileDateApplied').textContent = fmtDate(p.date_applied);
+        document.title = p.project_title + ' — OP Workspace';
+        projectData = p;
+        isEditing = false;
+        matrixState = p.matrix || [];
+        window.OccupancyTemplates?.update(p);
+        renderStationChips(); renderMatrixTable();
+        renderRejectionTimeline(p.rejection_history);
+        evaluateGlobalStatus();
+        updateEditingControls(false);
+        ProjectApproval.render(p);
+        document.getElementById('tbRouting').textContent = matrixState.length;
+    } catch(e) { RequestFeedback.report(e); }
+}
+
+function renderStationChips() {
+    const w = document.getElementById('disciplineConfigList');
+    const setup = document.getElementById('standardOccupancyStations');
+    if (setup) setup.hidden = matrixState.length > 0 || projectData?._standardOccupancyStationsSupported !== true;
+    if (!matrixState.length) { w.innerHTML='<em style="color:var(--text-muted);font-size:11px;">No stations assigned.</em>'; return; }
+    w.replaceChildren();
+    matrixState.forEach(d => {
+        const chip = document.createElement('span');
+        chip.className = 'station-badge-chip';
+        chip.textContent = d.discipline_name;
+        if (currentUserRole() === 'admin') {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'station-delete-btn';
+            button.textContent = '×';
+            button.addEventListener('click', () => removeStation(d.discipline_name));
+            chip.append(button);
+        }
+        w.append(chip);
+    });
+}
+
+async function initializeStandardStations() {
+    if (initializingStations || matrixState.length || projectData?._standardOccupancyStationsSupported !== true) return;
+    const button = document.getElementById('initializeStandardStations');
+    const feedback = document.getElementById('standardStationsFeedback');
+    initializingStations = true;
+    button.disabled = true;
+    button.textContent = 'Adding stations…';
+    feedback.textContent = '';
+    try {
+        const response = await RequestFeedback.fetch(`/api/occupancy/${permitId}/stations/initialize`, {method:'POST', headers:getAuthHeaders(), body:JSON.stringify({})});
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || result.error || 'Standard stations could not be added.');
+        await fetchPermitData();
+    } catch(error) {
+        feedback.textContent = error.message || 'Standard stations could not be added. Please try again.';
+        RequestFeedback.report(error);
+    } finally {
+        initializingStations = false;
+        button.disabled = false;
+        button.textContent = 'Add standard stations';
+    }
+}
+
+async function appendStation() {
+    const val = document.getElementById('disciplineSelect').value;
+    if (!val) return;
+    if (!confirm(`Add "${val}" to this workflow?`)) return;
+    if (isEditing && !FormSafety.discard('matrixTableBody')) return;
+    try {
+        const r = await RequestFeedback.fetch('/api/occupancy/matrix/add',{method:'POST',headers:getAuthHeaders(),body:JSON.stringify({occupancy_id:permitId,discipline_name:val})});
+        const d = await r.json();
+        if (r.ok && d.success) { isEditing=false; updateEditingControls(false); document.getElementById('disciplineSelect').value=''; FormSafety.clean('addDisciplineForm'); await fetchPermitData(); }
+        else alert(d.message||d.error||'Failed to add station.');
+    } catch(e) { RequestFeedback.report(e); }
+}
+
+async function removeStation(name) {
+    if (!confirm(`Remove ${name} from this workflow?`)) return;
+    if (isEditing && !FormSafety.discard('matrixTableBody')) return;
+    try {
+        const r = await RequestFeedback.fetch(`/api/occupancy/matrix/remove?occupancy_id=${permitId}&discipline_name=${encodeURIComponent(name)}`,{method:'DELETE',headers:getAuthHeaders()});
+        const d = await r.json();
+        if (d.success) { isEditing=false; updateEditingControls(false); await fetchPermitData(); } else alert(d.message||'Failed to remove.');
+    } catch(e) { RequestFeedback.report(e); }
+}
+
+function renderMatrixTable() {
+    const tbody = document.getElementById('matrixTableBody');
+    tbody.innerHTML = '';
+    if (!matrixState.length) {
+        tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">This project has no routing stations yet. Use Add standard stations to start its reviews.</td></tr>';
+        return;
+    }
+    matrixState.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-id', row.id);
+        tr.setAttribute('data-discipline', row.discipline_name);
+        const statusLc = (row.signature_status||'pending').toLowerCase();
+        const eng = StationDates.engineer(row);
+        let status = `<span class="status-chip status-${statusLc}">${statusLc==='approved'?'✓ ':statusLc==='rejected'?'✗ ':'○ '}${row.signature_status}</span>`;
+        let feed   = StationDates.remarks(row, 'View remarks') || '—';
+        let cmd = currentUserRole() === 'admin' ? `<button type="button" class="btn-icon-danger" onclick="removeStation(decodeURIComponent('${encodeURIComponent(row.discipline_name).replace(/'/g,'%27')}'))">Remove</button>` : '—';
+        if (isEditing && row.can_edit === true) {
+            status = `<select class="input-status" aria-label="Status for station ${Number(row.id)}" data-original="${row.signature_status}">
+                <option value="Pending"  ${row.signature_status==='Pending'  ?'selected':''}>Pending</option>
+                <option value="Approved" ${row.signature_status==='Approved' ?'selected':''}>Approved</option>
+                <option value="Rejected" ${row.signature_status==='Rejected' ?'selected':''}>Rejected</option>
+            </select>`;
+            feed   = `
+                <div class="remarks-control">
+                    <span class="remarks-preview" data-remarks-station="${esc(row.discipline_name)}">${StationDates.remarks(row, 'View remarks')}</span>
+                    <button type="button" class="remarks-edit" onclick="openRemarksModal(this)">Edit remarks</button>
+                    <input type="hidden" class="input-feedback" value="${esc(row.feedback_remarks)}">
+                </div>
+            `;
+
+        }
+        tr.innerHTML = `
+            <td style="font-weight:600;color:var(--navy);">${esc(row.discipline_name)}</td>
+            <td>${eng}</td><td>${status}</td>
+                    ${StationDates.cells('occupancy',permitId,row,isEditing && row.can_edit === true)}<td>${feed}</td>
+            <td style="text-align:center;">${cmd}</td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+function enableEditingMode() {
+    if (!projectData?._stationAccessSupported || !projectData?._assignedEngineerProfileSupported || !matrixState.some(r=>r.can_edit === true)) return;
+    isEditing = true;
+    updateEditingControls(true);
+    renderMatrixTable();
+        FormSafety.remember(document.getElementById('matrixTableBody'));
+}
+
+function cancelEditingMode() {
+        if (!FormSafety.discard('matrixTableBody')) return;
+    isEditing = false;
+    closeRemarksModal();
+    updateEditingControls(false);
+    renderMatrixTable();
+}
+
+function updateEditingControls(editing) {
+    const editButton = document.getElementById('editTriggerBtn');
+    const tableBadge = document.getElementById('modeBadgeTable');
+    editButton.textContent = 'Edit';
+        editButton.style.display = editing || !projectData?._stationAccessSupported || !projectData?._assignedEngineerProfileSupported || !matrixState.some(r=>r.can_edit === true) ? 'none' : '';
+    editButton.disabled = editing;
+    document.getElementById('cancelEditBtn').style.display = editing ? 'inline-grid' : 'none';
+    document.getElementById('saveMatrixBtn').style.display = editing ? 'block' : 'none';
+    tableBadge.textContent = editing ? 'Edit Mode' : 'View Only';
+    tableBadge.classList.toggle('edit-active', editing);
+}
+
+document.getElementById('saveMatrixBtn').addEventListener('click', FormSafety.guard('saveMatrixBtn', async () => {
+    const rows = [...document.querySelectorAll('#matrixTableBody tr[data-id]')].filter(r=>r.querySelector('.input-status'));
+    for (const row of rows) {
+        const status=row.querySelector('.input-status').value, remarks=row.querySelector('.input-feedback');
+        if (status === 'Rejected' && !remarks.value.trim()) { alert('Please add rejection remarks for '+row.getAttribute('data-discipline')+'.'); return; }
+        if (!StationDates.read(row)) return;
+    }
+    let payloadRows=[];
+    const newHistory=[];
+    rows.forEach(tr => {
+        const id=tr.getAttribute('data-id'), discipline=tr.getAttribute('data-discipline');
+        const statSel=tr.querySelector('.input-status');
+        const stat=statSel.value, origStat=statSel.getAttribute('data-original');
+        const feed=tr.querySelector('.input-feedback').value;
+        payloadRows.push({id,signature_status:stat,feedback_remarks:feed,...StationDates.read(tr)});
+        if (stat==='Rejected'&&origStat!=='Rejected') newHistory.push({discipline,reason:feed||'No reason provided.'});
+    });
+    payloadRows = StationDates.changedRows(payloadRows, matrixState);
+    if (!payloadRows.length) {
+        FormSafety.clean('matrixTableBody');
+        isEditing = false;
+        updateEditingControls(false);
+        renderMatrixTable();
+        alert('No signature changes to save.');
+        return;
+    }
+    if (StationDates.hasDateChanges(payloadRows, matrixState) && !signatureDatesSupported) {
+        alert('The running permit server needs to be restarted before it can save these dates. Your edits are kept.');
+        return;
+    }
+    let response, result;
+    try {
+        response = await RequestFeedback.fetch(`/api/occupancy/${permitId}/signatures`, {method:'PUT', headers:getAuthHeaders(), body:JSON.stringify({updatedMatrixRows:payloadRows,newHistoricalEntries:newHistory})});
+    } catch (error) {
+        RequestFeedback.report(error);
+        return;
+    }
+    try { result = await response.json(); }
+    catch (error) {
+        RequestFeedback.report(error);
+        return;
+    }
+    if (result.duplicate) { FormSafety.clean('matrixTableBody'); showPendingToast(result.message); return; }
+    if (!response.ok || !result.success) { alert(result.message || 'Save failed.'); return; }
+    FormSafety.clean('matrixTableBody');
+    isEditing = false;
+    updateEditingControls(false);
+    if (result.pending) {
+        showPendingToast('Your routing matrix changes have been submitted and are awaiting administrator approval.');
+    }
+    await fetchPermitData();
+}));
+
+function evaluateGlobalStatus() {
+    if (projectData?.final_approval) { ProjectApproval.badge(projectData); return; }
+    const badge=document.getElementById('globalWorkflowStatus');
+    if (!matrixState.length) { badge.className='global-status-badge status-pending'; badge.textContent='⟳ Awaiting Matrix'; return; }
+    const hasRej=matrixState.some(r=>r.signature_status==='Rejected');
+    const allApp=matrixState.every(r=>r.signature_status==='Approved');
+    if (hasRej)   { badge.className='global-status-badge status-rejected'; badge.textContent='⚠ Action needed'; }
+    else if(allApp){ badge.className='global-status-badge status-approved'; badge.textContent='Ready for final review'; }
+    else           { badge.className='global-status-badge status-pending';  badge.textContent='⟳ Evaluating...'; }
+}
+
+function renderRejectionTimeline(h) {
+    const w=document.getElementById('historicalTimeline');
+    let logs=[];
+    try { if(h) logs=typeof h === 'string' ? JSON.parse(h) : h; } catch(e){}
+    if (!Array.isArray(logs)) logs=[];
+    if (!logs.length) { w.innerHTML='<em style="color:var(--text-muted);font-size:12px;">No rejection records logged.</em>'; return; }
+    w.innerHTML = [...logs].reverse().map(l=>`
+        <div class="rejection-entry">
+            <strong>${esc(l.discipline)} — Rejected</strong>
+            <div class="entry-meta">${esc(l.timestamp)} &bull; Reviewer: ${esc(l.engineer)}</div>
+            <div class="entry-reason">"${esc(l.reason)}"</div>
+        </div>`).join('');
+}
+
+/* ══════════════════════════
+   REMARKS MODAL HELPERS
+══════════════════════════ */
+let currentRemarksInput = null;
+let currentRemarksPreview = null;
+
+function openRemarksModal(btn) {
+    const control = btn.closest('.remarks-control');
+    currentRemarksInput = control.querySelector('.input-feedback');
+    currentRemarksPreview = control.querySelector('.remarks-preview');
+    document.getElementById('activeRemarksText').value = currentRemarksInput.value;
+    document.getElementById('remarksModal').style.display = 'flex';
+}
+
+function closeRemarksModal() {
+        if (!FormSafety.discard('remarksModal')) return;
+    document.getElementById('remarksModal').style.display = 'none';
+}
+
+function saveRemarksToRow() {
+    const val = document.getElementById('activeRemarksText').value;
+    if (currentRemarksInput) {
+        currentRemarksInput.value = val;
+        currentRemarksPreview.innerHTML = StationDates.remarks({discipline_name:currentRemarksPreview.dataset.remarksStation, feedback_remarks:val}, 'View remarks');
+    }
+    FormSafety.clean('remarksModal'); closeRemarksModal();
+}
+
+/* ══════════════════════════
+   INSPECTIONS
+══════════════════════════ */
+async function loadInspections() {
+    try {
+        const r = await RequestFeedback.fetch(`/api/occupancy/${permitId}/inspections`);
+        if (!r.ok) { inspections=[]; renderInspections(); return; }
+        const d = await r.json();
+        inspections = d.inspections || [];
+    } catch(e) { RequestFeedback.report(e); return; }
+    renderInspections();
+}
+
+function openInspModal(id) {
+    const isEdit = !!id;
+    inspectionVersion = inspections.find(row=>row.id===id)?._version || "";
+    document.getElementById('inspModalTitle').textContent = isEdit ? 'Edit Inspection Record' : 'Log New Inspection';
+    document.getElementById('editInspId').value = id || '';
+    if (isEdit) {
+        const i = inspections.find(x=>x.id===id) || {};
+        document.getElementById('inspType').value      = i.inspection_type || 'Preliminary';
+        document.getElementById('inspDate').value      = (i.inspection_date||'').split('T')[0];
+        document.getElementById('inspInspector').value = i.inspector_name || '';
+        document.getElementById('inspResult').value    = i.result || 'Scheduled';
+        document.getElementById('inspFindings').value  = i.findings || '';
+        document.getElementById('inspNextDate').value  = (i.next_inspection_date||'').split('T')[0];
+    } else {
+        document.getElementById('inspType').value      = 'Preliminary';
+        document.getElementById('inspDate').value      = new Date().toISOString().split('T')[0];
+        document.getElementById('inspInspector').value = '';
+        document.getElementById('inspResult').value    = 'Scheduled';
+        document.getElementById('inspFindings').value  = '';
+        document.getElementById('inspNextDate').value  = '';
+    }
+    document.getElementById('inspModal').style.display='flex';
+}
+
+function closeInspModal() { if (!FormSafety.discard('inspModal')) return; document.getElementById('inspModal').style.display='none'; }
+
+const saveInspection = FormSafety.guard('inspSaveBtn', async function() {
+    const editId = document.getElementById('editInspId').value;
+    const date   = document.getElementById('inspDate').value;
+    if (!FormSafety.validate(document.getElementById('inspModal'))) return;
+    const nextDate=document.getElementById('inspNextDate'); nextDate.setCustomValidity('');
+    if(nextDate.value && nextDate.value < date){nextDate.setCustomValidity('The next inspection must be on or after this inspection.');nextDate.reportValidity();return;}
+    const payload = {
+        occupancy_id: parseInt(permitId),
+        inspection_type: document.getElementById('inspType').value,
+        inspection_date: date,
+        inspector_name:  document.getElementById('inspInspector').value,
+        result:          document.getElementById('inspResult').value,
+        findings:        document.getElementById('inspFindings').value,
+        next_inspection_date: document.getElementById('inspNextDate').value || null
+    };
+    const btn=document.getElementById('inspSaveBtn'); btn.disabled=true; btn.textContent='Saving…';
+    try {
+        const url    = editId ? `/api/occupancy/${permitId}/inspections/${editId}` : `/api/occupancy/${permitId}/inspections`;
+        const method = editId ? 'PUT' : 'POST';
+        const r=await RequestFeedback.fetch(url,{method,headers:getAuthHeaders(inspectionVersion),body:JSON.stringify(payload)});
+        const d=await r.json();
+        if (d.success) { FormSafety.clean('inspModal'); closeInspModal(); await loadInspections(); }
+        else alert(d.message||'Save failed.');
+    } catch(e) { RequestFeedback.report(e); }
+    finally { btn.disabled=false; btn.textContent='Save Inspection'; }
+});
+
+async function deleteInspection(id) {
+    if (!confirm(isAdminOrAbove() ? 'Permanently delete this inspection record?' : 'Request administrator approval to delete this inspection? It will remain until approved.')) return;
+    try {
+        const r=await RequestFeedback.fetch(`/api/occupancy/${permitId}/inspections/${id}`,{method:'DELETE',headers:getAuthHeaders(inspections.find(row=>row.id===id)?._version)});
+        const d=await r.json();
+        if (d.success) { if(d.pending) alert(d.message); await loadInspections(); } else alert(d.message||'Failed to delete.');
+    } catch(e) { RequestFeedback.report(e); }
+}
+
+function renderInspections() {
+    const list = document.getElementById('inspectionList');
+    document.getElementById('tbInspection').textContent = inspections.length;
+
+    const passed      = inspections.filter(i=>i.result==='Passed').length;
+    const failed      = inspections.filter(i=>i.result==='Failed').length;
+    const scheduled   = inspections.filter(i=>i.result==='Scheduled').length;
+    const conditional = inspections.filter(i=>i.result==='Conditional').length;
+    const badges = document.getElementById('inspSummaryBadges');
+    badges.innerHTML = [
+        inspections.length ? `<span style="font-size:11px;font-weight:600;color:var(--text-muted);">${inspections.length} total</span>` : '',
+        passed      ? `<span class="sbadge sb-passed">✓ ${passed} Passed</span>` : '',
+        failed      ? `<span class="sbadge sb-failed">✗ ${failed} Failed</span>` : '',
+        scheduled   ? `<span class="sbadge sb-scheduled">⏳ ${scheduled} Scheduled</span>` : '',
+        conditional ? `<span class="sbadge sb-conditional">◑ ${conditional} Conditional</span>` : '',
+    ].join('');
+
+    if (!inspections.length) {
+        list.innerHTML=`<div class="insp-empty"><div class="ie-icon">🔍</div><p style="font-size:13px;color:var(--text-muted);">No inspections logged yet. Use the button above.</p></div>`;
+        return;
+    }
+
+    const typeClass = { 'Preliminary':'preliminary','Final':'final','Follow-up':'followup','Special':'special' };
+    const resClass  = { 'Passed':'passed','Failed':'failed','Scheduled':'scheduled','Conditional':'conditional' };
+    const resIcon   = { 'Passed':'✓','Failed':'✗','Scheduled':'⏳','Conditional':'◑' };
+
+    const sorted = [...inspections].sort((a,b)=>new Date(b.inspection_date)-new Date(a.inspection_date));
+    list.innerHTML = sorted.map(i => {
+        const tc = typeClass[i.inspection_type]||'preliminary';
+        const rc = resClass[i.result]||'scheduled';
+        const ri = resIcon[i.result]||'?';
+        const nextDate = i.next_inspection_date
+            ? `<div class="insp-meta-item"><div class="iml">Next Inspection</div><div class="imv">📅 ${fmtDate(i.next_inspection_date)}</div></div>` : '';
+        const deleteInspBtn = `<button class="btn-icon-danger" onclick="deleteInspection(${i.id})" title="${isAdminOrAbove() ? 'Delete inspection' : 'Request inspection deletion'}">🗑</button>`;
+        return `
+        <div class="insp-card">
+            <div class="insp-card-head">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="type-badge tb-${tc}">${esc(i.inspection_type)}</span>
+                    <span style="font-size:13px;font-weight:600;color:var(--text-primary);">${fmtDate(i.inspection_date)}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span class="result-badge rb-${rc}">${ri} ${esc(i.result)}</span>
+                    <button class="btn-icon-edit"   onclick="openInspModal(${i.id})" title="Edit">✏</button>
+                    ${deleteInspBtn}
+                </div>
+            </div>
+            <div class="insp-card-body">
+                <div class="insp-meta-grid">
+                    <div class="insp-meta-item"><div class="iml">Inspector</div><div class="imv">${esc(i.inspector_name||'—')}</div></div>
+                    <div class="insp-meta-item"><div class="iml">Type</div><div class="imv">${esc(i.inspection_type)}</div></div>
+                    ${nextDate}
+                </div>
+                ${i.findings?`<div class="insp-findings">${esc(i.findings)}</div>`:''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* ══════════════════════════
+   REQUIREMENTS CHECKLIST
+══════════════════════════ */
+async function loadChecklist() {
+    try {
+        const r=await RequestFeedback.fetch(`/api/occupancy/${permitId}/checklist`);
+        if (!r.ok) { checklistState={}; renderChecklist(); return; }
+        const d=await r.json();
+        checklistState = d.checklist_state || {};
+        checklistVersion = d._version || "";
+        document.getElementById('saveClBtn').disabled=false;
+    } catch(e) { RequestFeedback.report(e); document.getElementById('saveClBtn').disabled=true; return; }
+    renderChecklist();
+}
+
+function renderChecklist() {
+    const container = document.getElementById('checklistContainer');
+    let total=0, checked=0;
+    container.innerHTML = CHECKLIST.map(sec => {
+        const sChecked = sec.items.filter(i=>checklistState[i.id]).length;
+        total += sec.items.length; checked += sChecked;
+        return `
+        <div class="cl-section">
+            <div class="cl-section-title">
+                <span>${esc(sec.section)}</span>
+                <span style="font-size:10px;font-weight:700;color:var(--text-muted);">${sChecked}/${sec.items.length}</span>
+            </div>
+            ${sec.items.map(item=>`
+            <div class="cl-item ${checklistState[item.id]?'checked':''}" onclick="toggleClItem('${item.id}')">
+                <div class="cl-checkbox">${checklistState[item.id]?'✓':''}</div>
+                <div class="cl-content">
+                    <div class="cl-title">${esc(item.title)}</div>
+                    <div class="cl-note">${esc(item.note)}</div>
+                </div>
+                <span class="cl-tag ${item.req?'tag-req':'tag-opt'}">${item.req?'Required':'Optional'}</span>
+            </div>`).join('')}
+        </div>`;
+    }).join('');
+
+    const pct = total ? Math.round(checked/total*100) : 0;
+    document.getElementById('clProgressLabel').textContent = `${checked} of ${total} items submitted`;
+    document.getElementById('clProgressBar').style.width   = pct+'%';
+    document.getElementById('ringPct').textContent         = pct+'%';
+    document.getElementById('ringFill').style.strokeDashoffset = 131.95 - (131.95*pct/100);
+    document.getElementById('tbChecklist').textContent     = `${checked}/${total}`;
+    document.getElementById('checklistSideCard').style.display = 'block';
+    document.getElementById('sideClPct').textContent       = pct+'%';
+    document.getElementById('sideClBar').style.width       = pct+'%';
+    document.getElementById('sideClCount').textContent     = `${checked} of ${total} items`;
+    document.getElementById('sideClEmoji').textContent     = pct===100?'🎉':pct>60?'📋':'📂';
+}
+
+function toggleClItem(id) { FormSafety.rememberValue('checklistContainer',()=>JSON.stringify(checklistState)); checklistState[id]=!checklistState[id]; renderChecklist(); }
+
+const saveChecklist = FormSafety.guard('saveClBtn', async function() {
+    const btn=document.getElementById('saveClBtn'); btn.disabled=true; btn.textContent='Saving…';
+    try {
+        const r=await RequestFeedback.fetch(`/api/occupancy/${permitId}/checklist`,{method:'PUT',headers:getAuthHeaders(checklistVersion),body:JSON.stringify({checklist_state:checklistState})});
+        const d=await r.json();
+        if (!d.success) alert(d.message||'Save failed.');
+        else { checklistVersion=d._version || ''; FormSafety.clean('checklistContainer'); btn.textContent='✓ Saved!'; setTimeout(()=>{btn.textContent='Save Checklist State';},2000); }
+    } catch(e) { RequestFeedback.report(e); }
+    finally { btn.disabled=false; }
+});
+
+/* ══ Helpers ══ */
+function fmtDate(d){
+    if (!d) return '—';
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(d);
+    const date = new Date(dateOnly ? d + 'T00:00:00Z' : d);
+    if (!Number.isFinite(date.getTime())) return '—';
+    return date.toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric',...(dateOnly ? {timeZone:'UTC'} : {})});
+}
+function esc(v){ return v?v.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'):''; }
+</script>
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const centerStyle = document.createElement('style');
+        centerStyle.textContent = '.has-philippine-clock{position:relative}.has-philippine-clock .philippine-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;align-items:center;text-align:center}@media(max-width:1100px){.has-philippine-clock{display:flex;flex-wrap:wrap}.has-philippine-clock .philippine-clock{position:static;transform:none;flex-basis:100%;order:99;margin:8px 0;box-sizing:border-box;align-items:center}}';
+        document.head.append(centerStyle);
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script></body>
+</html>

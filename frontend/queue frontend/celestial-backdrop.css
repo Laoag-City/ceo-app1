@@ -1,0 +1,35 @@
+/* Shared corner ornament for the portal, permit sign-in and queue entry pages. */
+html :is(.portal,body.staff-sign-in,body.queue-workstation-page,body.permit-login-page) {
+    isolation: isolate;
+    --office-circle-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Ccircle cx='300' cy='300' r='230' fill='white'/%3E%3C/svg%3E");
+}
+html :is(.portal,body.staff-sign-in,body.queue-workstation-page,body.permit-login-page)::after {
+    /* The larger mask aligns with the rays around the original 460px circle.
+       Its center stays 10px from the right edge, at the top of the viewport. */
+    width:600px; height:600px; right:-290px; top:-300px;
+    -webkit-mask-image: var(--office-circle-mask); mask-image: var(--office-circle-mask);
+    -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    z-index: -1; border-radius: 0; background: rgba(231,169,47,.14); filter: blur(1px);
+}
+.office-sun-rays {
+    /* Six full rays follow the visible arc; keep them with the circle behind
+       the page content, within the backdrop's isolated stacking context. */
+    position: fixed; width:600px; height:600px; right:-290px; top:-300px;
+    z-index: -1; pointer-events: none; background: rgba(231,169,47,.14);
+    --office-rays-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cpath d='M277.95 552.04 275.16 583.92M209.33 536.19 197.87 566.07M147.74 502.05 128.48 527.61M97.95 452.26 72.39 471.52M63.81 390.66 33.93 402.13M47.96 322.05 16.08 324.84' fill='none' stroke='white' stroke-width='12' stroke-linecap='round'/%3E%3C/svg%3E");
+    -webkit-mask-image: var(--office-rays-mask); mask-image: var(--office-rays-mask);
+    -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; filter: blur(1px);
+}
+html[data-theme='dark'] .office-sun-rays { display:none; }
+html[data-theme='dark'] :is(.portal,body.staff-sign-in,body.queue-workstation-page,body.permit-login-page)::after {
+    display: block!important;
+    -webkit-mask-image: var(--office-circle-mask); mask-image: var(--office-circle-mask);
+    background: rgba(190,211,235,.18);
+}
+html[data-theme='dark'] body:is(.staff-sign-in,.permit-login-page)::before {
+    display: block!important;
+    background-image: linear-gradient(90deg,rgba(177,198,218,.045) 1px,transparent 1px),
+        linear-gradient(rgba(177,198,218,.045) 1px,transparent 1px);
+}

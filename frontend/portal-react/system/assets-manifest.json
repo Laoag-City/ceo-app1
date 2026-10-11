@@ -1,0 +1,259 @@
+[
+  {"source":"assets/permits/remarks-viewer.js","folder":"monitorBP frontend","file":"remarks-viewer.js"},
+  {"source":"assets/permits/remarks-viewer.css","folder":"monitorBP frontend","file":"remarks-viewer.css"},
+  {"source":"assets/common/staff-login.css","folder":"monitorBP frontend","file":"staff-login.css"},
+  {"source":"assets/common/staff-login.css","folder":"queue frontend","file":"staff-login.css"},
+  {"source":"assets/queue/monitor-calls.css","folder":"queue frontend","file":"monitor-calls.css"},
+  {"source":"assets/permits/bulk-deletion.css","folder":"monitorBP frontend","file":"bulk-deletion.css"},
+  {"source":"assets/permits/project-approval.js","folder":"monitorBP frontend","file":"project-approval.js"},
+  {"source":"assets/permits/project-approval.css","folder":"monitorBP frontend","file":"project-approval.css"},
+  {
+    "source": "assets/common/celestial-backdrop.css",
+    "folder": "monitorBP frontend",
+    "file": "celestial-backdrop.css"
+  },
+  {
+    "source": "assets/common/celestial-backdrop.css",
+    "folder": "queue frontend",
+    "file": "celestial-backdrop.css"
+  },
+  {
+    "source": "assets/permits/admin-console.css",
+    "folder": "monitorBP frontend",
+    "file": "admin-console.css"
+  },
+  {
+    "source": "assets/permits/admin-request-cards.js",
+    "folder": "monitorBP frontend",
+    "file": "admin-request-cards.js"
+  },
+  {
+    "source": "assets/common/appearance.css",
+    "folder": "monitorBP frontend",
+    "file": "appearance.css"
+  },
+  {
+    "source": "assets/permits/appearance.js",
+    "folder": "monitorBP frontend",
+    "file": "appearance.js"
+  },
+  {
+    "source": "assets/permits/approval-preview.js",
+    "folder": "monitorBP frontend",
+    "file": "approval-preview.js"
+  },
+  {
+    "source": "assets/common/destructive-action.js",
+    "folder": "monitorBP frontend",
+    "file": "destructive-action.js"
+  },
+  {
+    "source": "assets/permits/edit.css",
+    "folder": "monitorBP frontend",
+    "file": "edit.css"
+  },
+  {
+    "source": "assets/permits/form-safety.js",
+    "folder": "monitorBP frontend",
+    "file": "form-safety.js"
+  },
+  {
+    "source": "assets/permits/index.css",
+    "folder": "monitorBP frontend",
+    "file": "index.css"
+  },
+  {
+    "source": "assets/permits/location-picker.css",
+    "folder": "monitorBP frontend",
+    "file": "location-picker.css"
+  },
+  {
+    "source": "assets/permits/location-picker.js",
+    "folder": "monitorBP frontend",
+    "file": "location-picker.js"
+  },
+  {
+    "source": "assets/permits/login-feedback.css",
+    "folder": "monitorBP frontend",
+    "file": "login-feedback.css"
+  },
+  {
+    "source": "assets/permits/login-feedback.js",
+    "folder": "monitorBP frontend",
+    "file": "login-feedback.js"
+  },
+  {
+    "source": "assets/permits/occupancy-checklist.js",
+    "folder": "monitorBP frontend",
+    "file": "occupancy-checklist.js"
+  },
+  {
+    "source": "assets/permits/occupancy-templates.js",
+    "folder": "monitorBP frontend",
+    "file": "occupancy-templates.js"
+  },
+  {
+    "source": "assets/permits/permit-barangays.js",
+    "folder": "monitorBP frontend",
+    "file": "permit-barangays.js"
+  },
+  {
+    "source": "assets/permits/permit-routing.js",
+    "folder": "monitorBP frontend",
+    "file": "permit-routing.js"
+  },
+  {
+    "source": "assets/permits/permit-sidebar.css",
+    "folder": "monitorBP frontend",
+    "file": "permit-sidebar.css"
+  },
+  {
+    "source": "assets/permits/progress-layout.css",
+    "folder": "monitorBP frontend",
+    "file": "progress-layout.css"
+  },
+  {
+    "source": "assets/permits/project-identity.js",
+    "folder": "monitorBP frontend",
+    "file": "project-identity.js"
+  },
+  {
+    "source": "assets/permits/project-records.css",
+    "folder": "monitorBP frontend",
+    "file": "project-records.css"
+  },
+  {
+    "source": "assets/permits/project-records.js",
+    "folder": "monitorBP frontend",
+    "file": "project-records.js"
+  },
+  {
+    "source": "features/printing/project-summary.css",
+    "folder": "monitorBP frontend",
+    "file": "project-summary.css"
+  },
+  {
+    "source": "features/printing/project-summary.js",
+    "folder": "monitorBP frontend",
+    "file": "project-summary.js"
+  },
+  {
+    "source": "assets/permits/quick-templates.js",
+    "folder": "monitorBP frontend",
+    "file": "quick-templates.js"
+  },
+  {
+    "source": "assets/permits/registry-filters.css",
+    "folder": "monitorBP frontend",
+    "file": "registry-filters.css"
+  },
+  {
+    "source": "assets/permits/registry-filters.js",
+    "folder": "monitorBP frontend",
+    "file": "registry-filters.js"
+  },
+  {
+    "source": "assets/permits/request-feedback.js",
+    "folder": "monitorBP frontend",
+    "file": "request-feedback.js"
+  },
+  {
+    "source": "assets/common/shared-header.css",
+    "folder": "monitorBP frontend",
+    "file": "shared-header.css"
+  },
+  {
+    "source": "assets/permits/station-dates.css",
+    "folder": "monitorBP frontend",
+    "file": "station-dates.css"
+  },
+  {
+    "source": "assets/permits/station-dates.js",
+    "folder": "monitorBP frontend",
+    "file": "station-dates.js"
+  },
+  {
+    "source": "assets/common/status-badges.css",
+    "folder": "monitorBP frontend",
+    "file": "status-badges.css"
+  },
+  {
+    "source": "assets/permits/workspace-layout.js",
+    "folder": "monitorBP frontend",
+    "file": "workspace-layout.js"
+  },
+  {
+    "source": "assets/permits/workspace-notice.js",
+    "folder": "monitorBP frontend",
+    "file": "workspace-notice.js"
+  },
+  {
+    "source": "assets/common/appearance.css",
+    "folder": "queue frontend",
+    "file": "appearance.css"
+  },
+  {
+    "source": "assets/queue/appearance.js",
+    "folder": "queue frontend",
+    "file": "appearance.js"
+  },
+  {
+    "source": "assets/common/destructive-action.js",
+    "folder": "queue frontend",
+    "file": "destructive-action.js"
+  },
+  {
+    "source": "assets/queue/form-safety.js",
+    "folder": "queue frontend",
+    "file": "form-safety.js"
+  },
+  {
+    "source": "assets/queue/kiosk-style.css",
+    "folder": "queue frontend",
+    "file": "kiosk-style.css"
+  },
+  {
+    "source": "assets/queue/monitor-style.css",
+    "folder": "queue frontend",
+    "file": "monitor-style.css"
+  },
+  {
+    "source": "assets/queue/queue-ui.css",
+    "folder": "queue frontend",
+    "file": "queue-ui.css"
+  },
+  {
+    "source": "assets/queue/queue-workspace.css",
+    "folder": "queue frontend",
+    "file": "queue-workspace.css"
+  },
+  {"source":"assets/queue/queue-window.css","folder":"queue frontend","file":"queue-window.css"},
+  {"source":"assets/queue/queue-workstations.css","folder":"queue frontend","file":"queue-workstations.css"},
+  {
+    "source": "assets/queue/request-feedback.js",
+    "folder": "queue frontend",
+    "file": "request-feedback.js"
+  },
+  {
+    "source": "assets/common/shared-header.css",
+    "folder": "queue frontend",
+    "file": "shared-header.css"
+  },
+  {
+    "source": "assets/common/status-badges.css",
+    "folder": "queue frontend",
+    "file": "status-badges.css"
+  },
+  {
+    "source": "features/printing/project-summary.html",
+    "folder": "monitorBP frontend",
+    "file": "project-summary.html"
+  },
+  {
+    "source": "assets/permits/account-tools.css",
+    "folder": "monitorBP frontend",
+    "file": "account-tools.css"
+  },
+  {"source":"assets/permits/permit-responsive.css","folder":"monitorBP frontend","file":"permit-responsive.css"},
+  {"source":"assets/permits/permit-responsive.js","folder":"monitorBP frontend","file":"permit-responsive.js"}
+]

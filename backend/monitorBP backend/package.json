@@ -1,0 +1,31 @@
+{
+  "name": "monitorbp-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "monitorServer.js",
+  "scripts": {
+    "start": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../migration/Start-Postgres.ps1 -Service permit",
+    "start:cloud": "node monitorServer.js",
+    "backup:create": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../migration/Postgres-Backup.ps1 -Action backup",
+    "backup:list": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../migration/Postgres-Backup.ps1 -Action list",
+    "backup:verify": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../migration/Postgres-Backup.ps1 -Action verify -BackupId",
+    "test:backup": "node --test maintenance/permit-backup.test.cjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.22.3",
+    "mysql2": "^3.24.5"
+  }
+}

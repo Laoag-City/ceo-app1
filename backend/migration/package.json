@@ -1,0 +1,6 @@
+{
+  "name": "office-postgres-migration",
+  "private": true,
+  "description": "Isolated migration tooling; does not change the running backends",
+  "dependencies": { "pg": "^8.16.3" }
+}

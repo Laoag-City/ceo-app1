@@ -1,0 +1,25 @@
+.track-item:has(.station-date-summary){flex-wrap:wrap;align-content:start}
+.station-date-summary{display:block;flex-basis:100%;padding-left:22px;font-size:11px;line-height:1.8;color:var(--text-secondary,#526779)}
+.station-date-value{display:inline-block;white-space:nowrap;font:inherit;font-size:12px}
+.matrix-table-wrap{overflow-x:auto}
+.matrix-table-wrap table:has(#matrixTableBody){min-width:1120px}
+.station-engineer-name{display:inline-block;min-width:150px;overflow-wrap:anywhere;color:var(--text-secondary,#526779)}
+#matrixTableBody select,#matrixTableBody .station-date-input{
+    box-sizing:border-box;
+    width:100%;
+    min-height:42px;
+    padding:9px 12px;
+    border:1px solid var(--border-strong,#becddb);
+    border-radius:8px;
+    background:var(--white,#fff);
+    color:var(--text-primary,#17344a);
+    font:inherit;
+    font-size:13px;
+    text-transform:none;
+    letter-spacing:normal;
+}
+#matrixTableBody select{min-width:132px;padding-right:30px;font-weight:600}
+#matrixTableBody select option{background:var(--white,#fff);color:var(--text-primary,#17344a)}
+#matrixTableBody .station-date-input{min-width:148px}
+#matrixTableBody .station-date-input:focus-visible{outline:2px solid var(--blue,#0969b6);outline-offset:2px}
+html[data-theme="dark"] #matrixTableBody .station-date-input{color-scheme:dark}

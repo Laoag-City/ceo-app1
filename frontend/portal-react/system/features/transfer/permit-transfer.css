@@ -1,0 +1,31 @@
+.permit-transfer-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:12px}
+.permit-transfer-tools button,.permit-transfer-dialog button{font:inherit;font-weight:700;border:1px solid #a9bfd1;border-radius:8px;background:#f3f8fc;color:#12324d;padding:9px 14px;cursor:pointer}
+.permit-transfer-tools button:disabled,.permit-transfer-dialog button:disabled{opacity:.55;cursor:not-allowed}
+.permit-transfer-dialog{position:fixed;inset:0;margin:auto;width:min(960px,94vw);max-height:88dvh;overflow:auto;border:1px solid #d6e2eb;border-radius:16px;padding:0;background:#fff;color:#173248;box-shadow:0 20px 70px #071a4433}
+.permit-transfer-dialog::backdrop{background:#091e3b88}
+.permit-transfer-dialog header{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid #d6e2eb}
+.permit-transfer-dialog h2{margin:0;font-size:22px}.permit-transfer-dialog p{font-size:13px;line-height:1.6}
+.permit-transfer-body{padding:24px}.permit-transfer-body>label{display:block;margin:14px 0;font-weight:600}
+.permit-transfer-body select,.permit-transfer-body input[type=file]{display:block;margin-top:8px;max-width:100%;padding:9px;color:inherit;background:transparent;border:1px solid #b9cddd;border-radius:6px}
+.permit-transfer-preview{max-height:34dvh;overflow:auto;border:1px solid #d6e2eb;border-radius:8px;margin:14px 0}
+.permit-transfer-preview table{width:100%;border-collapse:collapse;font-size:12px}.permit-transfer-preview th,.permit-transfer-preview td{padding:10px;text-align:left;border-bottom:1px solid #d6e2eb;vertical-align:top;overflow-wrap:anywhere;min-width:80px}
+.permit-transfer-preview strong{display:block;color:#9a5800}.permit-transfer-message{padding:12px;background:#eaf4fc;border-radius:8px;overflow-wrap:anywhere}
+.permit-transfer-dialog .permit-transfer-check{font-size:13px;font-weight:400}.permit-transfer-body a{color:#1769aa;text-decoration:underline}
+html[data-theme=dark] .permit-transfer-dialog{background:#182b3c;color:#e2edf6;border-color:#3b5264}
+html[data-theme=dark] .permit-transfer-tools button,html[data-theme=dark] .permit-transfer-dialog button,html[data-theme=dark] .permit-transfer-message{background:#243d51;color:#e2edf6;border-color:#50677b}
+html[data-theme=dark] .permit-transfer-preview strong{color:#f2c77a}html[data-theme=dark] .permit-transfer-body a{color:#91c9f5}
+html[data-theme=dark] .permit-transfer-body option{background:#182b3c}
+.permit-transfer-tools>span{color:#173248;font-weight:600}
+.permit-transfer-dialog .permit-transfer-guide{margin:18px 0;padding:16px 18px;background:#f3f7fb;border:1px solid #d6e2eb;border-radius:10px;font-size:13px;color:#244259}
+.permit-transfer-dialog .permit-transfer-guide h3{margin:0 0 12px;font-size:15px;color:inherit}
+.permit-transfer-limits{display:flex;flex-wrap:wrap;gap:8px}
+.permit-transfer-limits span{padding:5px 9px;border:1px solid #b9cddd;border-radius:6px;background:#fff;color:#12324d;font-weight:700}
+.permit-transfer-guide ul{margin:14px 0;padding-left:20px;line-height:1.65;list-style:disc}
+.permit-transfer-guide li+li{margin-top:6px}
+.permit-transfer-dialog .permit-transfer-guide p{margin:12px 0 0;color:inherit}
+.permit-transfer-dialog .permit-transfer-body>a{font-weight:700}
+.permit-transfer-tools button:focus-visible,.permit-transfer-dialog button:focus-visible{outline:2px solid #1769aa;outline-offset:3px}
+html[data-theme=dark] .permit-transfer-tools>span{color:#e2edf6}
+html[data-theme=dark] .permit-transfer-dialog .permit-transfer-guide{background:#20384b;border-color:#50677b;color:#e2edf6}
+html[data-theme=dark] .permit-transfer-limits span{background:#182b3c;border-color:#50677b;color:#f0f6fb}
+@media(max-width:600px){.permit-transfer-dialog header,.permit-transfer-body{padding:16px}.permit-transfer-dialog .permit-transfer-guide{padding:12px}}

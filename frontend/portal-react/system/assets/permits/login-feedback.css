@@ -1,0 +1,8 @@
+/* Keep alert spacing above the shared sign-in page's element reset. */
+body .login-feedback{display:flex;align-items:flex-start;gap:12px;margin-top:18px;padding:16px;border:1px solid #99ded3;border-radius:9px;background:#effbf8;color:#08766b;font-size:13px;line-height:1.55}
+body .login-feedback.is-error{background:#fff3f3;border-color:#f4bcbc;color:#b52e36}
+body .login-feedback>svg{width:18px;height:18px;flex:0 0 18px;margin-top:1px}
+body .login-feedback svg{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+body .login-feedback>span{flex:1;min-width:0;overflow-wrap:anywhere}
+body .login-feedback>button{display:grid;place-items:center;flex:0 0 26px;width:26px;height:26px;min-height:0;margin:-3px -4px -3px 0;padding:4px;border:0;border-radius:5px;background:transparent;color:inherit;cursor:pointer;box-shadow:none}
+body .login-feedback>button svg{width:16px;height:16px}body .login-feedback>button:hover{background:#00000008}body .login-feedback>button:focus-visible{outline:2px solid currentColor;outline-offset:2px}

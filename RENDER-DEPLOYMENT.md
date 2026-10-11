@@ -1,0 +1,194 @@
+# Fresh deployment test: Laoag Engineering's Office
+
+Use a private `majingamo/laoag-engineerings-office` repository, two free Render
+Node web services, two separate Neon databases, and Cloudinary for videos.
+This is a team test; the IT department will handle the official deployment.
+Local records remain separate from these new cloud copies.
+
+## Prepared on 11 October 2026
+
+The latest source and both published React builds are ready. All 230 frontend
+checks passed. The deployment-related backend checks also passed.
+
+Fresh verified backup directory:
+
+`C:\Users\Majin\PermitManagementPostgresBackups\pg-office-20261011065114-8c421567a83c`
+
+| Database copy | Archive | Tables | Total rows across all tables |
+| --- | --- | --- | --- |
+| Permit | `permit_system_migration.dump` | 21 | 324 |
+| Queue | `queue_system_migration.dump` | 6 | 1,000 |
+
+Both archives were restored into isolated temporary databases and compared for
+schema, data checksums, relationships and identity sequences. All checks passed;
+the temporary databases were then removed. One local video is in `media/`.
+The archives already include session notices, queue reports and playlist schema.
+
+The clean code snapshot is staged privately in `.deployment/`. It includes current
+uncommitted fixes, lockfiles, source and published frontend, but excludes the
+original Git history, dependencies, credentials, database/client archives, local
+migration reports and uploaded media. The original checkout and remote stay intact.
+
+## 1. New Neon project and two databases
+
+1. Create a free project named `laoag-engineerings-office`.
+2. Select PostgreSQL **18** to match these local backups. Choose Singapore if
+   available, or the closest available region.
+3. On the default branch, create `laoag_permits_test` and `laoag_queue_test` with
+   the same project owner role. Both destinations must be empty.
+4. Open **Connect** for each database and turn **Connection pooling OFF**. Keep
+   both complete URLs private. Their host must not contain `-pooler`, and their
+   database names must differ.
+
+Use direct connections for both restoring and the application. The application's
+startup timezone/timeout options caused `08P01` with the previous pooled endpoint.
+
+## 2. Restore the fresh archives using pgAdmin
+
+Register the new Neon server in pgAdmin with the direct hostname, port `5432`,
+owner role/password and SSL enabled. Right-click each new database > **Restore**:
+
+| Neon database | Matching archive from the backup folder |
+| --- | --- |
+| `laoag_permits_test` | `permit_system_migration.dump` |
+| `laoag_queue_test` | `queue_system_migration.dump` |
+
+Enable **Do not save Owner** and **Privileges** (`--no-owner --no-privileges`).
+Keep pre-data, data and post-data enabled. Leave clean/drop disabled. Enable
+single-transaction and exit-on-error if available, then confirm restore succeeds.
+Do not apply older schema scripts over these complete restored databases.
+
+Run this in each destination's Query Tool:
+
+```sql
+SELECT current_database();
+SELECT COUNT(*) AS tables
+FROM information_schema.tables
+WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
+```
+
+Expect 21 Permit tables and 6 Queue tables. Inspect restore errors before retrying;
+do not delete existing records to force the counts to match.
+
+## 3. New private GitHub repository
+
+Use `majingamo/laoag-engineerings-office`, private and initially empty. The clean
+snapshot is pushed as `main`. Do not upload dumps, videos, `.env`, passwords or
+historical client archives. Keep the complete backend structure and published
+`frontend/monitorBP frontend` and `frontend/queue frontend` directories.
+
+## 4. Create two Render web services
+
+Use **New > Web Service** with the new repository and branch `main`. Grant Render
+access to this specific private repository if it is absent from the list.
+
+For both: runtime **Node**, root directory **empty**, region **Singapore**, plan
+**Free**, health check `/api/health`, auto-deploy **off** during setup.
+
+| Service | Suggested name |
+| --- | --- |
+| Permit | `laoag-engineering-permits` |
+| Queue | `laoag-engineering-queue` |
+
+Permit build:
+
+```sh
+npm --prefix backend/database ci && npm --prefix "backend/monitorBP backend" ci
+```
+
+Permit start:
+
+```sh
+node "backend/monitorBP backend/monitorServer.js"
+```
+
+Queue build (Permit dependencies provide shared authentication):
+
+```sh
+npm --prefix backend/database ci && npm --prefix "backend/monitorBP backend" ci && npm --prefix "backend/queue backend" ci
+```
+
+Queue start:
+
+```sh
+node "backend/queue backend/queueServer.js"
+```
+
+Do not use the Windows `npm start` launcher in Render. Render supplies `PORT` and
+`RENDER_EXTERNAL_URL`. Do not set local `OFFICE_PG_CONNECTIONS`, `OFFICE_BIND_HOST`
+or Windows media paths.
+
+Set these on **both** services:
+
+| Variable | Value |
+| --- | --- |
+| `NODE_VERSION` | `22` (latest patch in the verified local runtime's major version) |
+| `NODE_ENV` | `production` |
+| `DB_ENGINE` | `postgres` |
+| `PERMIT_DATABASE_URL` | Private direct URL for `laoag_permits_test` |
+| `PERMIT_COOKIE_SECURE` | `true` |
+| `TZ` | `Asia/Manila` |
+
+Set these additionally on **Queue**:
+
+| Variable | Value |
+| --- | --- |
+| `QUEUE_DATABASE_URL` | Private direct URL for `laoag_queue_test` |
+| `QUEUE_VIDEO_STORAGE` | `cloudinary` |
+| `CLOUDINARY_CLOUD_NAME` | Existing Cloudinary cloud name |
+| `CLOUDINARY_API_KEY` | Existing Cloudinary API key |
+| `CLOUDINARY_API_SECRET` | Existing Cloudinary API secret |
+
+Keep secret values only in Render's private environment settings. Reuse the
+existing Cloudinary account if available; deleting Render and Neon does not delete
+Cloudinary. Do not choose paid plans for this test.
+
+Deploy Permit first and check `/api/health` and `/login`. Then deploy Queue and
+check `/api/health`, `/log-in.html` and `/monitor.html`. Queue signs in through
+copied Permit staff accounts; it does not have a separate user database.
+
+Optional: `render.yaml` defines both free services and prompts for secrets. Use
+**either** manual service creation **or** the Blueprint, not both.
+
+## 5. Link both actual URLs
+
+After Render assigns URLs, set these on **both** services and redeploy:
+
+| Variable | Value |
+| --- | --- |
+| `PERMIT_PUBLIC_ORIGIN` | Actual Permit HTTPS origin, no trailing slash |
+| `QUEUE_PUBLIC_ORIGIN` | Actual Queue HTTPS origin, no trailing slash |
+
+Do not guess the URLs or reuse deleted services' addresses. Click **Back to
+portal** from both logins and verify both portal cards open the actual cloud sites.
+No link should open `localhost`.
+
+## 6. Restore video playback and test persistence
+
+The dump holds metadata; a local `uploads/...` file cannot play on Render. As an
+operator, admin or superadmin, open Queue's video page, upload the backed-up clip
+from `media/`, preview it and choose its order. Disable an unavailable old local
+entry if needed. Existing Cloudinary URLs remain playable without re-uploading.
+
+Redeploy Queue and verify the video and tickets remain. Records persist in Neon,
+and new videos persist in Cloudinary; Render's free filesystem is temporary.
+
+## 7. Hosted acceptance tests
+
+Use different accounts in separate browser profiles/devices. Check both logins,
+roles, logout and session replacement; copied permits/accounts/tickets/history;
+UAT permit edits and admin approval; remarks and printed display names; all three
+queue windows and monitor isolation; reports with Manila dates; CSV/Excel exports;
+and operator video upload/preview/reordering/toggling after a restart.
+
+Separate Render domains have separate cookies. Signing in again on the same
+account intentionally replaces its prior session across both systems. Use distinct
+staff accounts for simultaneous work. Free services can sleep, take time to wake,
+and share the workspace's monthly free instance-hour allowance.
+
+References: [Render web services](https://render.com/docs/web-services),
+[Blueprint specification](https://render.com/docs/blueprint-spec),
+[Node version configuration](https://render.com/docs/node-version),
+[Free limits](https://render.com/docs/free),
+[Neon PostgreSQL migration](https://neon.com/docs/import/migrate-from-postgres),
+[Cloudinary uploads](https://cloudinary.com/documentation/node_image_and_video_upload).

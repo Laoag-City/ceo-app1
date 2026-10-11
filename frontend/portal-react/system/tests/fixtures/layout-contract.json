@@ -1,0 +1,15 @@
+{
+  "permits-login": "36dc5cb25923ab9ee4f48e2ce4a5e7a433b1927b93369ddc287f8a09826a68b6",
+  "permits-occupancy_login": "f758f1570f2460fd4a0cdcfe6036e12c592027da7c6c9749d8fc0bbe49767995",
+  "permits-admin-login": "2caa54e47482710946e359e88945f720c8a65392d10b6e5bb96d7381b5d16636",
+  "permits-index": "09fa1346b9a907683a41ff474184eb1fb54d96f698268f66c5a83112fbddadd8",
+  "permits-occupancy": "81c352158c130c044bc3ac92bdea0c78a312b7f09f9200db7f5938e8090833fc",
+  "permits-edit": "b0d58850bd6431078cf67c2e845cf06568a4982e95d825c9a0ec7e5c7bced482",
+  "permits-occupancy_edit": "43a293b4e50960d6c75fbcf783fb1c0926797c9390fc1323e650eeb8f446a1ff",
+  "permits-superadmin": "436178533313ec4f9aba3a5e5336bed8bc9c26c0fd776e18e7fd6c6f9a53f5a4",
+  "queue-log-in": "0dc63271573d0c115df194f8b9f035b62b2ba2165225b01b11248e71b791af4c",
+  "queue-kiosk": "adcd8db2a63e3fc401d3848bacfac41d58e5932ea9521d6861c0a127979d34d6",
+  "queue-monitor": "94f71f216b6021669f3e6dfe9c7d3bf45f0014a8aba26aa41bab4df1d05c32cb",
+  "queue-audit-logs": "1ba963f68e093a25220cb28805c57f70276d6bbf86a083826c49687d171bce2d",
+  "queue-secret-management": "812ef51f8a83ca466eab8149803162d25e231a3bf4838ceec083604d1c32b4dd"
+}

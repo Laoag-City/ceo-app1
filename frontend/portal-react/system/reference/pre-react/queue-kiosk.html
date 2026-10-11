@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/appearance.js"></script>
+    <script src="/destructive-action.js"></script>
+    <script src="/request-feedback.js"></script>
+    <script src="/form-safety.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office of the City Engineer | Queue Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="kiosk-style.css">
+    <style>
+        .radio-options-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        
+        .custom-radio-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background-color: #ffffff;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--ink);
+            font-weight: 500;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .custom-radio-label:hover {
+            background-color: #f8fafc;
+            border-color: var(--civic-blue);
+        }
+        .custom-radio-label input[type="radio"] {
+            margin: 0;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #1c5d99; /* Matches var(--civic-blue) */
+        }
+    </style>
+    <script src="http://localhost:5000/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="queue-ui.css">
+<link rel="stylesheet" href="shared-header.css">
+<link rel="stylesheet" href="status-badges.css">
+<link rel="stylesheet" href="/appearance.css">
+<link rel="stylesheet" href="/queue-workspace.css">
+</head>
+<body class="queue-terminal-page">
+
+<div class="app-header-bar site-header queue-site-header">
+    <div class="brand">
+        <img class="brand-mark" src="assets/laoag-city-official-seal.png" alt="Laoag City official seal">
+        <div>
+            <h1>Office of the City Engineer</h1>
+            <p class="brand-subtitle">Building and Occupancy Permit Queue</p>
+        </div>
+    </div>
+    <div class="station-chip" id="stationChip">Station —</div>
+</div>
+
+<section class="queue-page-intro">
+    <div>
+        <div class="queue-page-kicker">Public service queue</div>
+        <h2>Queue registration and service desk</h2>
+        <p>Register visitors, issue tickets, and coordinate the active waiting line.</p>
+    </div>
+    <div class="queue-live-note"><span></span> Queue service connected</div>
+</section>
+
+<div class="page-layout-wrapper">
+
+    <div class="left-panel">
+        <div class="container"> 
+            
+            <div id="registrationSection">
+                <div class="section-kicker">Visitor registration</div>
+                <h2>Generate a queue ticket</h2>
+                <p class="section-description">Enter the visitor’s details and requested service.</p>
+                <form id="queueForm">
+                    
+                    <div class="form-group">
+                        <label for="applicantName">Applicant name</label>
+                        <input type="text" id="applicantName" required placeholder="Full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="agentName">Agent name <span class="field-optional">(optional)</span></label>
+                        <input type="text" id="agentName" placeholder="Full name of representative">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="applicantPhone">Applicant phone</label>
+                            <input type="tel" id="applicantPhone" required placeholder="Phone number">
+                        </div>
+                        <div class="form-group">
+                            <label for="agentPhone">Agent phone <span class="field-optional">(optional)</span></label>
+                            <input type="tel" id="agentPhone" placeholder="Phone number">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Address</label>
+                        <div class="searchable-dropdown" id="barangayDropdownComponent">
+                            <input type="text" id="barangaySearchInput" placeholder="Click to search address barangay..." readonly>
+                            
+                            <input type="hidden" id="barangayHiddenValue" required>
+                            
+                            <div class="dropdown-menu-container" id="dropdownMenuContainer">
+                                <div class="search-box-wrapper">
+                                    <input type="text" id="dropdownInnerSearch" placeholder="Type barangay name or number...">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="optgroup-label">Urban Barangays (Poblacion)</div>
+                                    <div class="custom-option" data-value="Brgy. 1, San Lorenzo">Brgy. 1, San Lorenzo</div>
+                                    <div class="custom-option" data-value="Brgy. 2, Santa Joaquina">Brgy. 2, Santa Joaquina</div>
+                                    <div class="custom-option" data-value="Brgy. 3, Nuestra Señora del Rosario">Brgy. 3, Nuestra Señora del Rosario</div>
+                                    <div class="custom-option" data-value="Brgy. 4, San Guillermo">Brgy. 4, San Guillermo</div>
+                                    <div class="custom-option" data-value="Brgy. 5, San Pedro">Brgy. 5, San Pedro</div>
+                                    <div class="custom-option" data-value="Brgy. 6, San Agustin">Brgy. 6, San Agustin</div>
+                                    <div class="custom-option" data-value="Brgy. 7-A, Nuestra Señora de Natividad">Brgy. 7-A, Nuestra Señora de Natividad</div>
+                                    <div class="custom-option" data-value="Brgy. 7-B, Nuestra Señora de Natividad">Brgy. 7-B, Nuestra Señora de Natividad</div>
+                                    <div class="custom-option" data-value="Brgy. 8, San Vicente">Brgy. 8, San Vicente</div>
+                                    <div class="custom-option" data-value="Brgy. 9, Santa Angela">Brgy. 9, Santa Angela</div>
+                                    <div class="custom-option" data-value="Brgy. 10, San Jose">Brgy. 10, San Jose</div>
+                                    <div class="custom-option" data-value="Brgy. 11, Santa Balbina">Brgy. 11, Santa Balbina</div>
+                                    <div class="custom-option" data-value="Brgy. 12, San Isidro">Brgy. 12, San Isidro</div>
+                                    <div class="custom-option" data-value="Brgy. 13, Nuestra Señora de Visitacion">Brgy. 13, Nuestra Señora de Visitacion</div>
+                                    <div class="custom-option" data-value="Brgy. 14, Santo Tomas">Brgy. 14, Santo Tomas</div>
+                                    <div class="custom-option" data-value="Brgy. 15, San Guillermo">Brgy. 15, San Guillermo</div>
+                                    <div class="custom-option" data-value="Brgy. 16, San Jacinto">Brgy. 16, San Jacinto</div>
+                                    <div class="custom-option" data-value="Brgy. 17, San Francisco">Brgy. 17, San Francisco</div>
+                                    <div class="custom-option" data-value="Brgy. 18, San Quirino">Brgy. 18, San Quirino</div>
+                                    <div class="custom-option" data-value="Brgy. 19, Santa Marcela">Brgy. 19, Santa Marcela</div>
+                                    <div class="custom-option" data-value="Brgy. 20, San Miguel">Brgy. 20, San Miguel</div>
+                                    <div class="custom-option" data-value="Brgy. 21, San Pedro">Brgy. 21, San Pedro</div>
+                                    <div class="custom-option" data-value="Brgy. 22, San Andres">Brgy. 22, San Andres</div>
+                                    <div class="custom-option" data-value="Brgy. 23, San Matias">Brgy. 23, San Matias</div>
+                                    <div class="custom-option" data-value="Brgy. 24, Nuestra Señora de Consolacion">Brgy. 24, Nuestra Señora de Consolacion</div>
+                                    <div class="custom-option" data-value="Brgy. 25, Santa Cayetana">Brgy. 25, Santa Cayetana</div>
+                                    <div class="custom-option" data-value="Brgy. 26, San Marcelino">Brgy. 26, San Marcelino</div>
+                                    <div class="custom-option" data-value="Brgy. 27, Nuestra Señora de Soledad">Brgy. 27, Nuestra Señora de Soledad</div>
+                                    <div class="custom-option" data-value="Brgy. 28, San Bernardo">Brgy. 28, San Bernardo</div>
+                                    <div class="custom-option" data-value="Brgy. 29, Santo Tomas">Brgy. 29, Santo Tomas</div>
+
+                                    <div class="optgroup-label">Rural Barangays</div>
+                                    <div class="custom-option" data-value="Brgy. 30-A, Suyo">Brgy. 30-A, Suyo</div>
+                                    <div class="custom-option" data-value="Brgy. 30-B, Santa Maria">Brgy. 30-B, Santa Maria</div>
+                                    <div class="custom-option" data-value="Brgy. 31, Talingaan">Brgy. 31, Talingaan</div>
+                                    <div class="custom-option" data-value="Brgy. 32-A, La Paz East">Brgy. 32-A, La Paz East</div>
+                                    <div class="custom-option" data-value="Brgy. 32-B, La Paz West">Brgy. 32-B, La Paz West</div>
+                                    <div class="custom-option" data-value="Brgy. 32-C, La Paz East">Brgy. 32-C, La Paz East</div>
+                                    <div class="custom-option" data-value="Brgy. 33-A, La Paz Proper">Brgy. 33-A, La Paz Proper</div>
+                                    <div class="custom-option" data-value="Brgy. 33-B, La Paz Proper">Brgy. 33-B, La Paz Proper</div>
+                                    <div class="custom-option" data-value="Brgy. 34-A, Gabu Norte West">Brgy. 34-A, Gabu Norte West</div>
+                                    <div class="custom-option" data-value="Brgy. 34-B, Gabu Norte East">Brgy. 34-B, Gabu Norte East</div>
+                                    <div class="custom-option" data-value="Brgy. 35, Gabu Sur">Brgy. 35, Gabu Sur</div>
+                                    <div class="custom-option" data-value="Brgy. 36, Araniw">Brgy. 36, Araniw</div>
+                                    <div class="custom-option" data-value="Brgy. 37, Calayab">Brgy. 37, Calayab</div>
+                                    <div class="custom-option" data-value="Brgy. 38-A, Mangato East">Brgy. 38-A, Mangato East</div>
+                                    <div class="custom-option" data-value="Brgy. 38-B, Mangato West">Brgy. 38-B, Mangato West</div>
+                                    <div class="custom-option" data-value="Brgy. 39, Santa Rosa">Brgy. 39, Santa Rosa</div>
+                                    <div class="custom-option" data-value="Brgy. 40, Balatong">Brgy. 40, Balatong</div>
+                                    <div class="custom-option" data-value="Brgy. 41, Balacad">Brgy. 41, Balacad</div>
+                                    <div class="custom-option" data-value="Brgy. 42, Apaya">Brgy. 42, Apaya</div>
+                                    <div class="custom-option" data-value="Brgy. 43, Cavit">Brgy. 43, Cavit</div>
+                                    <div class="custom-option" data-value="Brgy. 44, Zamboanga">Brgy. 44, Zamboanga</div>
+                                    <div class="custom-option" data-value="Brgy. 45, Tangid">Brgy. 45, Tangid</div>
+                                    <div class="custom-option" data-value="Brgy. 46, Nalbo">Brgy. 46, Nalbo</div>
+                                    <div class="custom-option" data-value="Brgy. 47, Bengcag">Brgy. 47, Bengcag</div>
+                                    <div class="custom-option" data-value="Brgy. 48-A, Cabungaan North">Brgy. 48-A, Cabungaan North</div>
+                                    <div class="custom-option" data-value="Brgy. 48-B, Cabungaan South">Brgy. 48-B, Cabungaan South</div>
+                                    <div class="custom-option" data-value="Brgy. 49-A, Darayday">Brgy. 49-A, Darayday</div>
+                                    <div class="custom-option" data-value="Brgy. 49-B, Raraburan">Brgy. 49-B, Raraburan</div>
+                                    <div class="custom-option" data-value="Brgy. 50, Buttong">Brgy. 50, Buttong</div>
+                                    <div class="custom-option" data-value="Brgy. 51-A, Nangalisan East">Brgy. 51-A, Nangalisan East</div>
+                                    <div class="custom-option" data-value="Brgy. 51-B, Nangalisan West">Brgy. 51-B, Nangalisan West</div>
+                                    <div class="custom-option" data-value="Brgy. 52-A, San Mateo">Brgy. 52-A, San Mateo</div>
+                                    <div class="custom-option" data-value="Brgy. 52-B, Lataag">Brgy. 52-B, Lataag</div>
+                                    <div class="custom-option" data-value="Brgy. 53, Rioeng">Brgy. 53, Rioeng</div>
+                                    <div class="custom-option" data-value="Brgy. 54-A, Lagui-Sail">Brgy. 54-A, Lagui-Sail</div>
+                                    <div class="custom-option" data-value="Brgy. 54-B, Camangaan">Brgy. 54-B, Camangaan</div>
+                                    <div class="custom-option" data-value="Brgy. 55-A, Barit-Pandan">Brgy. 55-A, Barit-Pandan</div>
+                                    <div class="custom-option" data-value="Brgy. 55-B, Salet-Bulangon">Brgy. 55-B, Salet-Bulangon</div>
+                                    <div class="custom-option" data-value="Brgy. 55-C, Vira">Brgy. 55-C, Vira</div>
+                                    <div class="custom-option" data-value="Brgy. 56-A, Bacsil North">Brgy. 56-A, Bacsil North</div>
+                                    <div class="custom-option" data-value="Brgy. 56-B, Bacsil South">Brgy. 56-B, Bacsil South</div>
+                                    <div class="custom-option" data-value="Brgy. 57, Pila">Brgy. 57, Pila</div>
+                                    <div class="custom-option" data-value="Brgy. 58, Casili">Brgy. 58, Casili</div>
+                                    <div class="custom-option" data-value="Brgy. 59-A, Dibua South">Brgy. 59-A, Dibua South</div>
+                                    <div class="custom-option" data-value="Brgy. 59-B, Dibua North">Brgy. 59-B, Dibua North</div>
+                                    <div class="custom-option" data-value="Brgy. 60-A, Caaoacan">Brgy. 60-A, Caaoacan</div>
+                                    <div class="custom-option" data-value="Brgy. 60-B, Madiladig">Brgy. 60-B, Madiladig</div>
+                                    <div class="custom-option" data-value="Brgy. 61, Cataban">Brgy. 61, Cataban</div>
+                                    <div class="custom-option" data-value="Brgy. 62-A, Navotas North">Brgy. 62-A, Navotas North</div>
+                                    <div class="custom-option" data-value="Brgy. 62-B, Navotas South">Brgy. 62-B, Navotas South</div>
+                                    <div id="noResultsMessage" class="no-results" style="display: none;">No matching barangay found</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Location of the Bldg.</label>
+                        <div class="searchable-dropdown" id="bldgLocationDropdownComponent">
+                            <input type="text" id="bldgLocationSearchInput" placeholder="Click to search bldg location barangay..." readonly>
+                            
+                            <input type="hidden" id="bldgLocationHiddenValue" required>
+                            
+                            <div class="dropdown-menu-container" id="bldgDropdownMenuContainer">
+                                <div class="search-box-wrapper">
+                                    <input type="text" id="bldgDropdownInnerSearch" placeholder="Type barangay name or number...">
+                                </div>
+                                <div class="dropdown-options-list">
+                                    <div class="optgroup-label">Urban Barangays (Poblacion)</div>
+                                    <div class="custom-option" data-value="Brgy. 1, San Lorenzo">Brgy. 1, San Lorenzo</div>
+                                    <div class="custom-option" data-value="Brgy. 2, Santa Joaquina">Brgy. 2, Santa Joaquina</div>
+                                    <div class="custom-option" data-value="Brgy. 3, Nuestra Señora del Rosario">Brgy. 3, Nuestra Señora del Rosario</div>
+                                    <div class="custom-option" data-value="Brgy. 4, San Guillermo">Brgy. 4, San Guillermo</div>
+                                    <div class="custom-option" data-value="Brgy. 5, San Pedro">Brgy. 5, San Pedro</div>
+                                    <div class="custom-option" data-value="Brgy. 6, San Agustin">Brgy. 6, San Agustin</div>
+                                    <div class="custom-option" data-value="Brgy. 7-A, Nuestra Señora de Natividad">Brgy. 7-A, Nuestra Señora de Natividad</div>
+                                    <div class="custom-option" data-value="Brgy. 7-B, Nuestra Señora de Natividad">Brgy. 7-B, Nuestra Señora de Natividad</div>
+                                    <div class="custom-option" data-value="Brgy. 8, San Vicente">Brgy. 8, San Vicente</div>
+                                    <div class="custom-option" data-value="Brgy. 9, Santa Angela">Brgy. 9, Santa Angela</div>
+                                    <div class="custom-option" data-value="Brgy. 10, San Jose">Brgy. 10, San Jose</div>
+                                    <div class="custom-option" data-value="Brgy. 11, Santa Balbina">Brgy. 11, Santa Balbina</div>
+                                    <div class="custom-option" data-value="Brgy. 12, San Isidro">Brgy. 12, San Isidro</div>
+                                    <div class="custom-option" data-value="Brgy. 13, Nuestra Señora de Visitacion">Brgy. 13, Nuestra Señora de Visitacion</div>
+                                    <div class="custom-option" data-value="Brgy. 14, Santo Tomas">Brgy. 14, Santo Tomas</div>
+                                    <div class="custom-option" data-value="Brgy. 15, San Guillermo">Brgy. 15, San Guillermo</div>
+                                    <div class="custom-option" data-value="Brgy. 16, San Jacinto">Brgy. 16, San Jacinto</div>
+                                    <div class="custom-option" data-value="Brgy. 17, San Francisco">Brgy. 17, San Francisco</div>
+                                    <div class="custom-option" data-value="Brgy. 18, San Quirino">Brgy. 18, San Quirino</div>
+                                    <div class="custom-option" data-value="Brgy. 19, Santa Marcela">Brgy. 19, Santa Marcela</div>
+                                    <div class="custom-option" data-value="Brgy. 20, San Miguel">Brgy. 20, San Miguel</div>
+                                    <div class="custom-option" data-value="Brgy. 21, San Pedro">Brgy. 21, San Pedro</div>
+                                    <div class="custom-option" data-value="Brgy. 22, San Andres">Brgy. 22, San Andres</div>
+                                    <div class="custom-option" data-value="Brgy. 23, San Matias">Brgy. 23, San Matias</div>
+                                    <div class="custom-option" data-value="Brgy. 24, Nuestra Señora de Consolacion">Brgy. 24, Nuestra Señora de Consolacion</div>
+                                    <div class="custom-option" data-value="Brgy. 25, Santa Cayetana">Brgy. 25, Santa Cayetana</div>
+                                    <div class="custom-option" data-value="Brgy. 26, San Marcelino">Brgy. 26, San Marcelino</div>
+                                    <div class="custom-option" data-value="Brgy. 27, Nuestra Señora de Soledad">Brgy. 27, Nuestra Señora de Soledad</div>
+                                    <div class="custom-option" data-value="Brgy. 28, San Bernardo">Brgy. 28, San Bernardo</div>
+                                    <div class="custom-option" data-value="Brgy. 29, Santo Tomas">Brgy. 29, Santo Tomas</div>
+
+                                    <div class="optgroup-label">Rural Barangays</div>
+                                    <div class="custom-option" data-value="Brgy. 30-A, Suyo">Brgy. 30-A, Suyo</div>
+                                    <div class="custom-option" data-value="Brgy. 30-B, Santa Maria">Brgy. 30-B, Santa Maria</div>
+                                    <div class="custom-option" data-value="Brgy. 31, Talingaan">Brgy. 31, Talingaan</div>
+                                    <div class="custom-option" data-value="Brgy. 32-A, La Paz East">Brgy. 32-A, La Paz East</div>
+                                    <div class="custom-option" data-value="Brgy. 32-B, La Paz West">Brgy. 32-B, La Paz West</div>
+                                    <div class="custom-option" data-value="Brgy. 32-C, La Paz East">Brgy. 32-C, La Paz East</div>
+                                    <div class="custom-option" data-value="Brgy. 33-A, La Paz Proper">Brgy. 33-A, La Paz Proper</div>
+                                    <div class="custom-option" data-value="Brgy. 33-B, La Paz Proper">Brgy. 33-B, La Paz Proper</div>
+                                    <div class="custom-option" data-value="Brgy. 34-A, Gabu Norte West">Brgy. 34-A, Gabu Norte West</div>
+                                    <div class="custom-option" data-value="Brgy. 34-B, Gabu Norte East">Brgy. 34-B, Gabu Norte East</div>
+                                    <div class="custom-option" data-value="Brgy. 35, Gabu Sur">Brgy. 35, Gabu Sur</div>
+                                    <div class="custom-option" data-value="Brgy. 36, Araniw">Brgy. 36, Araniw</div>
+                                    <div class="custom-option" data-value="Brgy. 37, Calayab">Brgy. 37, Calayab</div>
+                                    <div class="custom-option" data-value="Brgy. 38-A, Mangato East">Brgy. 38-A, Mangato East</div>
+                                    <div class="custom-option" data-value="Brgy. 38-B, Mangato West">Brgy. 38-B, Mangato West</div>
+                                    <div class="custom-option" data-value="Brgy. 39, Santa Rosa">Brgy. 39, Santa Rosa</div>
+                                    <div class="custom-option" data-value="Brgy. 40, Balatong">Brgy. 40, Balatong</div>
+                                    <div class="custom-option" data-value="Brgy. 41, Balacad">Brgy. 41, Balacad</div>
+                                    <div class="custom-option" data-value="Brgy. 42, Apaya">Brgy. 42, Apaya</div>
+                                    <div class="custom-option" data-value="Brgy. 43, Cavit">Brgy. 43, Cavit</div>
+                                    <div class="custom-option" data-value="Brgy. 44, Zamboanga">Brgy. 44, Zamboanga</div>
+                                    <div class="custom-option" data-value="Brgy. 45, Tangid">Brgy. 45, Tangid</div>
+                                    <div class="custom-option" data-value="Brgy. 46, Nalbo">Brgy. 46, Nalbo</div>
+                                    <div class="custom-option" data-value="Brgy. 47, Bengcag">Brgy. 47, Bengcag</div>
+                                    <div class="custom-option" data-value="Brgy. 48-A, Cabungaan North">Brgy. 48-A, Cabungaan North</div>
+                                    <div class="custom-option" data-value="Brgy. 48-B, Cabungaan South">Brgy. 48-B, Cabungaan South</div>
+                                    <div class="custom-option" data-value="Brgy. 49-A, Darayday">Brgy. 49-A, Darayday</div>
+                                    <div class="custom-option" data-value="Brgy. 49-B, Raraburan">Brgy. 49-B, Raraburan</div>
+                                    <div class="custom-option" data-value="Brgy. 50, Buttong">Brgy. 50, Buttong</div>
+                                    <div class="custom-option" data-value="Brgy. 51-A, Nangalisan East">Brgy. 51-A, Nangalisan East</div>
+                                    <div class="custom-option" data-value="Brgy. 51-B, Nangalisan West">Brgy. 51-B, Nangalisan West</div>
+                                    <div class="custom-option" data-value="Brgy. 52-A, San Mateo">Brgy. 52-A, San Mateo</div>
+                                    <div class="custom-option" data-value="Brgy. 52-B, Lataag">Brgy. 52-B, Lataag</div>
+                                    <div class="custom-option" data-value="Brgy. 53, Rioeng">Brgy. 53, Rioeng</div>
+                                    <div class="custom-option" data-value="Brgy. 54-A, Lagui-Sail">Brgy. 54-A, Lagui-Sail</div>
+                                    <div class="custom-option" data-value="Brgy. 54-B, Camangaan">Brgy. 54-B, Camangaan</div>
+                                    <div class="custom-option" data-value="Brgy. 55-A, Barit-Pandan">Brgy. 55-A, Barit-Pandan</div>
+                                    <div class="custom-option" data-value="Brgy. 55-B, Salet-Bulangon">Brgy. 55-B, Salet-Bulangon</div>
+                                    <div class="custom-option" data-value="Brgy. 55-C, Vira">Brgy. 55-C, Vira</div>
+                                    <div class="custom-option" data-value="Brgy. 56-A, Bacsil North">Brgy. 56-A, Bacsil North</div>
+                                    <div class="custom-option" data-value="Brgy. 56-B, Bacsil South">Brgy. 56-B, Bacsil South</div>
+                                    <div class="custom-option" data-value="Brgy. 57, Pila">Brgy. 57, Pila</div>
+                                    <div class="custom-option" data-value="Brgy. 58, Casili">Brgy. 58, Casili</div>
+                                    <div class="custom-option" data-value="Brgy. 59-A, Dibua South">Brgy. 59-A, Dibua South</div>
+                                    <div class="custom-option" data-value="Brgy. 59-B, Dibua North">Brgy. 59-B, Dibua North</div>
+                                    <div class="custom-option" data-value="Brgy. 60-A, Caaoacan">Brgy. 60-A, Caaoacan</div>
+                                    <div class="custom-option" data-value="Brgy. 60-B, Madiladig">Brgy. 60-B, Madiladig</div>
+                                    <div class="custom-option" data-value="Brgy. 61, Cataban">Brgy. 61, Cataban</div>
+                                    <div class="custom-option" data-value="Brgy. 62-A, Navotas North">Brgy. 62-A, Navotas North</div>
+                                    <div class="custom-option" data-value="Brgy. 62-B, Navotas South">Brgy. 62-B, Navotas South</div>
+                                    <div id="bldgNoResultsMessage" class="no-results" style="display: none;">No matching barangay found</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Reason for Visit</label>
+                        <div class="radio-options-group">
+                            <label class="custom-radio-label">
+                                <input type="radio" name="visitReason" value="Releasing Bldg. Permit" required>
+                                <span>Releasing Bldg. Permit</span>
+                            </label>
+                            <label class="custom-radio-label">
+                                <input type="radio" name="visitReason" value="Releasing Bldg. Occupancy">
+                                <span>Releasing Bldg. Occupancy</span>
+                            </label>
+                            <label class="custom-radio-label">
+                                <input type="radio" name="visitReason" value="Receiving Bldg. Permit">
+                                <span>Receiving Bldg. Permit</span>
+                            </label>
+                            <label class="custom-radio-label">
+                                <input type="radio" name="visitReason" value="Receiving Bldg. Occupancy">
+                                <span>Receiving Bldg. Occupancy</span>
+                            </label>
+                            <label class="custom-radio-label">
+                                <input type="radio" name="visitReason" value="Inquire">
+                                <span>Inquire / Follow-up</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit"><i class="fa-solid fa-ticket"></i> Generate Ticket</button>
+                </form>
+
+                <div id="ticketPopup" class="ticket-popup" style="display: none;">
+                    <h3><i class="fa-solid fa-ticket"></i> Ticket Generated!</h3>
+                    <p style="font-size: 30px; font-weight: 800; color: #9c6c22; margin: 10px 0; font-variant-numeric: tabular-nums; letter-spacing: 0.5px;" id="ticketId"></p>
+                    <p style="color: #5b6577; margin: 0; font-size: 14px;">Please wait for your turn on the monitor.</p>
+                </div>
+                
+                <button id="kioskLogoutBtn" style="margin-top: 15px; background: #64748b;" class="outline-action"><i data-icon="inline-start" class="fa-solid fa-arrow-right-from-bracket"></i> Log Out from Kiosk</button>
+            </div>
+
+            <div class="admin-section" id="clerkSection">
+                <span class="staff-eyebrow"><i class="fa-solid fa-lock"></i> Staff Console</span>
+                <h3 id="clerkHeader">Clerk Controls</h3>
+                <div class="clerk-actions-grid">
+                    <button class="btn-call" id="callNextBtn"><i class="fa-solid fa-play"></i> Call Next Ticket</button>
+                    <button class="btn-call-hold" id="callNextHoldBtn"><i class="fa-solid fa-clock-rotate-left"></i> Call Next Hold</button>
+                    <button class="btn-recall" id="recallBtn"><i class="fa-solid fa-bullhorn"></i> Recall Ticket</button>
+                    <button class="btn-hold" id="holdBtn"><i class="fa-solid fa-pause"></i> Hold Ticket</button>
+                </div>
+                <div class="queue-maintenance"><p class="queue-maintenance-label">Queue maintenance</p>
+                    <button class="btn-reset" id="resetBtn"><i class="fa-solid fa-arrow-rotate-right"></i> Reset Entire Queue</button>
+                </div>
+                <button id="logoutBtn" style="margin-top: 15px;" class="outline-action"><i data-icon="inline-start" class="fa-solid fa-arrow-right-from-bracket"></i> Log Out</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="container line-queues-card">
+            <div class="queue-column">
+                <h3 class="panel-column-title"><i class="fa-solid fa-list-ol" style="color:#1c5d99;"></i> Active Waiting Line</h3>
+                <div id="clerkQueueList" class="scrollable-queue-box"></div>
+            </div>
+            <div class="queue-column">
+                <h3 class="panel-column-title" style="color: #9c6c22;"><i class="fa-solid fa-pause" style="color:#c1872f;"></i> On-Hold</h3>
+                <div id="clerkHoldList" class="scrollable-queue-box"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div id="detailsModal" class="modal-backdrop">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 id="modalTicketId" style="margin: 0; color: #134a7d;">Ticket Details</h3>
+            <button type="button" class="modal-close-x" id="closeModalBtn" aria-label="Close ticket details">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="detail-item"><span class="detail-label">Full Name / Details:</span> <span id="modalFullName" class="detail-val"></span></div>
+            <div class="detail-item"><span class="detail-label">Address / Bldg Loc:</span> <span id="modalBarangay" class="detail-val"></span></div>
+            <div class="detail-item"><span class="detail-label">Contact Number:</span> <span id="modalContact" class="detail-val"></span></div>
+            <div class="detail-item"><span class="detail-label">Reason for Visit:</span> <span id="modalReason" class="detail-val"></span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const BACKEND_URL = 'http://localhost:5000';
+    const currentWorkspace = sessionStorage.getItem('currentWorkspace');
+    
+    if(!currentWorkspace) {
+        window.location.href = 'log-in.html';
+    }
+
+    const workspaceTasks = {
+        'PC1': ['Releasing Bldg. Permit'],
+        'PC2': ['Releasing Bldg. Occupancy'],
+        'PC3': ['Receiving Bldg. Permit', 'Receiving Bldg. Occupancy', 'Inquire']
+        // Kiosk and Monitor don't need filters
+    };
+
+    function friendlyStationName(code) {
+        const map = { 
+            Kiosk: 'Registration Desk',
+            PC1: 'Window 1 (Releasing Bldg. Permit)', 
+            PC2: 'Window 2 (Releasing Bldg. Occupancy)', 
+            PC3: 'Window 3 (Receiving Bldg. permit/Occupancy)', 
+            Monitor: 'Monitor Display' 
+        };
+        return map[code] || code;
+    }
+    
+    document.getElementById('clerkHeader').innerText = `Clerk Controls — ${friendlyStationName(currentWorkspace)}`;
+    document.getElementById('stationChip').innerHTML = `<i class="fa-solid fa-circle" style="font-size:8px; color:#3ddc84; margin-right:6px;"></i>${friendlyStationName(currentWorkspace)}`;
+
+    // --- DOM UI Routing ---
+    document.addEventListener("DOMContentLoaded", () => {
+        const regSection = document.getElementById('registrationSection');
+        const clerkSection = document.getElementById('clerkSection');
+        const rightPanel = document.querySelector('.right-panel');
+        const leftPanel = document.querySelector('.left-panel');
+
+        if (currentWorkspace === 'Kiosk') {
+            clerkSection.style.display = 'none';
+            rightPanel.style.display = 'none';
+            leftPanel.style.maxWidth = '700px';
+            leftPanel.style.margin = '0 auto';
+        } else {
+            regSection.style.display = 'none';
+            clerkSection.style.borderTop = 'none';
+            clerkSection.style.marginTop = '0';
+            clerkSection.style.paddingTop = '0';
+        }
+    });
+
+    const socket = io(BACKEND_URL);
+    let popupTimeout;
+    let localTicketRegistry = {};
+
+    socket.on('queueUpdate', (data) => {
+        localTicketRegistry = {};
+        let currentQueue = data.queue || data.waiting || [];
+        let currentHold = data.onHold || [];
+
+        currentQueue.forEach(t => localTicketRegistry[t.id] = t);
+        currentHold.forEach(t => localTicketRegistry[t.id] = t);
+
+        const allowedTasks = workspaceTasks[currentWorkspace];
+        if (allowedTasks) {
+            currentQueue = currentQueue.filter(t => allowedTasks.includes(t.reason));
+            currentHold = currentHold.filter(t => allowedTasks.includes(t.reason));
+        }
+
+        renderLists(currentQueue, currentHold);
+    });
+
+    const searchInput = document.getElementById('barangaySearchInput');
+    const innerSearch = document.getElementById('dropdownInnerSearch');
+    const menuContainer = document.getElementById('dropdownMenuContainer');
+    const hiddenValue = document.getElementById('barangayHiddenValue');
+    const options = menuContainer.querySelectorAll('.custom-option');
+    const labels = menuContainer.querySelectorAll('.optgroup-label');
+    const noResults = document.getElementById('noResultsMessage');
+
+    searchInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+        bldgMenuContainer.classList.remove('active');
+        menuContainer.classList.toggle('active');
+        if(menuContainer.classList.contains('active')) {
+            innerSearch.value = '';
+            filterOptions(options, labels, innerSearch, noResults);
+            innerSearch.focus();
+        }
+    });
+
+    options.forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const value = option.getAttribute('data-value');
+            searchInput.value = value;
+            hiddenValue.value = value;
+            menuContainer.classList.remove('active');
+        });
+    });
+
+    const bldgSearchInput = document.getElementById('bldgLocationSearchInput');
+    const bldgInnerSearch = document.getElementById('bldgDropdownInnerSearch');
+    const bldgMenuContainer = document.getElementById('bldgDropdownMenuContainer');
+    const bldgHiddenValue = document.getElementById('bldgLocationHiddenValue');
+    const bldgOptions = bldgMenuContainer.querySelectorAll('.custom-option');
+    const bldgLabels = bldgMenuContainer.querySelectorAll('.optgroup-label');
+    const bldgNoResults = document.getElementById('bldgNoResultsMessage');
+
+    bldgSearchInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menuContainer.classList.remove('active');
+        bldgMenuContainer.classList.toggle('active');
+        if(bldgMenuContainer.classList.contains('active')) {
+            bldgInnerSearch.value = '';
+            filterOptions(bldgOptions, bldgLabels, bldgInnerSearch, bldgNoResults);
+            bldgInnerSearch.focus();
+        }
+    });
+
+    bldgOptions.forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const value = option.getAttribute('data-value');
+            bldgSearchInput.value = value;
+            bldgHiddenValue.value = value;
+            bldgMenuContainer.classList.remove('active');
+        });
+    });
+
+    document.addEventListener('click', () => {
+        menuContainer.classList.remove('active');
+        bldgMenuContainer.classList.remove('active');
+    });
+
+    menuContainer.addEventListener('click', (e) => e.stopPropagation());
+    bldgMenuContainer.addEventListener('click', (e) => e.stopPropagation());
+
+    innerSearch.addEventListener('input', () => filterOptions(options, labels, innerSearch, noResults));
+    bldgInnerSearch.addEventListener('input', () => filterOptions(bldgOptions, bldgLabels, bldgInnerSearch, bldgNoResults));
+
+    function filterOptions(opts, lbs, inputEl, noResEl) {
+        const query = inputEl.value.toLowerCase().trim();
+        let globalMatchCount = 0;
+
+        opts.forEach(opt => {
+            const text = opt.textContent.toLowerCase();
+            if(text.includes(query)) {
+                opt.style.display = 'block';
+                globalMatchCount++;
+            } else {
+                opt.style.display = 'none';
+            }
+        });
+
+        lbs.forEach(label => {
+            let nextEl = label.nextElementSibling;
+            let sectionHasMatch = false;
+            
+            while (nextEl && nextEl.classList.contains('custom-option')) {
+                if (nextEl.style.display === 'block') {
+                    sectionHasMatch = true;
+                }
+                nextEl = nextEl.nextElementSibling;
+            }
+            label.style.display = sectionHasMatch ? 'block' : 'none';
+        });
+
+        noResEl.style.display = (globalMatchCount === 0) ? 'block' : 'none';
+    }
+
+    const detailsModal = document.getElementById('detailsModal');
+    
+    window.openDetailsModal = function(ticketId) {
+        const data = localTicketRegistry[ticketId];
+        if(!data) return;
+
+        document.getElementById('modalTicketId').innerText = `Details for Ticket: ${data.id}`;
+        document.getElementById('modalFullName').innerText = data.name || 'N/A';
+        document.getElementById('modalBarangay').innerText = data.barangay || 'N/A';
+        document.getElementById('modalContact').innerText = data.phone || 'N/A';
+        document.getElementById('modalReason').innerText = data.reason || 'N/A';
+        
+        detailsModal.classList.add('reveal');
+    };
+
+    document.getElementById('closeModalBtn').addEventListener('click', () => {
+        detailsModal.classList.remove('reveal');
+    });
+    
+    window.addEventListener('click', (e) => {
+        if(e.target === detailsModal) {
+            detailsModal.classList.remove('reveal');
+        }
+    });
+
+    const visibleTicketNames = new Map();
+    function renderLists(queue, holdQueue) {
+        visibleTicketNames.clear();
+        [...queue,...holdQueue].forEach(ticket=>visibleTicketNames.set(ticket.id,ticket.name));
+        const queueContainer = document.getElementById('clerkQueueList');
+        const holdContainer = document.getElementById('clerkHoldList');
+        
+        queueContainer.innerHTML = '';
+        holdContainer.innerHTML = '';
+        
+        if(queue.length === 0) {
+            queueContainer.innerHTML = '<div class="empty-state">No active tickets waiting.</div>';
+        } else {
+            queue.forEach((ticket) => {
+                const row = document.createElement('div');
+                buildRowLayout(row, ticket);
+                row.innerHTML += `
+                    <div class="row-actions-group">
+                        <a href="#" class="hyper-link-details" onclick="openDetailsModal('${ticket.id}'); return false;">See Details</a>
+                        <button onclick="removeTicket('${ticket.id}')" class="btn-action-drop">Drop</button>
+                    </div>`;
+                queueContainer.appendChild(row);
+            });
+        }
+
+        if(holdQueue.length === 0) {
+            holdContainer.innerHTML = '<div class="empty-state">No elements placed on hold.</div>';
+        } else {
+            holdQueue.forEach((ticket) => {
+                const row = document.createElement('div');
+                buildRowLayout(row, ticket);
+                row.innerHTML += `
+                    <div class="row-actions-group">
+                        <a href="#" class="hyper-link-details" onclick="openDetailsModal('${ticket.id}'); return false;">See Details</a>
+                        <div style="display: flex; gap: 4px;">
+                            <button onclick="unholdTicket('${ticket.id}')" class="btn-action-unhold">Unhold</button>
+                            <button onclick="removeTicket('${ticket.id}')" class="btn-action-drop">Drop</button>
+                        </div>
+                    </div>`;
+                holdContainer.appendChild(row);
+            });
+        }
+    }
+
+    function buildRowLayout(row, ticket) {
+        row.className = 'ticket-queue-row';
+        const locationInfo = ticket.barangay ? `<br><small class="ticket-row-subtext">📍 ${ticket.barangay}</small>` : '';
+        const reasonTag = `<span style="display:inline-block; margin-top:4px; font-size:11px; font-weight:600; background:#e2e8f0; color:#475569; padding:2px 6px; border-radius:4px;">${ticket.reason}</span>`;
+        
+        row.innerHTML = `
+            <div class="ticket-row-data">
+                <strong>${ticket.id}</strong><span style="color: #334155; font-weight: 500;">${ticket.name}</span>${locationInfo}<br>${reasonTag}
+            </div>`;
+    }
+
+    window.removeTicket = function(ticketId) {
+        return DestructiveAction.run({title:'Drop ticket?',message:'Drop '+ticketId+' — '+(visibleTicketNames.get(ticketId)||'Visitor')+'? It will leave the active queue and be marked as dropped. Its record and activity history are retained.',confirmLabel:'Drop ticket',action:async()=>{
+            const r=await RequestFeedback.fetch(`${BACKEND_URL}/api/tickets/drop`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticketId,workspace:currentWorkspace})});
+            const data=await r.json();if(!data.success)throw new Error(data.message||'Ticket was not dropped.');
+        }});
+    };
+
+    window.unholdTicket = function(ticketId) {
+        RequestFeedback.fetch(`${BACKEND_URL}/api/tickets/unhold`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticketId })
+        }).catch(err => console.error("Error unholding ticket:", err));
+    };
+
+    let ticketSubmission = null;
+    try { ticketSubmission = JSON.parse(sessionStorage.getItem('queueTicketSubmission')); } catch (_) {}
+    function newSubmissionId() {
+        if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+        // getRandomValues also works on office LAN pages served over HTTP.
+        const bytes=crypto.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;
+        const hex=[...bytes].map(v=>v.toString(16).padStart(2,'0')).join('');
+        return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
+    }
+    function submissionId(payload) {
+        const fingerprint=JSON.stringify(payload);
+        if(!ticketSubmission || ticketSubmission.fingerprint!==fingerprint){
+            if(ticketSubmission && !confirm('An earlier ticket submission is unconfirmed. Check the queue before creating a different ticket. Continue?'))return null;
+            ticketSubmission={fingerprint,id:newSubmissionId()};
+            sessionStorage.setItem('queueTicketSubmission',JSON.stringify(ticketSubmission));
+        }
+        return ticketSubmission.id;
+    }
+    document.getElementById('queueForm').addEventListener('submit', FormSafety.guard('queueForm', function(e) {
+        e.preventDefault();
+        
+        const applicant = document.getElementById('applicantName').value.trim();
+        const agent = document.getElementById('agentName').value.trim();
+        const name = agent ? `${applicant} (Agent: ${agent})` : applicant;
+
+        const applicantPhone = document.getElementById('applicantPhone').value.trim();
+        const agentPhone = document.getElementById('agentPhone').value.trim();
+        const phone = agentPhone ? `${applicantPhone} (Agent: ${agentPhone})` : applicantPhone;
+
+        const email = ""; 
+
+        const addressVal = document.getElementById('barangayHiddenValue').value;
+        const bldgLocationVal = document.getElementById('bldgLocationHiddenValue').value;
+        
+        if (!addressVal || !bldgLocationVal) {
+            alert("Please select both addresses from the dropdown lists.");
+            return;
+        }
+
+        const barangay = `Address: ${addressVal} | Bldg Loc: ${bldgLocationVal}`;
+        const checkedReasonRadio = document.querySelector('input[name="visitReason"]:checked');
+        const reason = checkedReasonRadio ? checkedReasonRadio.value : '';
+        
+        if (!reason) {
+            alert("Please select a reason for your visit.");
+            return;
+        }
+        
+        const payload={name,phone,email,barangay,reason};
+        const requestId=submissionId(payload); if(!requestId)return;
+        return RequestFeedback.fetch(`${BACKEND_URL}/api/tickets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, requestId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                ticketSubmission=null; sessionStorage.removeItem('queueTicketSubmission');
+                document.getElementById('ticketId').innerText = data.ticketId;
+                document.getElementById('ticketPopup').style.display = 'block';
+                
+                document.getElementById('queueForm').reset();
+                document.getElementById('barangaySearchInput').value = '';
+                document.getElementById('barangayHiddenValue').value = '';
+                document.getElementById('bldgLocationSearchInput').value = '';
+                document.getElementById('bldgLocationHiddenValue').value = '';
+                
+                clearTimeout(popupTimeout);
+                popupTimeout = setTimeout(() => { document.getElementById('ticketPopup').style.display = 'none'; }, 4000);
+            } else {
+                alert(data.message || "Failed to generate ticket.");
+            }
+        });
+    }));
+
+    document.getElementById('callNextBtn').addEventListener('click', function() {
+        RequestFeedback.fetch(`${BACKEND_URL}/api/tickets/call-next`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                workspace: currentWorkspace, 
+                source: 'queue',
+                allowedTasks: workspaceTasks[currentWorkspace] || [] 
+            })
+        }).then(res => res.json()).then(d => { if(!d.success) alert(d.message); });
+    });
+
+    document.getElementById('callNextHoldBtn').addEventListener('click', function() {
+        RequestFeedback.fetch(`${BACKEND_URL}/api/tickets/call-next`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                workspace: currentWorkspace, 
+                source: 'onHold',
+                allowedTasks: workspaceTasks[currentWorkspace] || []
+            })
+        }).then(res => res.json()).then(d => { if(!d.success) alert(d.message); });
+    });
+
+    document.getElementById('recallBtn').addEventListener('click', function() {
+        RequestFeedback.fetch(`${BACKEND_URL}/api/tickets/recall`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workspace: currentWorkspace })
+        });
+    });
+
+    document.getElementById('holdBtn').addEventListener('click', function() {
+        RequestFeedback.fetch(`${BACKEND_URL}/api/tickets/hold`, { method: 'POST' });
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => DestructiveAction.run({
+        title:'Reset the entire queue?',
+        message:'This permanently clears all ticket records and active workstation sessions. Ticket numbering restarts at 1001. Workstations will need to sign in again. Activity logs and uploaded videos are retained.',
+        confirmLabel:'Reset queue',requireText:'RESET',
+        action:async()=>{
+            const r=await RequestFeedback.fetch(`${BACKEND_URL}/api/system/reset`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace:currentWorkspace,confirmation:'RESET'})});
+            const data=await r.json();if(!data.success)throw new Error(data.message||'Queue reset failed.');
+            alert('Queue reset completed. Sign in to your workstation again.');
+            sessionStorage.removeItem('currentWorkspace');
+            window.location.href='log-in.html';
+        }
+    }));
+
+    function handleLogout() { if (!FormSafety.leave()) return;
+        RequestFeedback.fetch(`${BACKEND_URL}/api/workstations/logout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workspace: currentWorkspace })
+        }).then(() => {
+            sessionStorage.removeItem('currentWorkspace');
+            window.location.href = 'log-in.html';
+        });
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+    const kioskLogout = document.getElementById('kioskLogoutBtn');
+    if (kioskLogout) kioskLogout.addEventListener('click', handleLogout);
+
+    window.addEventListener('pagehide', function () {
+        const payload = new Blob(
+            [JSON.stringify({ workspace: currentWorkspace })],
+            { type: 'application/json' }
+        );
+        navigator.sendBeacon(`${BACKEND_URL}/api/workstations/logout`, payload);
+    });
+</script>
+
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script>
+</body>
+</html>

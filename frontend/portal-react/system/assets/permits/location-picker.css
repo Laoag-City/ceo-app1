@@ -1,0 +1,15 @@
+.permit-location-picker { min-width:0; width:100%; }
+.permit-location-picker .location-options { margin-top:6px; max-height:220px; overflow-y:auto; overscroll-behavior:contain; border:1px solid #c8d8e6; background:#fff; border-radius:9px; padding:5px; box-shadow:0 6px 16px #18364c0a; }
+.permit-location-picker .location-options[hidden] { display:none!important; }
+.permit-location-picker .location-group { padding:9px 10px; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#1763a0; background:#f1f6fa; border-radius:5px; }
+.permit-location-picker .location-option { padding:10px; font-size:13px; color:#244459; cursor:pointer; border-radius:5px; }
+.permit-location-picker .location-option:hover,.permit-location-picker .location-option[aria-selected='true'] { background:#eaf3fc; color:#075b9d; }
+.permit-location-picker .location-hint { display:block; margin-top:6px; font-size:11px; line-height:1.5; color:#637e90; }
+.permit-location-picker .location-no-match { padding:12px 10px; font-size:12px; color:#637e90; }
+.occ-page .permit-location-picker .location-group { color:#087b5e; background:#edf8f3; }
+.occ-page .permit-location-picker .location-option:hover,.occ-page .permit-location-picker .location-option[aria-selected='true'] { background:#e2f5eb; color:#07654e; }
+html[data-theme='dark'] .permit-location-picker .location-options { background:#29333d; border-color:#536372; }
+html[data-theme='dark'] .permit-location-picker .location-group { background:#354553; color:#b2d7f2; }
+html[data-theme='dark'] .permit-location-picker .location-option { color:#e0eaf2; }
+html[data-theme='dark'] .permit-location-picker .location-option:hover,html[data-theme='dark'] .permit-location-picker .location-option[aria-selected='true'] { background:#405569; color:#fff; }
+html[data-theme='dark'] .permit-location-picker :is(.location-hint,.location-no-match) { color:#b3c4d2; }

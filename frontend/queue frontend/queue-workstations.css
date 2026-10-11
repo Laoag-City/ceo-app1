@@ -1,0 +1,52 @@
+/* Grouped workstation chooser. Sign-in and service-window screens keep their styles. */
+body.queue-login-page .queue-workstation-chooser{display:block;box-sizing:border-box;width:calc(100% - 48px);max-width:1080px;margin:24px auto 36px;padding:28px;background:var(--q-surface)!important;border:1px solid var(--q-line)!important;border-radius:18px;box-shadow:none!important}
+body.queue-login-page .queue-workstation-chooser .login-heading{padding:0 0 24px;margin:0;text-align:left;background:none!important;border:0!important;border-radius:0;box-shadow:none!important}
+body.queue-login-page .queue-workstation-chooser .login-kicker{margin:0 0 8px;color:var(--q-muted)!important;font-size:10px;letter-spacing:.09em;text-transform:uppercase}
+body.queue-login-page .queue-workstation-chooser .login-heading h2{margin:0 0 8px;color:var(--q-text)!important;font-size:26px;line-height:1.25;letter-spacing:-.035em}
+body.queue-login-page .queue-workstation-chooser .welcome-text{margin:0;text-align:left;color:var(--q-muted)!important;font-size:13px;line-height:1.6}
+.queue-workstation-chooser .workstation-group+.workstation-group{margin-top:24px;padding-top:24px;border-top:1px solid var(--q-line)}
+.queue-workstation-chooser .workstation-group-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px}
+.queue-workstation-chooser .workstation-group-heading h3{margin:0;color:var(--q-text);font-size:15px;font-weight:650;letter-spacing:-.015em}
+.queue-workstation-chooser .workstation-group-heading>span{font-size:11px;color:var(--q-muted)}
+.queue-workstation-chooser .workstation-group-meta{display:flex;flex-direction:column;align-items:flex-end;gap:8px;font-size:11px;color:var(--q-muted)}
+body.queue-login-page .queue-workstation-chooser button.workstation-walkthrough{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:auto;min-height:36px;margin:0;padding:7px 10px;border:1px solid var(--q-line);border-radius:9px;background:var(--q-surface);color:var(--q-text);font:500 12px/1.4 'DM Sans','Segoe UI',sans-serif;box-shadow:none;cursor:pointer;transform:none}
+.queue-workstation-chooser .workstation-walkthrough .walkthrough-help-mark{width:17px;flex:none;font:inherit;text-align:center}
+body.queue-login-page .queue-workstation-chooser button.workstation-walkthrough:hover{background:var(--q-soft);border-color:var(--q-muted)}
+body.queue-login-page .queue-workstation-chooser button.workstation-walkthrough:focus-visible{outline:3px solid var(--q-blue);outline-offset:3px}
+.queue-workstation-chooser .workstation-counter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.queue-workstation-chooser .workstation-tools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+body.queue-login-page .queue-workstation-chooser .station-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;grid-column:auto;box-sizing:border-box;position:relative;width:100%;min-width:0;min-height:0;margin:0;padding:16px;text-align:left;color:var(--q-text)!important;background:var(--q-surface)!important;border:1px solid var(--q-line)!important;border-radius:12px;gap:0;box-shadow:none!important;text-decoration:none;font-family:inherit;cursor:pointer;transform:none!important;transition:background .15s,border-color .15s}
+body.queue-login-page .queue-workstation-chooser .station-card:hover{background:var(--q-soft)!important;border-color:var(--q-muted)!important}
+body.queue-login-page .queue-workstation-chooser .station-card.selected{outline:2px solid var(--q-blue);outline-offset:3px;background:var(--q-blue-soft)!important}
+body.queue-login-page .queue-workstation-chooser .station-card:focus-visible{outline:3px solid var(--q-blue)!important;outline-offset:3px}
+body.queue-login-page .queue-workstation-chooser .station-card[aria-disabled=true]{cursor:wait;opacity:.65}
+body.queue-login-page .queue-workstation-chooser .station-card .station-label{display:block;color:var(--q-text)!important;font-size:16px;font-weight:650;line-height:1.4;letter-spacing:-.02em;margin:0;overflow-wrap:anywhere}
+body.queue-login-page .queue-workstation-chooser .station-card .station-sublabel{display:block;color:var(--q-muted)!important;font-size:12px;font-weight:400;line-height:1.6;max-width:none;margin:6px 0 0;overflow-wrap:anywhere}
+body.queue-login-page .queue-workstation-chooser .station-card .station-symbol{display:flex;align-items:center;justify-content:center;width:22px;height:22px;min-width:22px;margin:0;padding:0;border:0;border-radius:0;background:none!important;color:var(--q-muted);flex:none}
+.queue-workstation-chooser .station-symbol svg{display:block;width:22px;height:22px}
+.queue-workstation-chooser .workstation-card-top{display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:14px}
+body.queue-login-page .queue-workstation-chooser .station-card .station-open-arrow{display:block;position:static;width:16px;height:16px;margin:0;color:var(--q-muted);stroke:currentColor;opacity:1;transform:none}
+body.queue-login-page .queue-workstation-chooser .workstation-accent-blue .station-symbol{color:var(--q-blue)}
+body.queue-login-page .queue-workstation-chooser .workstation-accent-green .station-symbol{color:var(--q-green)}
+body.queue-login-page .queue-workstation-chooser .workstation-accent-gold .station-symbol{color:var(--q-gold)}
+body.queue-login-page .queue-workstation-chooser .workstation-counter{min-height:128px}
+body.queue-login-page .queue-workstation-chooser .workstation-tool{min-height:112px}
+.queue-workstation-chooser .workstation-tool>.station-symbol{margin-bottom:10px!important}
+body.queue-login-page .queue-workstation-chooser .workstation-registration{min-height:168px;padding:18px;background:#143247!important;border-color:#143247!important;color:#fff!important}
+body.queue-login-page .queue-workstation-chooser .workstation-registration:hover{background:#1c3e56!important;border-color:#6c9ab8!important}
+body.queue-login-page .queue-workstation-chooser .workstation-registration .station-label{color:#f4f8fb!important}
+body.queue-login-page .queue-workstation-chooser .workstation-registration .station-sublabel{color:#ccdae5!important}
+.queue-workstation-chooser .workstation-registration-top{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;margin-bottom:10px}
+body.queue-login-page .queue-workstation-chooser .workstation-registration .station-symbol{width:36px;height:36px;border-radius:9px;background:#ffffff12!important;color:#edc16a}
+.queue-workstation-chooser .workstation-ready{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#9ae0bc;border:1px solid #79dca224;background:#087e6033;border-radius:20px;padding:4px 8px;white-space:nowrap}
+.queue-workstation-chooser .workstation-ready svg{width:13px;height:13px}
+.queue-workstation-chooser .workstation-open-desk{display:flex;align-items:center;justify-content:center;gap:8px;align-self:flex-end;margin-top:8px;padding:4px 13px;border:1px solid #c8d8e229;border-radius:20px;background:#ffffff12;color:#f0f6fa;font-size:12px;font-weight:600;line-height:1.4}
+.queue-workstation-chooser .workstation-open-desk svg{width:15px;height:15px}
+body.queue-login-page .queue-workstation-chooser #sessionStatus{min-height:0;margin:0;color:var(--q-red);font-size:13px;line-height:1.6}
+body.queue-login-page .queue-workstation-chooser #sessionStatus:not(:empty){margin-top:20px}
+html[data-theme='dark'] body.queue-login-page .queue-workstation-chooser{background:var(--q-soft)!important}
+html[data-theme='dark'] body.queue-login-page .queue-workstation-chooser .station-card:not(.workstation-registration){background:transparent!important;border-color:var(--q-line)!important}
+html[data-theme='dark'] body.queue-login-page .queue-workstation-chooser .station-card:not(.workstation-registration):hover{background:var(--q-surface)!important}
+html[data-theme='dark'] body.queue-login-page .queue-workstation-chooser .station-card.selected:not(.workstation-registration){background:var(--q-blue-soft)!important}
+@media(max-width:640px){body.queue-login-page .queue-workstation-chooser{width:calc(100% - 32px);margin:18px auto 28px;padding:20px}.queue-workstation-chooser .workstation-counter-grid,.queue-workstation-chooser .workstation-tools-grid{grid-template-columns:1fr;gap:10px}body.queue-login-page .queue-workstation-chooser .login-heading h2{font-size:24px}body.queue-login-page .queue-workstation-chooser .workstation-counter{min-height:116px}.queue-workstation-chooser .workstation-card-top{margin-bottom:12px}body.queue-login-page .queue-workstation-chooser .workstation-tool{min-height:112px}body.queue-login-page .queue-workstation-chooser .workstation-registration{padding:18px}}
+@media(prefers-reduced-motion:reduce){body.queue-login-page .queue-workstation-chooser .station-card{transition:none!important}}

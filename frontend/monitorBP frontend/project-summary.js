@@ -1,0 +1,96 @@
+/** MAINTAINER GUIDE
+ * Read-only shared summary: fetch saved data through session-protected APIs.
+ * The provisional template is render() + project-summary.css. No persisted PDF,
+ * database mutation, localStorage identity, or unsaved form values are used.
+ * User-entered content is inserted with textContent, never executable HTML.
+ */
+(() => {
+  const params = new URLSearchParams(location.search);
+  const kind = params.get('kind'), id = params.get('id');
+  const valid = ['building', 'occupancy'].includes(kind) && /^[1-9]\d*$/.test(id || '');
+  const occupancy = kind === 'occupancy';
+  const base = `/api/${occupancy ? 'occupancy' : 'permits'}/${id}`;
+  const host = document.getElementById('summary'), feedback = document.getElementById('feedback');
+  const print = document.getElementById('print'), reload = document.getElementById('reload');
+  let busy = false;
+  const el = (tag, value) => {
+    const node = document.createElement(tag);
+    if (value !== undefined) node.textContent = value == null || value === '' ? '—' : String(value);
+    return node;
+  };
+  const date = value => value ? String(value).slice(0, 10) : '—';
+  async function get(url) {
+    const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+    if (!response.ok) throw new Error(response.status === 401 ? 'Please sign in again to view this summary.' : response.status === 404 ? 'This project could not be found.' : 'Could not load the complete summary. Please try again.');
+    return response.json();
+  }
+  function table(parent, headings, rows) {
+    if (!rows.length) { parent.append(el('p', 'No records saved.')); return; }
+    const table = el('table'), head = el('thead'), body = el('tbody'), tr = el('tr');
+    headings.forEach(value => { const th = el('th', value); th.scope = 'col'; tr.append(th); });
+    head.append(tr);
+    rows.forEach(values => { const row = el('tr'); values.forEach((value,index) => { const cell=el('td',value); cell.dataset.label=headings[index]; row.append(cell); }); body.append(row); });
+    table.append(head, body); parent.append(table);
+  }
+  function render(p, profile, inspections, checklist) {
+    const root = document.createDocumentFragment(), header = el('header'), logo = el('img'), brand = el('div');
+    logo.src = '/assets/laoag-city-official-seal.png'; logo.alt = 'Laoag City seal';
+    brand.append(el('p', 'City Government of Laoag'), el('h1', 'Office of the City Engineer'), el('p', `${occupancy ? 'Occupancy' : 'Building'} Permit · Project Summary`));
+    header.append(logo, brand); root.append(header);
+    const notice = el('p', 'Project Summary — Not an Official Permit. Saved information only; pending requests and unsaved changes are not applied.');
+    notice.className = 'notice'; root.append(notice, el('h2', 'Project information'));
+    const fields = [['Project ID', ProjectIdentity.format(kind, p.id)], ['Project name', p.project_title], ['Owner / applicant', p.owner_name], ['Location', p.location]];
+    if (occupancy) fields.push(['BP reference', p.bp_reference_no], ['Date applied', date(p.date_applied)]);
+    else fields.push(['Designer', p.designer_name], ['Date filed', date(p.permit_date)], ['Lots', (p.lot_numbers || []).join(', ')]);
+    const dl = el('dl'); fields.forEach(([label, value]) => dl.append(el('dt', label), el('dd', value))); root.append(dl);
+    root.append(el('h2', 'Routing progress'));
+    root.append(el('p', `Final project decision: ${p.final_approval?.label || 'Not finally approved'}`));
+    const groups = [{ title: 'Main permit', matrix: (p.matrix || []).filter(row => !row.sub_permit_id) }, ...(p.sub_permits || []).map(sub => ({ title: sub.sub_project_title, matrix: sub.matrix || [] }))];
+    const stations = groups.flatMap(group => group.matrix);
+    root.append(el('p', `${stations.filter(row => String(row.signature_status).toLowerCase() === 'approved').length} of ${stations.length} stations approved`));
+    for (const group of groups) {
+      root.append(el('h3', group.title));
+      table(root, ['Station', 'Engineer', 'Status', 'Checked', 'Approved'], group.matrix.map(row => [row.discipline_name, row.engineer_name, row.signature_status, date(row.date_checked), date(row.date_approved)]));
+    }
+    if (occupancy) {
+      root.append(el('h2', 'Inspections'));
+      table(root, ['Date / type', 'Inspector', 'Result', 'Findings', 'Next inspection'], inspections.map(row => [`${date(row.inspection_date)}\n${row.inspection_type}`, row.inspector_name, row.result, row.findings, date(row.next_inspection_date)]));
+      root.append(el('h2', 'Documentary requirements'));
+      for (const group of window.OccupancyChecklist) {
+        root.append(el('h3', group.section));
+        table(root, ['Document', 'Saved state'], group.items.map(item => [item.title, checklist[item.id] ? 'Submitted' : 'Not marked submitted']));
+      }
+    }
+    const generatedBy = String(profile?.display_name || '').trim() || 'Staff member';
+    root.append(el('footer', `Generated by ${generatedBy} · ${new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' })} (Asia/Manila). Information reflects saved records at retrieval time.`));
+    host.replaceChildren(root);
+    document.title = `${ProjectIdentity.format(kind, p.id)} — Project Summary`;
+  }
+  async function load() {
+    if (busy || !valid) return;
+    busy = true; print.disabled = reload.disabled = true;
+    host.hidden = true; host.replaceChildren(); feedback.textContent = 'Loading saved project information…';
+    try {
+      await get('/api/auth/session');
+      const [profile, project, inspections, checklist] = await Promise.all([
+        get('/api/profile'),
+        get(base),
+        occupancy ? get(base + '/inspections') : { inspections: [] },
+        occupancy ? get(base + '/checklist') : { checklist_state: {} }
+      ]);
+      render(project, profile.profile, inspections.inspections, checklist.checklist_state);
+      host.hidden = false; print.disabled = false;
+      feedback.textContent = 'Ready to print. Use A4 paper; your browser also offers Save as PDF.';
+    } catch (error) { feedback.textContent = error.message; }
+    finally { busy = false; reload.disabled = false; }
+  }
+  if (valid) document.getElementById('back').href = `${occupancy ? '/occupancy/edit' : '/edit'}?id=${id}`;
+  else { feedback.textContent = 'Invalid project reference.'; reload.disabled = true; }
+  reload.onclick = load;
+  print.onclick = async () => {
+    try { await get('/api/auth/session'); window.print(); }
+    catch (error) { host.replaceChildren(); host.hidden = true; print.disabled = true; feedback.textContent = error.message; }
+  };
+  window.addEventListener('pageshow', event => { if (event.persisted) load(); });
+  load();
+})();

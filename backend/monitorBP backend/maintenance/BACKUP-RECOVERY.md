@@ -1,0 +1,144 @@
+# Permit database backup and recovery verification
+
+Historical MySQL guide. The current local systems use PostgreSQL; use
+[`POSTGRES-BACKUP-RECOVERY.md`](../../../POSTGRES-BACKUP-RECOVERY.md) instead.
+The npm backup commands now invoke that PostgreSQL workflow.
+
+This is the first maintenance stage: local backup creation, backup listing, and isolated restore verification. It does not add a web page, schedule automatic backups, or replace the live database. Run it from the permit backend directory as the person administering this PC. No application account or password is entered on a new web form.
+
+## First verified backup
+
+On September 10, 2026 at 2:44 PM Philippine time, backup `permit-backup-20260910T064410163Z-291d38d8aa73` was created and successfully restored into an isolated database. All 12 tables, 59 rows and 11 declared foreign-key relationships passed verification. The temporary database and user were removed, and the live database was not replaced.
+
+Files are in `C:\Users\Majin\AppData\Local\PermitManagement\Backups\permit-backup-20260910T064410163Z-291d38d8aa73`. See `verification.json` there for the exact check results. An earlier incomplete attempt is separately identified by `list` and is not a verified recovery copy.
+
+## Commands
+
+In PowerShell, from `backend/monitorBP backend`:
+
+```powershell
+node maintenance/permit-backup.js create
+node maintenance/permit-backup.js list
+node maintenance/permit-backup.js verify <backup-id-from-the-list>
+```
+
+The default destination is `%LOCALAPPDATA%\PermitManagement\Backups`, outside the website and outside the OneDrive project directory. To select a different destination for this terminal session:
+
+```powershell
+$env:PERMIT_BACKUP_DIR = 'D:\PermitBackups'
+```
+
+Select an existing drive and a private destination you control. A folder inside OneDrive may sync its contents with OneDrive. The tool refuses to store backups in the application's public `frontend` directory.
+
+The default MySQL configuration matches the current application: `localhost:3306`, database `permit_system`, user `root`, and an empty password. If the application configuration changes, set `PERMIT_DB_HOST`, `PERMIT_DB_PORT`, `PERMIT_DB_NAME`, `PERMIT_DB_USER`, and `PERMIT_DB_PASSWORD` to match before running these commands. Credentials are passed to MySQL child processes through their environment, not written into the backup manifest or command-line arguments. Do not paste a database password into shared terminal logs or the guide.
+
+On this PC, MySQL tools are at `C:\xampp\mysql\bin`. Set `MYSQL_BIN_DIR` if they move. Use the compatible MySQL/MariaDB tools installed for your server. The database account needs read/backup access to the source and permission to create and remove temporary databases and temporary accounts for verification. The current local administrator account provides those permissions.
+
+This first version verifies recovery on the local MySQL server. Remote database verification needs a reviewed temporary-account host policy. The equivalent `backup:create`, `backup:list`, `backup:verify` and `test:backup` npm scripts are also available if npm is working; the direct Node commands do not depend on npm.
+
+## What is included
+
+All current permit database tables are discovered automatically, including:
+
+- Building permits, lots, sub-permits, routing stations and edit requests.
+- Occupancy permits, routing stations, inspections, checklists and edit requests.
+- Users, roles, account verification flags and password hashes.
+- Rejection history stored in permit records and the discipline configuration table.
+
+Tables are discovered at backup time, including project records, sessions, profiles, presence and People settings added since the original 12-table verification. The permit backend does not store separate uploaded permit files, so the attachment inventory is empty. Queue databases/media, source code, Windows configuration, MySQL server accounts and external files are not included. Extend the inventory and recovery tests before adding file uploads to the permit system.
+
+Backups contain private permit data and account password hashes. Keep access restricted to the people maintaining the system. This first version does not encrypt backups or automatically copy them to another device. A backup on the same PC is not protection against losing that PC.
+
+## Backup creation
+
+1. Check the source schema and acquire a local maintenance lock.
+2. Use `mysqldump --single-transaction` to read a consistent snapshot of the InnoDB tables. Normal permit edits can continue; avoid schema migrations, server upgrades or restarting the application during the backup.
+3. Save `database.sql` in a unique dated directory.
+4. Calculate the full file's SHA-256 checksum and each table's schema checksum, row count and data checksum.
+5. Write `manifest.json` only after the dump has finished successfully.
+
+There is no `CREATE DATABASE` or `USE permit_system` instruction generated by selecting `--databases`; that option is deliberately not used. The SQL dump is restored into an explicitly selected target database instead.
+
+A backup without a valid manifest is incomplete and must not be used for recovery. Backup creation and restore verification are separate outcomes: a new backup starts as `not tested`.
+
+This version refuses unsupported schema shapes instead of claiming full coverage: non-InnoDB tables, tables without primary keys, views, triggers, stored routines, scheduled events and foreign keys pointing to another database. Review the backup implementation if those features are added.
+
+## Recovery verification
+
+1. Confirm that the SQL checksum and table summaries match the manifest. Stop before creating a database if they do not.
+2. Create a randomly named `permit_recovery_test_...` database.
+3. Create a temporary MySQL user with privileges only on that database. Confirm it cannot read the source database.
+4. Import the backup using that restricted user. There is no live-target override or live-restore command.
+5. Compare actual row counts, table definitions and a deterministic re-export of all rows with the backup. Check every declared foreign-key relationship for orphan records.
+6. Remove the temporary database, user and verification dump. Write `verification.json` containing the checks, result and cleanup result, without printing record contents or passwords.
+
+Verification is marked `passed` only if all checks and cleanup succeed. It proves database-level recovery on the installed database server version, not a complete application/browser recovery drill. Re-run after database upgrades and after adding schema or attachment features. The `list` command checks the SQL file checksum again, so a subsequently altered backup does not continue to appear healthy.
+
+## Failures and interrupted runs
+
+- A failed create may leave a dated directory with a partial SQL file and no manifest. `list` reports it as incomplete. Keep successful backups; there is no automatic deletion policy in this first version.
+- A checksum failure stops restoration. Use another verified copy; do not edit the manifest to force acceptance.
+- A relationship failure may mean that the source already contains orphan records. Review the named constraints in `verification.json`; the test does not repair live data.
+- An interrupted process may leave `.maintenance.lock` in the selected destination, or a `permit_recovery_test_...` database/`permit_verify_...` account. Check the PID and start time in the lock and the verification report. Confirm no maintenance operation is still running before an administrator removes those specific leftover resources. Never drop `permit_system` as cleanup.
+- If cleanup fails, verification reports failure and identifies the temporary resource requiring attention.
+
+## Actual disaster recovery
+
+There is intentionally no one-click live restore in this stage. Before recovering the operational system:
+
+1. Choose a backup and verify it in isolation.
+2. Stop application writes and preserve a backup of the current state if it is readable.
+3. Review the backup timestamp and account changes with the authorized administrator. Restoring older data also restores older password hashes, account roles and approval history.
+4. Restore to a new recovery database, run verification and application checks, then explicitly approve switching the application to that database.
+5. Reopen access only after validation. Retain the previous database for rollback.
+
+The backup's age determines how much newer work may be missing. A second storage destination, automatic frequency, retention rules and a superadmin maintenance screen are later steps to agree on after this first recovery test.
+
+## Development checks
+
+```powershell
+node --test maintenance/permit-backup.test.cjs
+```
+
+Tests create a separate database named `permit_backup_fixture_...` with synthetic records, and temporary backup files. They check date-only values, Unicode and multiline text, binary data, large integers, decimals, empty tables, nullable relationships, denied source access, damaged-backup detection, orphan detection, operation locking and cleanup. The fixtures are removed after the tests; the live permit tables are not used as fixtures.
+
+## Full office recovery drill — September 29, 2026
+
+Run from `backend/monitorBP backend`:
+
+```powershell
+node maintenance/office-recovery-drill.js
+```
+
+This runs the existing backup/isolated-restore verifier for `permit_system` and `queue_system`, storing results in separate subfolders under `%LOCALAPPDATA%\PermitManagement\Backups`. It also copies referenced queue videos into the queue backup's `media` folder, restores those copies into a temporary directory, and verifies SHA-256 checksums. Do not upload/delete queue videos during the drill. The playlist is checked before/after the database snapshot and each copied file is checked for changes. Separate databases are backed up independently, not as one cross-database transaction.
+
+The run completed on September 29, 2026 at approximately 12:35 AM Philippine time (September 28, 16:35 UTC):
+
+| Source | Tables | Rows | Declared FK relationships | Result |
+| --- | ---: | ---: | ---: | --- |
+| permit_system | 18 | 112 | 11 | Passed |
+| queue_system | 5 | 934 | 0 | Passed |
+
+Three referenced queue videos were copied and restored with matching checksums. All temporary restore databases, verification accounts and media restore files were cleaned up. A supplementary read-only check found zero non-null ticket_submission_keys.ticket_id values pointing to missing tickets. This is an application-managed link, not a declared foreign key; the generic verifier checks only declared foreign keys.
+
+Backups:
+
+- Permit: `C:\Users\Majin\AppData\Local\PermitManagement\Backups\permit_system\permit-backup-20260928T163510961Z-44765a9baa85`
+- Queue: `C:\Users\Majin\AppData\Local\PermitManagement\Backups\queue_system\permit-backup-20260928T163512135Z-0b4b647cf3f6`
+- Combined report: `C:\Users\Majin\AppData\Local\PermitManagement\Backups\office-recovery-2026-09-28T16-35-12-935Z.json`
+
+Each database folder contains database.sql, manifest.json and verification.json. The queue folder additionally contains media/ and media-verification.json. Keep these together. The historical `permit-backup-` filename prefix is used by the shared utility for both databases; the manifest's database field identifies the source.
+
+To list or re-verify these database backups, set both PERMIT_DB_NAME and PERMIT_BACKUP_DIR for the corresponding database subfolder, then run the existing list/verify commands. The standalone verifier checks the database only; the office drill creates fresh backups and verifies media as well.
+
+### Recovery on a replacement computer
+
+1. Install a compatible MySQL/MariaDB version and restore the matching application source and dependencies separately; these backups do not contain application code or machine settings.
+2. Restore the chosen SQL backups into NEW recovery databases, preserving the backup's charset/collation. Do not import over live databases. Have the database administrator review and execute the restore.
+3. Verify table/schema/data checksums and relationships using the isolated verification workflow before making the recovered databases operational.
+4. Restore each file from the queue backup's media/ directory into the queue frontend uploads/ directory under its original filename. Use media-verification.json to confirm each filepath and checksum. These are public queue display videos; do not place SQL backups in the website directory.
+5. Configure database credentials, session/role configuration, ports and origins for the replacement host. An older backup restores older account permissions and password hashes; invalidate restored sessions before reopening access.
+6. With staff writes stopped, test login and roles, both registries, a permit workflow, queue ticket flow and monitor video playback against the recovery environment. This drill verified database/file recovery, not a full browser/application failover.
+7. Only after approval, switch operational services to the recovered databases. Retain the previous databases for rollback where available.
+
+These backups remain on this PC and are not encrypted or scheduled. Copy them securely to an authorized separate device to protect against loss of this computer. Automatic scheduling, retention and encryption were not enabled by this drill.

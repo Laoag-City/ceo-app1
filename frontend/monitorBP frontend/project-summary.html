@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project Summary</title>
+  <link rel="stylesheet" href="/project-summary.css">
+  <script src="/project-identity.js" defer></script>
+  <script src="/occupancy-checklist.js" defer></script>
+  <script src="/project-summary.js" defer></script>
+</head>
+<body>
+  <nav class="toolbar" aria-label="Summary controls">
+    <a id="back" href="/">Back to workspace</a>
+    <button id="reload" type="button">Refresh saved data</button>
+    <button id="print" type="button" disabled>Print / Save as PDF</button>
+  </nav>
+  <p id="feedback" role="status">Loading saved project information…</p>
+  <main id="summary" hidden></main>
+</body>
+</html>

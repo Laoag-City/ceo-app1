@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- MAINTAINER GUIDE: queue-log-in document/controller source. React mounts the layout before the inline controllers run. Edit this source rather than its published frontend copy. -->
+    <script src="/appearance.js"></script>
+    <script src="/request-feedback.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office of the City Engineer | Queue Sign In</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Libre+Franklin:wght@600;700;800&family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="kiosk-style.css">
+    <style>
+        .login-container { 
+            margin-top: 3vh; 
+            max-width: 650px; 
+            margin-left: auto; 
+            margin-right: auto; 
+            padding: 20px;
+        }
+        .welcome-text { 
+            text-align: center; 
+            color: var(--ink-soft); 
+            font-size: 15px; 
+            margin-bottom: 25px; 
+        }
+        
+        .station-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .station-card {
+            background-color: #ffffff;
+            border: 2px solid var(--line);
+            border-radius: 12px;
+            padding: 20px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .station-card:hover {
+            border-color: var(--civic-blue);
+            background-color: #fbfaf6;
+            transform: translateY(-2px);
+        }
+        
+        .station-card.selected {
+            border-color: var(--gold);
+            background-color: #fdf6e7;
+            box-shadow: 0 4px 12px rgba(193, 135, 47, 0.18);
+        }
+        
+        .station-card i {
+            font-size: 2.5rem;
+            color: var(--ink-soft);
+            margin-bottom: 12px;
+            transition: color 0.2s;
+        }
+        
+        .station-card.selected i {
+            color: var(--gold-dark);
+        }
+        
+        .station-label {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--ink);
+            line-height: 1.3;
+        }
+
+        .station-sublabel {
+            display: block;
+            font-weight: 500;
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        
+        /* Responsive adjust for smaller screens */
+        @media (max-width: 480px) {
+            .station-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="queue-ui.css">
+<link rel="stylesheet" href="shared-header.css">
+<link rel="stylesheet" href="status-badges.css">
+<link rel="stylesheet" href="/appearance.css">
+<link rel="stylesheet" href="/queue-workspace.css">
+<link rel="stylesheet" href="/queue-workstations.css">
+<link rel="stylesheet" href="/staff-login.css">
+</head>
+<body class="queue-login-page">
+<div id="system-react-root" data-page="queue-log-in" style="display:contents"></div>
+<script src="/system-react/app.js"></script>
+<script>
+
+// Login precedes workstation selection. Identity remains in the server-owned cookie.
+if(window.location.pathname!=='/workstations.html'){
+ let pending=false;
+ document.getElementById('queueSignInForm').addEventListener('submit',async event=>{
+ event.preventDefault();if(pending)return;pending=true;
+ const button=document.getElementById('queueSignInButton'),status=document.getElementById('sessionStatus');button.disabled=true;button.textContent='Signing in…';status.textContent='';
+ try{const response=await RequestFeedback.fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('queueUsername').value.trim(),password:document.getElementById('queuePassword').value})});const data=await response.json();if(data.user)sessionStorage.setItem('queueUser',JSON.stringify(data.user));document.getElementById('queuePassword').value='';sessionStorage.removeItem('currentWorkspace');window.location.replace('/workstations.html');}
+ catch(error){status.textContent=error.status===401?'Please sign in again. Check your username and password.':(error.message||'Could not sign in. Please try again.');document.getElementById('queuePassword').value='';document.getElementById('queuePassword').focus();}
+ finally{pending=false;button.disabled=false;button.textContent='Sign in';}
+ });
+}else{
+ document.getElementById('queueSignOut').addEventListener('click',async()=>{try{await RequestFeedback.fetch('/api/auth/logout',{method:'POST'});sessionStorage.removeItem('currentWorkspace');sessionStorage.removeItem('queueUser');window.location.replace('/log-in.html');}catch(error){document.getElementById('sessionStatus').textContent=error.message;}});
+    const BACKEND_URL = window.location.origin;
+    const cards = document.querySelectorAll('.station-card[data-value]');
+    const hiddenInput = document.getElementById('workspaceSelect');
+    let sessionStarting = false;
+
+    cards.forEach(card => {
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+        card.addEventListener('click', function() {
+            if (sessionStarting) return;
+            cards.forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
+            hiddenInput.value = this.getAttribute('data-value');
+            document.getElementById('loginForm').requestSubmit();
+        });
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (sessionStarting) return;
+        const selectedWorkspace = hiddenInput.value;
+        
+        if (!selectedWorkspace) {
+            alert("Please select a station before logging in.");
+            return;
+        }
+        
+        sessionStarting = true;
+        cards.forEach(card => card.setAttribute('aria-disabled', 'true'));
+        document.getElementById('sessionStatus').textContent = 'Opening workstation…';
+        (async()=>{
+            if(['Kiosk','Monitor'].includes(selectedWorkspace)){
+                sessionStorage.setItem('currentWorkspace',selectedWorkspace);
+                window.location.href=selectedWorkspace==='Monitor'?'monitor.html':'kiosk.html';return;
+            }
+            const response=await RequestFeedback.fetch(BACKEND_URL+'/api/workstations/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workspace:selectedWorkspace})});
+            const data=await response.json();
+            if(!data.allowed)throw new Error(data.message || 'Could not open this window.');
+            sessionStorage.setItem('currentWorkspace',selectedWorkspace);window.location.href='kiosk.html';
+        })().catch(error=>{document.getElementById('sessionStatus').textContent=error.message;}).finally(()=>{
+            sessionStarting=false;cards.forEach(card=>card.removeAttribute('aria-disabled'));
+        });
+    });
+
+
+
+}
+</script>
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script></body>
+</html>

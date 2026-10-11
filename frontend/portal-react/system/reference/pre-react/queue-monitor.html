@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/appearance.js"></script>
+    <script src="/request-feedback.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Queue Monitor — Office of the City Engineer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="monitor-style.css">
+    <style>
+        /* --- LAYOUT OVERRIDES FOR MAXIMUM VIDEO DISPLAY SIZE --- */
+        body {
+            display: grid;
+            grid-template-columns: minmax(320px, 35%) 1fr; /* Default Landscape */
+            grid-template-rows: auto 1fr;
+            grid-template-areas: 
+                "header header"
+                "left right";
+            gap: 22px;
+            height: 100vh;
+            margin: 0;
+            padding: 20px 30px; 
+            box-sizing: border-box;
+            overflow: hidden; 
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.layout-portrait {
+            grid-template-areas: 
+                "header right"
+                "left right";
+            grid-template-columns: 1fr minmax(320px, 35%); 
+        }
+
+        .header {
+            grid-area: header;
+            margin-bottom: 0 !important;
+        }
+
+        .header-content { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            gap: 35px; 
+        }
+
+        /* Compress layout whitespace gaps */
+        .header-text h1 { margin: 0 0 2px 0; font-size: 1.45rem; line-height: 1.1; }
+        .header-text p { margin: 0; font-size: 1rem; }
+
+        .monitor-brand { display:flex;align-items:center;gap:15px; }
+        .monitor-seal { width:54px;height:54px;border:2px solid var(--gold-bright);border-radius:50%;display:block;object-fit:cover;background:white;flex-shrink:0; }
+        .header-context { display:flex;align-items:center;gap:10px;margin-left:auto; }
+        .monitor-live { display:flex;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#dceaf2;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase; }
+        .monitor-live span { width:8px;height:8px;border-radius:50%;background:#46d39a;box-shadow:0 0 0 4px rgba(70,211,154,.13); }
+
+        .logout-wrapper { display: flex; align-items: center; gap: 10px; }
+        .logout-confirm-text { color: #b3402e; font-size: 14px; font-weight: 700; background: rgba(255,255,255,0.12); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(227,168,60,0.4); display: none; }
+        .btn-monitor-logout { background: rgba(255,255,255,0.12); color: #ffffff; border: 1px solid rgba(255,255,255,0.18); width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+        .btn-monitor-logout.confirm-pending { background: #b3402e !important; border-color: #b3402e !important; }
+        .station-callout { font-size: 1.9rem !important; font-weight: 700; margin-top: 10px; }
+        
+        .display-container {
+            display: contents; 
+        }
+        
+        .now-serving {
+            grid-area: left;
+            height: 100%; 
+            width: 100%;
+            max-width: none !important;
+            margin: 0;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .video-container {
+            grid-area: right;
+            height: 100%;
+            width: 100%;
+            background: transparent; 
+            border-radius: 20px; 
+            overflow: hidden; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            box-shadow: 0 10px 28px rgba(16, 42, 70, 0.07);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            position:relative;
+            border:1px solid var(--line);
+        }
+        .video-label { position:absolute;left:16px;top:16px;z-index:2;padding:7px 10px;border-radius:7px;background:rgba(7,26,44,.78);color:white;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;backdrop-filter:blur(4px); }
+
+        @media(max-width:900px){.monitor-live{display:none}.monitor-seal{width:46px;height:46px}.header-text h1{font-size:1.15rem}.header-text p{font-size:.75rem}}
+    </style>
+    <script src="http://localhost:5000/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="queue-ui.css">
+<link rel="stylesheet" href="shared-header.css">
+<link rel="stylesheet" href="status-badges.css">
+<link rel="stylesheet" href="/appearance.css">
+<link rel="stylesheet" href="/queue-workspace.css">
+</head>
+<body class="queue-monitor-page">
+
+<div class="header">
+    <div class="header-content site-header queue-site-header">
+        <div class="monitor-brand" ondblclick="window.location.href='secret-management.html'" style="cursor: default; user-select: none;">
+            <img class="monitor-seal" src="assets/laoag-city-official-seal.png" alt="Laoag City official seal">
+            <div class="header-text">
+                <h1>Office of the City Engineer</h1>
+                <p class="header-subtitle">Building and Occupancy Permit Queue</p>
+            </div>
+        </div>
+        <div class="header-context">
+            <div class="monitor-live"><span></span> Live queue</div>
+            <div class="logout-wrapper">
+                <div class="logout-confirm-text" id="logoutTooltip">Click again to exit</div>
+                <button class="btn-monitor-logout" id="logoutBtn" aria-label="Exit monitor session">
+                    <svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2.5;"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="display-container" id="mainDisplayContainer">
+    <div class="now-serving" id="servingCard">
+        <h2>Now Serving</h2>
+        <div class="ticket-num" id="currentServing">---</div>
+        <div class="station-callout" id="counterDirection" style="display: none;"></div>
+        <div class="reason-text" id="currentReason" style="margin-top: 25px;">Welcome! Please register.</div>
+        <p class="monitor-guidance">Please have your documents ready when your number is called.</p>
+    </div>
+
+    <div class="video-container">
+        <div class="video-label">Office announcements</div>
+        <div class="video-empty-state" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="15" rx="2"/><path d="m10 8 5 3-5 3zM8 22h8m-4-4v4"/></svg><p>Office videos will appear here when available.</p></div>
+        <video id="lobbyVideo" autoplay style="width: 100%; height: 100%; object-fit: contain;">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+</div>
+
+<script>
+    const BACKEND_URL = 'http://localhost:5000';
+    const currentWorkspace = sessionStorage.getItem('currentWorkspace');
+    
+    if(!currentWorkspace) {
+        window.location.href = 'log-in.html';
+    }
+
+    const socket = io(BACKEND_URL);
+    let lastSpokenTicketId = null;
+    let lastStamp = null;
+    let confirmationTimer = null;
+    let premiumVoice = null;
+
+    const lobbyVideo = document.getElementById('lobbyVideo');
+    const displayContainer = document.getElementById('mainDisplayContainer');
+
+    let playlist = [];
+    let currentVideoIndex = 0;
+
+    // Monitor track completion, increment target array position, and proceed to next file
+    lobbyVideo.addEventListener('ended', function() {
+        if (playlist.length > 0) {
+            currentVideoIndex = (currentVideoIndex + 1) % playlist.length;
+            lobbyVideo.src = playlist[currentVideoIndex];
+            lobbyVideo.play().catch(e => console.log("Playlist track sequencing exception:", e));
+        }
+    });
+
+    lobbyVideo.addEventListener('loadedmetadata', function() {
+        const isPortrait = this.videoHeight > this.videoWidth;
+        
+        if (isPortrait) {
+            document.body.classList.add('layout-portrait');
+        } else {
+            document.body.classList.remove('layout-portrait');
+        }
+    });
+
+    function loadBestVoice() {
+        if (!('speechSynthesis' in window)) return;
+        
+        const voices = window.speechSynthesis.getVoices();
+        const premiumIdentifiers = [
+            'Natural', 'Premium', 'Microsoft Aria', 'Zira', 'Hazel', 'Samantha', 'en-US', 'en-GB'
+        ];
+
+        for (let identifier of premiumIdentifiers) {
+            let found = voices.find(voice => voice.name.includes(identifier));
+            if (found) {
+                premiumVoice = found;
+                break;
+            }
+        }
+
+        if (!premiumVoice) {
+            premiumVoice = voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+        }
+    }
+
+    if ('speechSynthesis' in window) {
+        loadBestVoice();
+        window.speechSynthesis.onvoiceschanged = loadBestVoice;
+    }
+
+    function playChime() {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        [0.0, 0.5, 1.0].forEach((startTime) => {
+            const osc = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            osc.frequency.setValueAtTime(880.00, ctx.currentTime + startTime);
+            gainNode.gain.setValueAtTime(0, ctx.currentTime + startTime);
+            gainNode.gain.linearRampToValueAtTime(0.8, ctx.currentTime + startTime + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + 0.35);
+            osc.connect(gainNode); gainNode.connect(ctx.destination);
+            osc.start(ctx.currentTime + startTime); osc.stop(ctx.currentTime + startTime + 0.35);
+        });
+    }
+
+    function cleanAndFormatTicketNumber(ticketId) {
+        if (!ticketId) return '';
+        let onlyNumbers = ticketId.toString().replace(/\D/g, '');
+        return onlyNumbers.split('').join(' ');
+    }
+
+    function speakTicket(ticketId, stationName) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel(); 
+        
+        const translationMap = {
+            PC1: 'Window 1',
+            PC2: 'Window 2',
+            PC3: 'Window 3'
+        };
+        
+        const formattedCounter = translationMap[stationName] || stationName;
+        const numericTicket = cleanAndFormatTicketNumber(ticketId);
+        const phrasing = `Now serving ticket ${numericTicket}. Please proceed to ${formattedCounter}.`;
+        
+        const utterance = new SpeechSynthesisUtterance(phrasing);
+        if (premiumVoice) {
+            utterance.voice = premiumVoice;
+        }
+
+        utterance.rate = 0.75;  
+        utterance.pitch = 1.0;  
+        utterance.volume = 1.0; 
+        
+        utterance.onend = function() {
+            lobbyVideo.play().catch(e => console.log("Playback resumed post-vocal stream:", e));
+        };
+        
+        utterance.onerror = function() {
+            lobbyVideo.play().catch(e => console.log("Vocal fallback failure playback reset:", e));
+        };
+
+        window.speechSynthesis.speak(utterance);
+    }
+
+    socket.on('queueUpdate', (data) => {
+        updateDisplay(data.nowServing);
+    });
+
+    function updateDisplay(nowServing) {
+        const servingCard = document.getElementById('servingCard');
+        const servingDisplayElement = document.getElementById('currentServing');
+        const directionElement = document.getElementById('counterDirection');
+        
+        if (nowServing) {
+            let stationName = nowServing.calledBy || 'PC1';
+            servingDisplayElement.innerText = nowServing.id;
+            
+            const translationMap = {
+                PC1: 'Window 1',
+                PC2: 'Window 2',
+                PC3: 'Window 3'
+            };
+            const friendlyName = translationMap[stationName] || stationName;
+
+            directionElement.innerText = `${friendlyName} is ready for you`;
+            directionElement.style.display = 'block';
+            document.getElementById('currentReason').innerText = `Purpose: ${nowServing.reason}`;
+            servingCard.classList.remove('is-idle');
+            
+            if (nowServing.id !== lastSpokenTicketId || nowServing.recallStamp !== lastStamp) {
+                lobbyVideo.pause();
+
+                playChime();
+                setTimeout(() => { speakTicket(nowServing.id, stationName); }, 2200);
+                lastSpokenTicketId = nowServing.id;
+                lastStamp = nowServing.recallStamp;
+            }
+        } else {
+            servingDisplayElement.innerText = "---";
+            directionElement.style.display = 'none';
+            document.getElementById('currentReason').innerText = "Welcome! Please register.";
+            servingCard.classList.add('is-idle');
+            lastSpokenTicketId = null;
+            lastStamp = null;
+        }
+    }
+
+    RequestFeedback.fetch(`${BACKEND_URL}/api/videos/playlist`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.playlist && data.playlist.length > 0) {
+                playlist = data.playlist;
+                currentVideoIndex = 0;
+                lobbyVideo.src = playlist[currentVideoIndex];
+            }
+        })
+        .catch(err => console.error("Could not fetch initial active video array:", err));
+
+    socket.on('playlistUpdate', (data) => {
+        if (data.playlist && data.playlist.length > 0) {
+            const wasEmpty = playlist.length === 0;
+            playlist = data.playlist;
+            
+            if (wasEmpty || lobbyVideo.paused || !lobbyVideo.src) {
+                currentVideoIndex = 0;
+                lobbyVideo.src = playlist[currentVideoIndex];
+                lobbyVideo.play().catch(e => console.log("Autoplay stream index restart exception:", e));
+            }
+        }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+        const button = this;
+        const tooltip = document.getElementById('logoutTooltip');
+
+        if (button.classList.contains('confirm-pending')) {
+            clearTimeout(confirmationTimer);
+            RequestFeedback.fetch(`${BACKEND_URL}/api/workstations/logout`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workspace: currentWorkspace })
+            }).then(() => {
+                sessionStorage.removeItem('currentWorkspace');
+                window.location.href = 'log-in.html';
+            });
+        } else {
+            button.classList.add('confirm-pending');
+            tooltip.style.display = 'block';
+            confirmationTimer = setTimeout(() => {
+                button.classList.remove('confirm-pending');
+                tooltip.style.display = 'none';
+            }, 3000);
+        }
+    });
+
+    window.addEventListener('beforeunload', function () {
+        const payload = new Blob(
+            [JSON.stringify({ workspace: currentWorkspace })],
+            { type: 'application/json' }
+        );
+        navigator.sendBeacon(`${BACKEND_URL}/api/workstations/logout`, payload);
+    });
+</script>
+
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script>
+</body>
+</html>

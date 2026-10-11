@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/appearance.js"></script>
+    <script src="/request-feedback.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Audit Logs — Office of the City Engineer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="kiosk-style.css">
+    <style>
+        .management-container {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .upload-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+            padding: 32px;
+            border: 1px solid var(--line);
+        }
+        .btn-return-monitor {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #64748b;
+            color: #ffffff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s;
+            margin-bottom: 24px;
+            width: auto;
+        }
+        .btn-return-monitor:hover { background-color: #475569; }
+
+        .stats-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .stat-chip {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stat-chip span {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1e293b;
+        }
+
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .filter-row select, .filter-row input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #334155;
+            background: #f8fafc;
+            width: auto;
+            min-width: 140px;
+        }
+        .filter-row select:focus, .filter-row input[type="text"]:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+        }
+        .filter-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .logs-table-wrapper {
+            overflow-x: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+        th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 2px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        td {
+            padding: 11px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            vertical-align: middle;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f8fafc; }
+
+        .station-badge {
+            background: #e2e8f0;
+            padding: 3px 9px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 11px;
+            color: #475569;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
+        .action-badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+        }
+        .action-LOGIN       { background: #dcfce7; color: #15803d; }
+        .action-LOGOUT      { background: #f1f5f9; color: #475569; }
+        .action-TICKET_CREATED { background: #dbeafe; color: #1d4ed8; }
+        .action-CALL_NEXT   { background: #d1fae5; color: #065f46; }
+        .action-RECALL      { background: #cffafe; color: #0e7490; }
+        .action-HOLD        { background: #fef9c3; color: #92400e; }
+        .action-UNHOLD      { background: #ede9fe; color: #5b21b6; }
+        .action-DROP        { background: #fee2e2; color: #991b1b; }
+        .action-SYSTEM_RESET { background: #fce7f3; color: #9d174d; }
+        .action-VIDEO_UPLOAD { background: #f0fdf4; color: #166534; }
+        .action-default     { background: #f1f5f9; color: #64748b; }
+
+        .state-row td {
+            text-align: center;
+            padding: 32px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .auto-refresh-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            margin-left: auto;
+        }
+        .auto-refresh-label input[type="checkbox"] {
+            accent-color: #6366f1;
+            width: 15px;
+            height: 15px;
+        }
+    </style>
+    <link rel="stylesheet" href="queue-ui.css">
+<link rel="stylesheet" href="shared-header.css">
+<link rel="stylesheet" href="status-badges.css">
+<link rel="stylesheet" href="/appearance.css">
+<link rel="stylesheet" href="/queue-workspace.css">
+</head>
+<body class="queue-admin-page audit-page">
+
+<div class="app-header-bar site-header queue-site-header">
+    <div class="brand">
+        <img class="brand-mark" src="assets/laoag-city-official-seal.png" alt="Laoag City official seal">
+        <div>
+            <h1>Office of the City Engineer</h1>
+            <p class="brand-subtitle">Queue System Administration</p>
+        </div>
+    </div>
+    <div class="station-chip admin-chip">
+        <i class="fa-solid fa-user-shield"></i> Administrator
+    </div>
+</div>
+
+<div class="management-container">
+
+    <a href="secret-management.html" class="btn-return-monitor">
+        <i class="fa-solid fa-arrow-left"></i> Media management
+    </a>
+
+    <section class="admin-page-intro">
+        <div class="admin-kicker">System accountability</div>
+        <h2>Queue activity and audit logs</h2>
+        <p>Review recent workstation activity, ticket events, and administrative actions.</p>
+    </section>
+
+    <div class="upload-card admin-card">
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:10px;">
+            <div>
+                <h2 class="activity-heading" style="margin:0; color:#1e293b; font-size:18px;">
+                    <i class="fa-solid fa-clock-rotate-left" style="color:#1769aa; margin-right:8px;"></i>Recent Activity
+                </h2>
+                <p style="color:#5b6577; font-size:13px; margin:4px 0 0 0;">Displaying the most recent 100 actions across all workstations.</p>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <label class="auto-refresh-label">
+                    <input type="checkbox" id="autoRefreshToggle"> Auto-refresh (10s)
+                </label>
+                <button onclick="fetchLogs()" style="width:auto; padding:8px 16px; font-size:13px; background:#1c5d99;">
+                    <i class="fa-solid fa-rotate-right"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-row" id="statsRow" style="margin-top:16px;"></div>
+
+        <div class="filter-row">
+            <span class="filter-label"><i class="fa-solid fa-filter"></i> Filter:</span>
+            <select id="filterAction" onchange="applyFilters()">
+                <option value="">All Actions</option>
+                <option value="LOGIN">Login</option>
+                <option value="LOGOUT">Logout</option>
+                <option value="TICKET_CREATED">Ticket Created</option>
+                <option value="CALL_NEXT">Call Next</option>
+                <option value="RECALL">Recall</option>
+                <option value="HOLD">Hold</option>
+                <option value="UNHOLD">Unhold</option>
+                <option value="DROP">Drop</option>
+                <option value="SYSTEM_RESET">System Reset</option>
+                <option value="VIDEO_UPLOAD">Video Upload</option>
+            </select>
+            <select id="filterStation" onchange="applyFilters()">
+                <option value="">All Stations</option>
+            </select>
+            <label class="filter-label" style="margin-left:6px;">From</label>
+            <input type="date" id="filterStartDate" onchange="applyFilters()">
+            <label class="filter-label">To</label>
+            <input type="date" id="filterEndDate" onchange="applyFilters()">
+            <input type="text" id="filterSearch" placeholder="Search details..." oninput="applyFilters()">
+        </div>
+
+        <div class="logs-table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:18%;">Timestamp</th>
+                        <th style="width:14%;">Station</th>
+                        <th style="width:16%;">Action</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="logsTableBody">
+                    <tr class="state-row">
+                        <td colspan="4"><i class="fa-solid fa-spinner fa-spin"></i> Loading logs...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="logFooter" style="margin-top:10px; font-size:12px; color:#94a3b8; text-align:right;"></div>
+    </div>
+</div>
+
+<script>
+    const BACKEND_URL = 'http://localhost:5000';
+
+    let allLogs = [];
+    let autoRefreshTimer = null;
+
+    function formatDate(dateString) {
+        return new Date(dateString).toLocaleString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+    }
+
+    function actionBadge(action) {
+        const cls = `action-${action}`;
+        const label = action.replace(/_/g, ' ');
+        const knownClasses = ['LOGIN','LOGOUT','TICKET_CREATED','CALL_NEXT','RECALL','HOLD','UNHOLD','DROP','SYSTEM_RESET','VIDEO_UPLOAD'];
+        const safeClass = knownClasses.includes(action) ? cls : 'action-default';
+        return `<span class="action-badge ${safeClass}">${label}</span>`;
+    }
+
+    function populateStationFilter(logs) {
+        const sel = document.getElementById('filterStation');
+        const current = sel.value;
+        const stations = [...new Set(logs.map(l => l.user_station))].sort();
+        sel.innerHTML = '<option value="">All Stations</option>';
+        stations.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s; opt.textContent = s;
+            if (s === current) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+
+    function renderStats(logs) {
+        const counts = {};
+        logs.forEach(l => { counts[l.action] = (counts[l.action] || 0) + 1; });
+
+        const highlights = [
+            { key: 'TICKET_CREATED', icon: 'fa-ticket', label: 'Tickets Created' },
+            { key: 'CALL_NEXT',      icon: 'fa-bullhorn', label: 'Calls Made' },
+            { key: 'DROP',           icon: 'fa-circle-xmark', label: 'Dropped' },
+            { key: 'SYSTEM_RESET',   icon: 'fa-rotate-left', label: 'Resets' },
+        ];
+
+        const row = document.getElementById('statsRow');
+        row.innerHTML = highlights.map(h => `
+            <div class="stat-chip">
+                <i class="fa-solid ${h.icon}" style="color:#6366f1;"></i>
+                <span>${counts[h.key] || 0}</span> ${h.label}
+            </div>
+        `).join('') + `
+            <div class="stat-chip">
+                <i class="fa-solid fa-list-check" style="color:#6366f1;"></i>
+                <span>${logs.length}</span> Total Entries
+            </div>
+        `;
+    }
+
+    function applyFilters() {
+        const actionVal   = document.getElementById('filterAction').value;
+        const stationVal  = document.getElementById('filterStation').value;
+        const searchVal   = document.getElementById('filterSearch').value.toLowerCase();
+        const startDateVal = document.getElementById('filterStartDate') ? document.getElementById('filterStartDate').value : '';
+        const endDateVal   = document.getElementById('filterEndDate') ? document.getElementById('filterEndDate').value : '';
+
+        const filtered = allLogs.filter(log => {
+            if (actionVal  && log.action       !== actionVal)  return false;
+            if (stationVal && log.user_station !== stationVal) return false;
+            if (searchVal  && !log.details.toLowerCase().includes(searchVal)) return false;
+
+            const ts = new Date(log.timestamp);
+            if (startDateVal) {
+                const sd = new Date(startDateVal);
+                sd.setHours(0,0,0,0);
+                if (ts < sd) return false;
+            }
+            if (endDateVal) {
+                const ed = new Date(endDateVal);
+                ed.setHours(23,59,59,999);
+                if (ts > ed) return false;
+            }
+
+            return true;
+        });
+
+        renderTable(filtered);
+        document.getElementById('logFooter').textContent =
+            `Showing ${filtered.length} of ${allLogs.length} records`;
+    }
+
+    function renderTable(logs) {
+        const tbody = document.getElementById('logsTableBody');
+        if (!logs.length) {
+            tbody.innerHTML = '<tr class="state-row"><td colspan="4">No matching log entries found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = logs.map(log => `
+            <tr>
+                <td style="font-family:monospace; font-size:12px; white-space:nowrap;">${formatDate(log.timestamp)}</td>
+                <td><span class="station-badge">${log.user_station}</span></td>
+                <td>${actionBadge(log.action)}</td>
+                <td style="color:#475569;">${log.details}</td>
+            </tr>
+        `).join('');
+    }
+
+    function fetchLogs() {
+        const tbody = document.getElementById('logsTableBody');
+        const previousRows=tbody.innerHTML;
+        if(!allLogs.length)tbody.innerHTML = '<tr class="state-row"><td colspan="4">Fetching records...</td></tr>';
+
+        RequestFeedback.fetch(`${BACKEND_URL}/api/logs`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.logs) {
+                    allLogs = data.logs;
+                    populateStationFilter(allLogs);
+                    renderStats(allLogs);
+                    applyFilters();
+
+                    const ts = new Date().toLocaleTimeString('en-US');
+                    document.getElementById('logFooter').textContent =
+                        `Last refreshed at ${ts}  ·  Showing ${allLogs.length} of ${allLogs.length} records`;
+                } else {
+                    tbody.innerHTML = '<tr class="state-row"><td colspan="4">No logs found in the database.</td></tr>';
+                }
+            })
+            .catch(error => {
+                RequestFeedback.report(error);
+                if(allLogs.length){tbody.innerHTML=previousRows;document.getElementById('logFooter').textContent='Refresh failed — showing previously loaded records.';return;}
+                tbody.innerHTML = '<tr class="state-row"><td colspan="4" style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Failed to connect to backend server.</td></tr>';
+            });
+    }
+
+    document.getElementById('autoRefreshToggle').addEventListener('change', function() {
+        if (this.checked) {
+            autoRefreshTimer = setInterval(fetchLogs, 10000);
+        } else {
+            clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
+        }
+    });
+
+    window.addEventListener('DOMContentLoaded', fetchLogs);
+</script>
+
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script>
+</body>
+</html>

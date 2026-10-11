@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- MAINTAINER GUIDE: permits-superadmin document/controller source. React mounts the layout before the inline controllers run. Edit this source rather than its published frontend copy. -->
+<script src="/permit-routing.js" data-page="dashboard"></script>
+    <script src="/appearance.js"></script>
+    <script src="/destructive-action.js"></script>
+    <script src="/request-feedback.js"></script>
+    <script src="/form-safety.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office of the City Engineer | Administrator Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Libre+Franklin:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --navy:#102a43;--navy-deep:#071a2c;--blue:#1769aa;--blue-light:#edf6fb;--gold:#e7a92f;
+            --green:#16785b;--green-light:#eaf7f2;--surface:#f3f6f8;--white:#fff;--border:#d9e1e7;
+            --text:#172b3a;--muted:#687b89;--red:#ba4238;--red-light:#fff0ef;--amber:#a86f0c;--amber-light:#fff4d6;
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        .mdi-icon{width:1.1em;height:1.1em;display:block;fill:currentColor;flex:0 0 auto}
+        body{min-height:100vh;background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;line-height:1.5}
+        .app-header{height:76px;background:var(--navy);color:white;border-bottom:4px solid var(--gold);box-shadow:0 5px 20px rgba(7,26,44,.18);display:flex;align-items:center;padding:0 38px}
+        .brand{display:flex;align-items:center;gap:12px}
+        .brand-mark{width:46px;height:46px;border:2px solid var(--gold);border-radius:50%;display:block;object-fit:cover;background:white}
+        .brand-title{font-family:'Libre Franklin',sans-serif;font-size:15px;font-weight:700;letter-spacing:-.01em}
+        .brand-subtitle{font-size:10px;color:#b9d6e9;margin-top:2px;letter-spacing:.035em}
+        .header-logout{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 13px;border:1px solid rgba(255,255,255,.28);border-radius:8px;background:transparent;color:#e7f1f7;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:.2s ease;white-space:nowrap}
+        .header-logout:hover{background:#a93636;border-color:#c95b5b;color:#fff}
+        .header-logout .mdi-icon{width:16px;height:16px}
+        .container{max-width:1320px;margin:0 auto;padding:34px 32px 56px}
+        .topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:24px}
+        .page-kicker{display:flex;align-items:center;gap:8px;color:var(--blue);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:7px}
+        .page-kicker::before{content:"";width:25px;height:2px;background:var(--gold)}
+        h1,h2{font-family:'Libre Franklin',sans-serif;color:var(--navy)}
+        h1{font-size:30px;line-height:1.2;letter-spacing:-.04em;margin-bottom:7px}
+        h2{font-size:16px;letter-spacing:-.02em}
+        p{color:var(--muted);line-height:1.55;font-size:13px}
+        .console-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+        .card{background:var(--white);border:1px solid var(--border);border-radius:15px;margin-bottom:18px;box-shadow:0 8px 24px rgba(16,42,67,.06);overflow:hidden}
+        .card.full-width{grid-column:1/-1}
+        .card-header{display:flex;align-items:flex-start;gap:13px;padding:20px 22px 17px;border-bottom:1px solid var(--border)}
+        .section-icon{width:38px;height:38px;flex:0 0 38px;border-radius:10px;display:grid;place-items:center;background:var(--blue-light);color:var(--blue);font-size:16px;font-weight:800}
+        .section-icon.gold{background:var(--amber-light);color:var(--amber)}
+        .section-icon.green{background:var(--green-light);color:var(--green)}
+        .section-copy p{font-size:12px;margin-top:3px}
+        .data-region{overflow-x:auto;min-height:74px;padding:4px 22px 18px}
+        .data-region>.muted{margin:17px 0 3px;padding:14px;border:1px dashed var(--border);border-radius:9px;background:#fafcfd;text-align:center;font-size:12px}
+        table{width:100%;border-collapse:collapse;margin-top:8px;min-width:600px}
+        th,td{padding:11px 10px;border-bottom:1px solid var(--border);font-size:12px;text-align:left;vertical-align:middle}
+        th{font-size:9px;color:var(--muted);font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:#f8fafb;white-space:nowrap}
+        td:first-child{font-weight:700;color:var(--navy)}
+        tbody tr:last-child td{border-bottom:none}
+        tbody tr:hover{background:#fbfcfd}
+        select{min-width:120px;padding:8px 30px 8px 10px;border:1px solid var(--border);border-radius:7px;background:white;color:var(--text);font-family:inherit;font-size:11px;font-weight:600;outline:none}
+        select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(23,105,170,.1)}
+        .btn{padding:8px 11px;border:1px solid transparent;border-radius:7px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:.18s ease;white-space:nowrap}
+        .btn.approve{background:var(--green-light);color:var(--green);border-color:#cbe9dc}
+        .btn.approve:hover{background:var(--green);color:white;border-color:var(--green)}
+        .btn.reject,.btn.delete{background:var(--red-light);color:var(--red);border-color:#f0cbc7}
+        .btn.reject:hover,.btn.delete:hover{background:var(--red);color:#fff;border-color:var(--red)}
+        .request-actions{display:flex;align-items:center;gap:7px}
+        .pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800;background:#edf1f4;color:var(--muted);text-transform:capitalize}
+        .pill.operator{background:var(--blue-light);color:var(--blue)}
+        .pill.admin{background:var(--green-light);color:var(--green)}
+        .pill.superadmin{background:var(--amber-light);color:var(--amber)}
+        .muted{color:var(--muted)}
+        @media(max-width:900px){.container{padding:28px 18px 44px}.console-grid{grid-template-columns:1fr}.card.full-width{grid-column:auto}}
+        @media(max-width:560px){.app-header{height:70px;padding:0 18px}.brand-title{font-size:13px}.topbar{align-items:flex-start;flex-direction:column}.container{padding:24px 12px 40px}h1{font-size:26px}.card-header{padding:17px}.data-region{padding:3px 12px 14px}}
+        @keyframes bp-admin-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes bp-admin-row{from{opacity:0;transform:translateX(-7px)}to{opacity:1;transform:translateX(0)}}
+        .app-header{animation:bp-admin-up .42s ease-out both}
+        .topbar{animation:bp-admin-up .46s .06s ease-out both}
+        .console-grid .card{animation:bp-admin-up .5s .2s ease-out both}
+        .console-grid .card:nth-child(2){animation-delay:.25s}.console-grid .card:nth-child(3){animation-delay:.3s}.console-grid .card:nth-child(4){animation-delay:.35s}
+        .data-region tbody tr{animation:bp-admin-row .3s ease-out both}
+        @media(prefers-reduced-motion:reduce){.app-header,.topbar,.console-grid .card,.data-region tbody tr{animation:none!important}}
+    
+        .approval-diff summary{cursor:pointer;color:#1769aa;font-weight:600;padding:8px 0;white-space:nowrap}
+        .bulk-delete-scope{max-height:220px;overflow:auto;padding:10px 12px 10px 28px;border:1px solid var(--border);border-radius:8px;overflow-wrap:anywhere}
+        .approval-diff-scroll{overflow:auto;max-width:600px;margin-top:10px;border:1px solid #e0e8ee;border-radius:8px}
+        .approval-diff table{min-width:430px!important;width:100%;background:#f9fbfc}
+        .approval-diff table th,.approval-diff table td{padding:10px;font-size:11px;white-space:normal;overflow-wrap:anywhere;max-width:240px;text-transform:none;letter-spacing:0}
+        .approval-diff .proposed-value{color:#17684b;background:#f0f8f3;font-weight:600}
+        .approval-delete-note{color:#ad4242;max-width:300px;font-size:12px;line-height:1.5}
+    </style>
+<script src="/approval-preview.js"></script>
+<link rel="stylesheet" href="/shared-header.css">
+<link rel="stylesheet" href="/status-badges.css">
+<link rel="stylesheet" href="/admin-console.css">
+<script src="/admin-request-cards.js"></script>
+<link rel="stylesheet" href="/appearance.css">
+<link rel="stylesheet" href="/account-tools.css">
+<link rel="stylesheet" href="/permit-sidebar.css">
+<link rel="stylesheet" href="/permit-responsive.css">
+<script src="/permit-responsive.js" defer></script>
+</head>
+<body>
+<div id="system-react-root" data-page="permits-superadmin" style="display:contents"></div>
+<script src="/system-react/app.js"></script>
+<script>
+    function getStoredUser(){try{return JSON.parse(sessionStorage.getItem('oboUser')||'null')}catch(e){return null}}
+    function getAuthHeaders(){const user=getStoredUser();return {'Content-Type':'application/json','x-user-role':user?.role||'','x-user-id':user?.id?String(user.id):''}}
+    
+    const currentUser=getStoredUser();
+    if(!currentUser || !['admin','superadmin'].includes(currentUser.role)){window.location.replace(PermitRouting.home(currentUser));}
+    const dashboardTitle = currentUser?.role === 'superadmin' ? 'User Account Management' : 'Admin Project Review';
+    document.querySelector('.topbar h1').textContent = dashboardTitle;
+    document.title = dashboardTitle + ' — Office of the City Engineer';
+    document.querySelector('.topbar p').textContent=currentUser?.role==='superadmin'?'Manage accounts, roles, activation, and designated station operators.':'Review station details and make the final project decision.';
+
+    function handleSignOut() {
+        return PermitRouting.logout();
+    }
+
+    // Account values are untrusted, including values saved before validation rules existed.
+    // Build text nodes and bind closures; never interpolate usernames into HTML or JS handlers.
+    function accountCell(row, value) {
+        const cell = document.createElement('td');
+        cell.textContent = String(value ?? '');
+        row.append(cell);
+        return cell;
+    }
+    function accountTable(wrap, columns) {
+        const table = document.createElement('table');
+        const head = table.createTHead().insertRow();
+        columns.forEach(label => { const th = document.createElement('th'); th.textContent = label; head.append(th); });
+        const body = table.createTBody();
+        wrap.replaceChildren(table);
+        return body;
+    }
+    function accountRoleCell(row, role) {
+        const pill = document.createElement('span');
+        pill.className = 'pill';
+        if (['operator','admin','superadmin'].includes(role)) pill.classList.add(role);
+        pill.textContent = String(role ?? '');
+        accountCell(row, '').append(pill);
+    }
+    function accountButton(label, style, id, action) {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'btn ' + style; button.textContent = label;
+        button.disabled = !Number.isSafeInteger(id) || id <= 0;
+        button.addEventListener('click', action);
+        return button;
+    }
+    async function loadPendingAccounts(){
+        window.dispatchEvent(new Event('admin-data-changed'));
+        const res=await RequestFeedback.fetch('/api/auth/accounts/pending',{headers:getAuthHeaders()});
+        const data=await res.json();
+        const wrap=document.getElementById('pendingAccounts');
+        if(!data.success || !data.users.length){wrap.innerHTML='<p class="muted">No pending account requests.</p>';return;}
+        const body=accountTable(wrap,['Username','Role','Requested','Action']);
+        data.users.forEach(u=>{
+            const row=body.insertRow(), id=Number(u.id);
+            accountCell(row,u.username); accountRoleCell(row,u.role);
+            accountCell(row,new Date(u.created_at).toLocaleString());
+            const actions=document.createElement('div');actions.className='request-actions';
+            actions.append(accountButton('Accept','approve',id,()=>approveAccount(id)),accountButton('Decline','reject',id,()=>declineAccount(id)));
+            accountCell(row,'').append(actions);
+        });
+    }
+
+    function stationAssignmentControl(user,id,catalog){
+        const key=name=>String(name || '').normalize('NFKC').trim().toUpperCase().replace(/&/g,' AND ').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+        let saved=Array.isArray(user.assigned_stations)?[...user.assigned_stations]:user.assigned_station?[user.assigned_station]:[];
+        const wrap=document.createElement('div');wrap.className='station-assignment-control';
+        const trigger=document.createElement('button');trigger.type='button';trigger.className='btn station-assignment-trigger';trigger.disabled=!Number.isSafeInteger(id)||id<=0;
+        trigger.setAttribute('aria-label','Assigned stations for '+user.username);trigger.setAttribute('aria-haspopup','dialog');trigger.setAttribute('aria-expanded','false');
+        const selected=document.createElement('small');selected.className='station-assignment-selected';
+        const refresh=()=>{trigger.textContent='Stations ('+saved.length+')';selected.textContent=saved.join(', ') || 'Unassigned (view only)';};refresh();
+        const menu=document.createElement('div');menu.className='station-assignment-menu';menu.hidden=true;menu.setAttribute('role','dialog');menu.setAttribute('aria-label','Station assignments for '+user.username);
+        if(typeof menu.showPopover==='function')menu.setAttribute('popover','auto');
+        const title=document.createElement('strong');title.textContent='Stations for '+user.username;
+        const help=document.createElement('p');help.textContent='Select all stations this operator may edit.';
+        const list=document.createElement('div');list.className='station-assignment-options';
+        const available=new Map();for(const name of [...saved,...catalog])if(typeof name==='string'&&key(name)&&!available.has(key(name)))available.set(key(name),name);
+        const checks=[];
+        for(const [stationKey,name] of available){const label=document.createElement('label'),input=document.createElement('input'),text=document.createElement('span');input.type='checkbox';input.value=name;input.dataset.stationKey=stationKey;text.textContent=name;label.append(input,text);list.append(label);checks.push(input);}
+        const feedback=document.createElement('p');feedback.className='station-assignment-feedback';feedback.setAttribute('role','alert');
+        const actions=document.createElement('div');actions.className='station-assignment-actions';
+        const cancel=document.createElement('button');cancel.type='button';cancel.className='btn';cancel.textContent='Cancel';
+        const save=document.createElement('button');save.type='button';save.className='btn approve';save.textContent='Save stations';
+        const close=()=>{if(typeof menu.hidePopover==='function')menu.hidePopover();menu.hidden=true;trigger.setAttribute('aria-expanded','false');};
+        cancel.addEventListener('click',()=>{close();trigger.focus();});
+        menu.addEventListener('keydown',event=>{if(event.key==='Escape'&&!save.disabled){close();trigger.focus();}});
+        menu.addEventListener('toggle',event=>{if(event.newState==='closed'){menu.hidden=true;trigger.setAttribute('aria-expanded','false');}});
+        trigger.addEventListener('click',()=>{
+            if(!menu.hidden){close();return;}
+            const savedKeys=new Set(saved.map(key));checks.forEach(input=>{input.checked=savedKeys.has(input.dataset.stationKey)});feedback.textContent='';
+            const rect=trigger.getBoundingClientRect(),width=Math.min(340,Math.max(240,window.innerWidth-28));
+            menu.style.width=width+'px';menu.style.left=Math.max(14,Math.min(rect.left,window.innerWidth-width-14))+'px';menu.style.top=Math.max(14,Math.min(rect.bottom+8,window.innerHeight-360))+'px';
+            menu.hidden=false;trigger.setAttribute('aria-expanded','true');if(typeof menu.showPopover==='function')menu.showPopover();checks[0]?.focus();
+        });
+        save.addEventListener('click',async()=>{
+            if(save.disabled)return;
+            const names=checks.filter(input=>input.checked).map(input=>input.value),savedKeys=new Set(saved.map(key));
+            if(names.length===savedKeys.size&&names.every(name=>savedKeys.has(key(name)))){close();trigger.focus();return;}
+            save.disabled=true;cancel.disabled=true;trigger.disabled=true;checks.forEach(input=>{input.disabled=true});feedback.textContent='';
+            try{
+                const res=await RequestFeedback.fetch('/api/auth/accounts/'+id+'/stations',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify({stations:names})});
+                const data=await res.json();if(!data.success)throw Error(data.message || 'Station assignments could not be saved.');
+                saved=names;user.assigned_stations=names;user.assigned_station=names[0] || null;refresh();close();trigger.focus();window.dispatchEvent(new Event('admin-data-changed'));
+            }catch(error){feedback.textContent=error.message || 'Station assignments could not be saved. Please retry.';RequestFeedback.report(error);}
+            finally{save.disabled=false;cancel.disabled=false;trigger.disabled=false;checks.forEach(input=>{input.disabled=false});if(menu.hidden)trigger.focus();}
+        });
+        actions.append(cancel,save);menu.append(title,help,list,feedback,actions);wrap.append(trigger,selected,menu);return wrap;
+    }
+    async function loadAllAccounts(){
+        window.dispatchEvent(new Event('admin-data-changed'));
+        const res=await RequestFeedback.fetch('/api/auth/accounts',{headers:getAuthHeaders()});
+        const data=await res.json();
+        const wrap=document.getElementById('allAccounts');
+        if(!data.success || !data.users.length){wrap.innerHTML='<p class="muted">No accounts found.</p>';return;}
+        const stationResult=await RequestFeedback.fetch('/api/auth/stations',{headers:getAuthHeaders()});
+        const stationData=await stationResult.json();
+        const body=accountTable(wrap,['Username','Role','Status','Change Role','Assigned stations','Action']);
+        data.users.forEach(u=>{
+            const row=body.insertRow(), id=Number(u.id);
+            const ownAccount=id===Number(currentUser?.id);
+            const username=accountCell(row,u.username);
+            if(ownAccount){const label=document.createElement('span');label.className='muted';label.textContent=' (You)';username.append(label);}
+            accountRoleCell(row,u.role);
+            accountCell(row,u.is_verified?(u.is_active?'Active':'Inactive'):'Pending');
+            const select=document.createElement('select');
+            select.setAttribute('aria-label','Change role for '+String(u.username ?? ''));
+            select.disabled=ownAccount||!Number.isSafeInteger(id)||id<=0;
+            for(const [value,label] of [['operator','Operator'],['admin','Admin'],['superadmin','Super Admin']]){
+                const option=document.createElement('option');option.value=value;option.textContent=label;option.selected=u.role===value;select.append(option);
+            }
+            select.addEventListener('change',()=>accountAction(()=>changeRole(id,select.value)));
+            accountCell(row,'').append(select);
+            if(u.role==='operator'){
+                accountCell(row,'').append(stationAssignmentControl(u,id,stationData.stations || []));
+            }else{accountCell(row,'Not applicable');}
+            const actions=document.createElement('div');actions.className='request-actions';
+            if(ownAccount){const label=document.createElement('span');label.className='muted';label.textContent='Your account';actions.append(label);}
+            else actions.append(accountButton(u.is_active?'Deactivate':'Activate','',id,()=>accountAction(async()=>{await RequestFeedback.fetch('/api/auth/accounts/'+id+'/active',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify({active:!u.is_active})});await loadAllAccounts();})),accountButton('Delete','delete',id,()=>deleteAccount(id,String(u.username ?? ''))));
+            accountCell(row,'').append(actions);
+        });
+    }
+
+    async function loadPermitApprovals(){
+        window.dispatchEvent(new Event('admin-data-changed'));
+        const res=await RequestFeedback.fetch('/api/permits/change-requests/pending',{headers:getAuthHeaders()});
+        const data=await res.json();
+        const wrap=document.getElementById('permitApprovals');
+        if(!data.success || !data.requests.length){wrap.innerHTML='<p class="muted">No pending building permit change requests.</p>';return;}
+        data.requests.forEach(r=>deletionRequestTitles.set('permits:'+(r.bulk?'bulk:':'')+r.id,{title:r.project_title||'Building permit',permitId:r.permit_id,bulk:r.bulk,count:r.record_count}));
+        wrap.innerHTML = data.requests.map(r => renderAdminRequestCard(r, 'permits')).join('');
+    }
+
+    async function loadOccupancyApprovals(){
+        window.dispatchEvent(new Event('admin-data-changed'));
+        const res=await RequestFeedback.fetch('/api/occupancy/change-requests/pending',{headers:getAuthHeaders()});
+        const data=await res.json();
+        const wrap=document.getElementById('occupancyApprovals');
+        if(!data.success || !data.requests.length){wrap.innerHTML='<p class="muted">No pending occupancy change requests.</p>';return;}
+        data.requests.forEach(r=>deletionRequestTitles.set('occupancy:'+(r.bulk?'bulk:':'')+r.id,{title:r.project_title||'Occupancy permit',permitId:r.occupancy_id,inspection:r.change_type==='inspection_delete',bulk:r.bulk,count:r.record_count}));
+        wrap.innerHTML = data.requests.map(r => renderAdminRequestCard(r, 'occupancy')).join('');
+    }
+
+    async function approveAccount(id){
+        const res=await RequestFeedback.fetch(`/api/auth/accounts/${id}/approve`,{method:'PUT',headers:getAuthHeaders()});
+        const data=await res.json();
+        alert(data.message||'Account accepted');
+        loadPendingAccounts();
+        loadAllAccounts();
+    }
+
+    async function declineAccount(id){
+        if(!confirm('Decline this pending account request? The applicant will need to submit a new request to try again.')) return;
+        const res=await RequestFeedback.fetch(`/api/auth/accounts/${id}/decline`,{method:'DELETE',headers:getAuthHeaders()});
+        const data=await res.json();
+        alert(data.message||'Account request declined');
+        if(data.success){loadPendingAccounts();loadAllAccounts();}
+    }
+
+    async function changeRole(id, role){
+        const res=await RequestFeedback.fetch(`/api/auth/accounts/${id}/role`,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify({role})});
+        const data=await res.json();
+        alert(data.message||'Role updated');
+        loadAllAccounts();
+    }
+    async function accountAction(action){try{await action()}catch(error){RequestFeedback.report(error);await loadAllAccounts();}}
+
+    async function deleteAccount(id, username){
+        if(Number(id)===Number(currentUser?.id)){alert('You cannot delete your own account.');return;}
+        if(!confirm(`Are you sure you want to permanently delete the account "${username}"? This cannot be undone.`)) return;
+        const res=await RequestFeedback.fetch(`/api/auth/accounts/${id}`,{method:'DELETE',headers:getAuthHeaders()});
+        const data=await res.json();
+        alert(data.message||'Account deleted');
+        loadPendingAccounts();
+        loadAllAccounts();
+    }
+
+    const deletionRequestTitles = new Map();
+    const reviewsInFlight = new Set();
+    async function reviewChange(kind, id, decision, isDeletion = false, confirmed = false, isBulk = false) {
+        const key = kind + ':' + (isBulk?'bulk:':'') + id;
+        if (reviewsInFlight.has(key)) return;
+        if (isDeletion && decision === 'approve' && !confirmed) {
+            const record=deletionRequestTitles.get(key);
+            if(!record){RequestFeedback.report(new Error('Refresh the request list before approving deletion.'));return false;}
+            if(isBulk)return DestructiveAction.run({title:'Delete all '+(kind==='permits'?'building':'occupancy')+' permit records?',message:'Permanently delete the '+record.count+' permit records listed in request #'+id+' and their related records? This cannot be undone. Newly created permits outside this request are excluded. Approval and activity history are retained.',requireText:'DELETE ALL',confirmLabel:'Approve and delete all',action:()=>reviewChange(kind,id,decision,true,true,true)});
+            return DestructiveAction.run({title:record.inspection?'Permanently delete inspection?':'Permanently delete permit?',message:record.inspection ? 'Delete the requested inspection from “'+record.title+'”? The occupancy permit will remain. Request #'+id+'.' : 'Delete “'+record.title+'” (Permit #'+record.permitId+') and its related records? This cannot be undone. Request #'+id+'.',confirmLabel:'Delete permanently',action:()=>reviewChange(kind,id,decision,true,true)});
+        }
+        reviewsInFlight.add(key);
+        try {
+            const res = await RequestFeedback.fetch(isBulk ? '/api/permit-deletions/' + kind + '/' + id + '/' + decision : '/api/' + kind + '/change-requests/' + id + '/' + decision, {
+                method: 'PUT', headers: getAuthHeaders(),
+                body: JSON.stringify(isBulk ? {confirmation:confirmed?'DELETE ALL':undefined} : {remarks:'Rejected by administrator.'})
+            });
+            const data = await res.json();
+            alert(data.message || (res.ok && data.success ? 'Request reviewed.' : 'Unable to review this request.'));
+            try {
+                if (kind === 'permits') await loadPermitApprovals();
+                else await loadOccupancyApprovals();
+            } catch (refreshError) { RequestFeedback.report(refreshError); }
+            return true;
+         } catch(error) {
+            RequestFeedback.report(error);
+            if (error.conflict) {
+                // The server marked this request as conflicted; remove its stale approval controls.
+                try {
+                    if (kind === 'permits') await loadPermitApprovals();
+                    else await loadOccupancyApprovals();
+                } catch (refreshError) { RequestFeedback.report(refreshError); }
+            }
+            return false;
+        } finally { reviewsInFlight.delete(key); }
+    }
+    function approvePermitRequest(id, isDeletion = false, isBulk = false) { return reviewChange('permits', id, 'approve', isDeletion, false, isBulk); }
+    function rejectPermitRequest(id, isBulk = false) { return reviewChange('permits', id, 'reject', false, false, isBulk); }
+    function approveOccupancyRequest(id, isDeletion = false, isBulk = false) { return reviewChange('occupancy', id, 'approve', isDeletion, false, isBulk); }
+    function rejectOccupancyRequest(id, isBulk = false) { return reviewChange('occupancy', id, 'reject', false, false, isBulk); }
+
+    if (currentUser?.role === 'superadmin') {
+        document.getElementById('accountSection').style.display = 'block';
+        document.getElementById('accountListSection').style.display = 'block';
+        loadPendingAccounts();
+        loadAllAccounts();
+        document.getElementById('createAccountForm').addEventListener('submit',FormSafety.guard('createAccountForm',async event=>{
+            event.preventDefault();const form=event.currentTarget;
+            try{const values=Object.fromEntries(new FormData(form));await RequestFeedback.fetch('/api/auth/accounts',{method:'POST',headers:getAuthHeaders(),body:JSON.stringify(values)});form.reset();FormSafety.clean('createAccountForm');await loadAllAccounts();}catch(error){RequestFeedback.report(error);}
+        }));
+    }
+
+    if(currentUser?.role==='admin'){loadPermitApprovals();loadOccupancyApprovals();}
+</script>
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const centerStyle = document.createElement('style');
+        centerStyle.textContent = '.has-philippine-clock{position:relative}.has-philippine-clock .philippine-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;align-items:center;text-align:center}@media(max-width:1100px){.has-philippine-clock{display:flex;flex-wrap:wrap}.has-philippine-clock .philippine-clock{position:static;transform:none;flex-basis:100%;order:99;margin:8px 0;box-sizing:border-box;align-items:center}}';
+        document.head.append(centerStyle);
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script></body>
+</html>

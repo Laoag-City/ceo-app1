@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- MAINTAINER GUIDE: permits-login document/controller source. React mounts the layout before the inline controllers run. Edit this source rather than its published frontend copy. -->
+<script src="/permit-routing.js" data-page="login"></script>
+    <script src="/appearance.js"></script>
+    <script src="/request-feedback.js"></script>
+    <script src="/form-safety.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office of the City Engineer | Sign In</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Libre+Franklin:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/staff-login.css">
+<link rel="stylesheet" href="/login-feedback.css">
+<script src="/login-feedback.js"></script>
+<link rel="stylesheet" href="/shared-header.css">
+<link rel="stylesheet" href="/status-badges.css">
+<link rel="stylesheet" href="/appearance.css">
+<link rel="stylesheet" href="/permit-responsive.css">
+</head>
+<body class="permit-login-page staff-sign-in">
+<div id="system-react-root" data-page="permits-login" style="display:contents"></div>
+<script src="/system-react/app.js"></script>
+<script>
+        const loginTab = document.getElementById('loginTab');
+        const registerTab = document.getElementById('registerTab');
+        const loginFormWrap = document.getElementById('loginFormWrap');
+        const registerFormWrap = document.getElementById('registerFormWrap');
+        const messageBox = document.getElementById('formMessage');
+
+        function showMessage(text, isError = false) {
+    window.renderLoginFeedback(messageBox, text, isError);
+}
+
+        loginTab.addEventListener('click', () => {
+            loginTab.classList.add('active');
+            registerTab.classList.remove('active');
+            loginFormWrap.style.display = 'block';
+            registerFormWrap.style.display = 'none';
+        });
+
+        registerTab.addEventListener('click', () => {
+            registerTab.classList.add('active');
+            loginTab.classList.remove('active');
+            loginFormWrap.style.display = 'none';
+            registerFormWrap.style.display = 'block';
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', FormSafety.guard('loginForm', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const res = await RequestFeedback.fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username, password }) });
+            const data = await res.json();
+            if (!res.ok || !data.success) return showMessage(data.message || 'Unable to sign in.', true);
+            if (PermitRouting.home(data.user) === '/login') return showMessage('This account has no supported permit role.', true);
+      sessionStorage.setItem('oboUser', JSON.stringify(data.user));
+            showMessage('Login successful. Redirecting...');
+            setTimeout(() => {
+                window.location.href = PermitRouting.home(data.user);
+            }, 500);
+        }));
+
+        document.getElementById('registerForm').addEventListener('submit', FormSafety.guard('registerForm', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const role = document.getElementById('registerRole').value;
+            const res = await RequestFeedback.fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username, password, role }) });
+            const data = await res.json();
+            if (!res.ok || !data.success) return showMessage(data.message || 'Unable to register.', true);
+            FormSafety.clean('registerForm'); showMessage(data.message || 'Registration submitted.');
+        }));
+    </script></body>
+</html>

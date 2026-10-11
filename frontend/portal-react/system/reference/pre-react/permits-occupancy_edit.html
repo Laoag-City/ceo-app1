@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/appearance.js"></script>
+    <script src="/request-feedback.js"></script>
+    <script src="/form-safety.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Occupancy Permit Workspace — Office of the City Engineer</title>
+    <link rel="stylesheet" href="/edit.css">
+    <style>
+        :root { --occ:#059669; --occ-dark:#047857; --occ-light:#ecfdf5; --occ-mid:#a7f3d0; }
+        .remarks-control { display:flex; align-items:center; gap:8px; }
+        .remarks-preview { font-size:12px; color:var(--text-secondary); overflow-wrap:anywhere; }
+        .remarks-preview.is-empty { font-style:italic; }
+        .remarks-edit { padding:4px 10px; background:var(--blue-light); color:var(--blue); border:1px solid var(--blue-mid); border-radius:4px; font-family:inherit; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; transition:background .15s,color .15s; }
+        .remarks-edit:hover { background:var(--blue); color:white; }
+        .remarks-edit:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
+
+        /* ── Top bar accent ── */
+        .top-bar { border-bottom:4px solid var(--gold); }
+        .top-bar-logo { display:block;object-fit:cover;background:white!important; }
+        .btn-edit-trigger { background:var(--occ); }
+        .btn-edit-trigger:hover { background:var(--occ-dark); }
+        select:focus,input:focus { box-shadow:0 0 0 3px rgba(5,150,105,.12)!important; border-color:var(--occ)!important; }
+        .btn-add { background:var(--occ); }
+        .btn-add:hover { background:var(--occ-dark); }
+        .btn-quick-add:hover { background:var(--occ); border-color:var(--occ); }
+        .btn-save-matrix { background:var(--occ); }
+        .btn-save-matrix:hover { background:var(--occ-dark); }
+        .station-badge-chip { background:#d1fae5; color:#065f46; }
+        .station-delete-btn { color:var(--occ); }
+
+        .status-chip { display:inline-flex; align-items:center; padding:5px 12px; border-radius:4px; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+        .status-pending  { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
+        .status-approved { background:var(--green-light); color:var(--green); border:1px solid var(--green-mid); }
+        .status-rejected { background:var(--red-light);   color:var(--red);   border:1px solid var(--red-mid); }
+
+        .btn-icon-danger { background:none; border:none; color:var(--red); cursor:pointer; font-size:14px; padding:4px; line-height:1; transition:opacity .15s; }
+        .btn-icon-danger:hover { opacity:.6; }
+        .btn-icon-edit   { background:none; border:none; color:var(--occ); cursor:pointer; font-size:14px; padding:4px; line-height:1; transition:opacity .15s; }
+        .btn-icon-edit:hover { opacity:.6; }
+
+        /* ══════════════════════════════
+           TAB SYSTEM
+        ══════════════════════════════ */
+        .workspace-tabs {
+            display:flex; background:var(--white);
+            border:1px solid var(--border); border-radius:15px 15px 0 0;
+            overflow:hidden; box-shadow:var(--shadow-sm);
+        }
+        .ws-tab {
+            flex:1; padding:13px 8px; background:var(--surface); border:none;
+            border-right:1px solid var(--border); font-size:11px; font-weight:700;
+            color:var(--text-secondary); cursor:pointer; transition:all .15s;
+            display:flex; align-items:center; justify-content:center; gap:6px;
+            letter-spacing:.01em;
+        }
+        .ws-tab:last-child { border-right:none; }
+        .ws-tab:hover { background:var(--white); color:var(--text-primary); }
+        .ws-tab.active { background:var(--white); color:var(--occ); border-bottom:2px solid var(--occ); }
+        .tab-badge {
+            background:var(--surface); border:1px solid var(--border);
+            border-radius:20px; font-size:10px; padding:1px 7px; font-weight:700;
+        }
+        .ws-tab.active .tab-badge { background:var(--occ-light); border-color:var(--occ-mid); color:var(--occ); }
+
+        .tab-panel { display:none; }
+        .tab-panel.active { display:block; }
+        .panel-card { border-top:none; border-radius:0 0 15px 15px!important; }
+
+        /* ══════════════════════════════
+           INSPECTION PANEL
+        ══════════════════════════════ */
+        .insp-toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+        .btn-add-insp { padding:9px 14px; background:var(--occ); color:white; border:none; border-radius:8px; font-family:inherit;font-size:12px; font-weight:700; cursor:pointer; transition:background .15s; }
+        .btn-add-insp:hover { background:var(--occ-dark); }
+
+        .summary-badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+        .sbadge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:5px; font-size:11px; font-weight:700; text-transform:uppercase; }
+        .sb-passed     { background:var(--occ-light); color:var(--occ); border:1px solid var(--occ-mid); }
+        .sb-failed     { background:var(--red-light); color:var(--red); border:1px solid var(--red-mid); }
+        .sb-scheduled  { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
+        .sb-conditional{ background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; }
+
+        .insp-card { background:var(--white); border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; transition:box-shadow .15s; }
+        .insp-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.07); }
+        .insp-card-head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); background:var(--surface); }
+        .insp-card-body { padding:14px 16px; }
+
+        .type-badge { display:inline-flex; align-items:center; padding:4px 10px; border-radius:5px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+        .tb-preliminary{ background:#eff6ff; color:#1d4ed8; border:1px solid #dbeafe; }
+        .tb-final      { background:var(--navy); color:white; }
+        .tb-followup   { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
+        .tb-special    { background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; }
+
+        .result-badge { display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:700; text-transform:uppercase; }
+        .rb-passed    { background:var(--occ-light); color:var(--occ); border:1px solid var(--occ-mid); }
+        .rb-failed    { background:var(--red-light); color:var(--red); border:1px solid var(--red-mid); }
+        .rb-scheduled { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
+        .rb-conditional{ background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; }
+
+        .insp-meta-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px; }
+        .insp-meta-item .iml { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:2px; }
+        .insp-meta-item .imv { font-size:12px; color:var(--text-primary); font-weight:600; }
+        .insp-findings { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px 12px; font-size:12px; color:var(--text-secondary); line-height:1.5; }
+
+        .insp-empty { text-align:center; padding:50px 20px; }
+        .insp-empty .ie-icon { font-size:36px; opacity:.3; margin-bottom:10px; }
+
+        /* ══════════════════════════════
+           CHECKLIST PANEL
+        ══════════════════════════════ */
+        .checklist-progress-bar {
+            background:#f8fafb; border:1px solid var(--border); border-radius:10px;
+            padding:14px 16px; margin-bottom:18px; display:flex; align-items:center; gap:14px;
+        }
+        .ring-wrap { position:relative; width:52px; height:52px; flex-shrink:0; }
+        .ring-wrap svg { transform:rotate(-90deg); }
+        .ring-text { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:var(--occ); }
+        .cp-details { flex:1; }
+        .cp-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:3px; }
+        .cp-value { font-size:14px; font-weight:700; color:var(--text-primary); }
+        .bar-thin { height:6px; background:var(--border); border-radius:99px; margin-top:8px; overflow:hidden; }
+        .bar-thin-fill { height:100%; background:var(--occ); border-radius:99px; transition:width .4s; }
+
+        .cl-section { margin-bottom:22px; }
+        .cl-section-title {
+            font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.07em;
+            color:var(--text-muted); margin-bottom:10px; padding-bottom:6px;
+            border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;
+        }
+        .cl-item {
+            display:flex; align-items:flex-start; gap:10px; padding:10px 12px;
+            background:var(--white); border:1px solid var(--border); border-radius:9px;
+            margin-bottom:6px; cursor:pointer; transition:all .15s;
+        }
+        .cl-item:hover { border-color:var(--occ); }
+        .cl-item.checked { background:var(--occ-light); border-color:var(--occ-mid); }
+        .cl-item.checked .cl-title { text-decoration:line-through; color:var(--occ-dark); opacity:.7; }
+        .cl-checkbox {
+            width:18px; height:18px; border-radius:4px; border:2px solid var(--border-strong);
+            display:flex; align-items:center; justify-content:center; flex-shrink:0;
+            font-size:11px; font-weight:900; margin-top:1px; transition:all .15s;
+        }
+        .cl-item.checked .cl-checkbox { background:var(--occ); border-color:var(--occ); color:white; }
+        .cl-content { flex:1; }
+        .cl-title { font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:2px; }
+        .cl-note  { font-size:11px; color:var(--text-muted); }
+        .cl-tag { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; padding:2px 6px; border-radius:3px; flex-shrink:0; margin-top:2px; }
+        .tag-req { background:var(--red-light); color:var(--red); border:1px solid var(--red-mid); }
+        .tag-opt { background:var(--surface); color:var(--text-muted); border:1px solid var(--border); }
+
+        .btn-save-checklist { width:100%; padding:12px; background:var(--occ); color:white; border:none; border-radius:8px; font-family:inherit;font-size:13px; font-weight:700; cursor:pointer; transition:background .15s; margin-top:8px; }
+        .btn-save-checklist:hover { background:var(--occ-dark); }
+        .btn-save-checklist:disabled { opacity:.6; cursor:not-allowed; }
+
+        .mini-progress { height:5px; background:var(--border); border-radius:99px; margin-top:8px; overflow:hidden; }
+        .mini-progress-fill { height:100%; background:var(--occ); border-radius:99px; transition:width .4s; }
+
+        /* ══════════════════════════════
+           MODAL
+        ══════════════════════════════ */
+        .modal-overlay { display:none; position:fixed; inset:0; background:rgba(7,26,44,.72);backdrop-filter:blur(5px); align-items:center; justify-content:center; z-index:200; padding:20px; }
+        .modal-window  { background:var(--white); border-radius:16px; width:100%; max-width:520px; box-shadow:0 30px 80px rgba(7,26,44,.35); overflow:hidden; }
+        .modal-header  { padding:19px 22px; background:var(--navy); color:white; display:flex; align-items:center; justify-content:space-between; border-bottom:4px solid var(--gold); }
+        .modal-header h3 { font-family:'Libre Franklin',sans-serif;font-size:15px; font-weight:700; }
+        .modal-close   { background:none; border:none; color:#cbd5e1; font-size:22px; line-height:1; cursor:pointer; }
+        .modal-close:hover { color:white; }
+        .modal-body    { padding:22px; }
+        .modal-body .form-group { margin-bottom:14px; }
+        .modal-body label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-secondary); margin-bottom:5px; }
+        .modal-body input,.modal-body select,.modal-body textarea { width:100%; padding:10px 12px; border:1px solid var(--border-strong); border-radius:8px; font-size:13px; color:var(--text-primary); background:var(--white); font-family:inherit; }
+        .modal-body textarea { resize:vertical; min-height:80px; line-height:1.5; }
+        .modal-footer  { display:flex; gap:10px; justify-content:flex-end; padding:0 22px 22px; }
+        .btn-mc { padding:10px 16px; background:var(--white); color:var(--text-secondary); border:1px solid var(--border-strong); border-radius:8px; font-family:inherit;font-size:12px; font-weight:700; cursor:pointer; }
+        .btn-ms { padding:10px 18px; background:var(--occ); color:white; border:none; border-radius:8px; font-family:inherit;font-size:12px; font-weight:700; cursor:pointer; }
+        .btn-ms:hover { background:var(--occ-dark); }
+        .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .title-crumb { font-size:12px;font-weight:700;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px; }
+        .occ-card-copy p { color:var(--text-muted);font-size:10px;margin-top:2px; }
+        .matrix-table-wrap { overflow-x:auto;border-top:1px solid var(--border); }
+        .checklist-summary-row { display:flex;align-items:center;justify-content:space-between; }
+        .checklist-summary-label { font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px; }
+        #sideClPct { font-family:'Libre Franklin',sans-serif; }
+        @media(max-width:760px){.workspace-tabs{overflow-x:auto;justify-content:flex-start}.ws-tab{flex:0 0 auto;min-width:145px}.title-crumb{display:none}.form-row-2,.insp-meta-grid{grid-template-columns:1fr}.insp-card-head{align-items:flex-start;flex-direction:column;gap:10px}.insp-card-head>div{flex-wrap:wrap}.modal-overlay{padding:12px}.modal-body{padding:18px}}
+    </style>
+<style>.workspace-record-icon{width:22px;height:22px;object-fit:contain;opacity:.7}.card-heading-icon .mdi-icon{width:20px;height:20px;fill:currentColor}</style>
+<link rel="stylesheet" href="/shared-header.css">
+<link rel="stylesheet" href="/status-badges.css">
+<link rel="stylesheet" href="/login-feedback.css">
+<script src="/login-feedback.js"></script>
+<script src="/workspace-notice.js"></script>
+<link rel="stylesheet" href="/appearance.css">
+<script src="/occupancy-templates.js" defer></script>
+<link rel="stylesheet" href="/project-records.css">
+<script src="/project-records.js"></script>
+</head>
+<body>
+
+<div class="top-bar site-header">
+    <div class="top-bar-brand">
+        <img class="top-bar-logo" src="/assets/laoag-city-official-seal.png" alt="Laoag City official seal">
+        <div>
+            <div class="top-bar-title">Occupancy Permit Workspace</div>
+            <div class="top-bar-subtitle">Office of the City Engineer — Laoag City</div>
+        </div>
+    </div>
+    <div class="top-bar-actions">
+        <span id="globalWorkflowStatus" class="global-status-badge status-pending">⟳ Evaluating...</span>
+    </div>
+</div>
+
+<div class="page-wrapper">
+
+    <div class="action-bar">
+        <div class="action-bar-left">
+            <a class="btn-back" href="/occupancy">← Back to Registry</a>
+            <span id="titleCrumb" class="title-crumb"></span>
+        </div>
+    </div>
+
+    <section class="workspace-intro">
+        <div>
+            <div class="workspace-kicker">Occupancy review workspace</div>
+            <h1>Clearance, inspection, and issuance</h1>
+            <p>Coordinate technical routing, site inspections, and documentary requirements in one permit record.</p>
+        </div>
+        <div class="workspace-note"><span></span> Live occupancy record</div>
+    </section>
+
+    <div class="main-grid">
+
+        <div class="left-col">
+
+            <div class="card">
+                <div class="card-header"><div class="card-heading-group"><span class="card-heading-icon"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-source-branch"></use></svg></span><div class="occ-card-copy"><h2>Matrix Architect</h2><p>Manage clearance stations</p></div></div></div>
+                <div class="card-body">
+                    <label class="field-label" style="margin-bottom:6px;">Active Stations</label>
+                    <div class="station-chips-area" id="disciplineConfigList">Loading...</div>
+                    <form id="addDisciplineForm" style="margin-top:8px;">
+                        <div class="add-discipline-row">
+                            <select id="disciplineSelect" style="flex:1;">
+                                <option value="">Select Discipline…</option>
+                                <option>Line &amp; Grade</option>
+                                <option>Architectural</option>
+                                <option>Civil / Structural</option>
+                                <option>Electrical</option>
+                                <option>Mechanical</option>
+                                <option>Sanitary</option>
+                                <option>Plumbing</option>
+                                <option>Electronics</option>
+                                <option>Fire Safety</option>
+                            </select>
+                            <button type="submit" class="btn-add">+ Add</button>
+                        </div>
+                    </form>
+<div class="occupancy-template-manager">
+ <div class="template-heading"><span class="quick-add-label">Discipline Templates</span><button type="button" id="manageOccTemplates" aria-expanded="false" aria-controls="occTemplateEditor">Manage</button></div>
+ <div id="occTemplateEditor" hidden>
+  <p class="template-help">Removing a template keeps active stations unchanged.</p>
+  <div id="occTemplateList" class="quick-add-grid"></div>
+  <form id="occTemplateForm"><label class="field-label" for="occTemplateName">New Template</label><div class="add-discipline-row"><input id="occTemplateName" required maxlength="100" placeholder="e.g. Fire Safety"><button type="submit" class="btn-add">Save</button></div></form>
+ </div>
+ <p id="occTemplateFeedback" class="template-help" role="status" aria-live="polite"></p>
+</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><div class="card-heading-group"><span class="card-heading-icon gold"><img class="workspace-record-icon" src="/assets/occupancy-project-icon.png" alt=""></span><div class="occ-card-copy"><h2>Occupancy Profile</h2><p>Application information</p></div></div></div>
+                <div class="card-body">
+                    <div class="meta-item"><span class="meta-label">Project Title</span><span class="meta-value" id="profileTitle">--</span></div>
+                    <div class="meta-item"><span class="meta-label">Location</span><span class="meta-value" id="profileLocation">--</span></div>
+                    <div class="meta-item"><span class="meta-label">Owner / Applicant</span><span class="meta-value" id="profileOwner">--</span></div>
+                    <div class="meta-item"><span class="meta-label">BP Reference No.</span><span class="meta-value" id="profileBpRef">--</span></div>
+                    <div class="meta-item"><span class="meta-label">Date Applied</span><span class="meta-value" id="profileDateApplied">--</span></div>
+                </div>
+            </div>
+
+            
+<div class="card" id="checklistSideCard" style="display:none;">
+                <div class="card-header"><div class="card-heading-group"><span class="card-heading-icon green"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-check-circle-outline"></use></svg></span><div class="occ-card-copy"><h2>Checklist Summary</h2><p>Document completion</p></div></div></div>
+                <div class="card-body">
+                    <div class="checklist-summary-row">
+                        <div>
+                            <div class="checklist-summary-label">Completion</div>
+                            <div style="font-size:22px;font-weight:800;color:var(--occ);" id="sideClPct">0%</div>
+                        </div>
+                        <div style="font-size:28px;opacity:.4;" id="sideClEmoji">📋</div>
+                    </div>
+                    <div class="mini-progress"><div class="mini-progress-fill" id="sideClBar" style="width:0%"></div></div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" id="sideClCount">0 of 0 items</div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="right-col" style="gap:0;">
+
+            <div class="workspace-tabs">
+                <button class="ws-tab active" onclick="switchTab('routing',this)">
+                    Routing Matrix <span class="tab-badge" id="tbRouting">0</span>
+                </button>
+                <button class="ws-tab" onclick="switchTab('inspection',this)">
+                    Inspections <span class="tab-badge" id="tbInspection">0</span>
+                </button>
+                <button class="ws-tab" onclick="switchTab('checklist',this)">
+                    Requirements <span class="tab-badge" id="tbChecklist">0/0</span>
+                </button>
+            </div>
+
+            <div id="panel-routing" class="tab-panel active card panel-card" style="border-radius:0 0 10px 10px;">
+                <div class="card-header matrix-card-header">
+                    <div class="card-heading-group"><span class="card-heading-icon green"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-check-circle-outline"></use></svg></span><div class="occ-card-copy"><h2>Clearance Routing Matrix</h2><p>Discipline assignments and signature status</p></div></div>
+                    <div class="matrix-header-actions">
+                        <span id="modeBadgeTable" class="mode-badge">View Only</span>
+                        <button id="editTriggerBtn" class="btn-edit-trigger" type="button" onclick="enableEditingMode()">Edit</button>
+                        <button id="cancelEditBtn" class="btn-cancel-edit" type="button" onclick="cancelEditingMode()" aria-label="Cancel editing" title="Cancel editing"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-close"></use></svg></button>
+                    </div>
+                </div>
+                <div class="matrix-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Discipline</th>
+                                <th>Reviewing Engineer</th>
+                                <th style="width:140px;">Status</th>
+                                <th>Feedback / Remarks</th>
+                                <th style="width:50px;text-align:center;">Cmd</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrixTableBody"></tbody>
+                    </table>
+                </div>
+                <button id="saveMatrixBtn" class="btn-save-matrix">Save Matrix Signatures</button>
+            </div>
+
+            <div id="panel-inspection" class="tab-panel card panel-card" style="border-radius:0 0 10px 10px;">
+                <div class="card-header"><div class="card-heading-group"><span class="card-heading-icon"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-magnify"></use></svg></span><div class="occ-card-copy"><h2>Inspection Monitoring</h2><p>Site visits, findings, and results</p></div></div></div>
+                <div class="card-body">
+                    <div class="insp-toolbar">
+                        <div class="summary-badges" id="inspSummaryBadges"></div>
+                        <button class="btn-add-insp" onclick="openInspModal()">＋ Log inspection</button>
+                    </div>
+                    <div id="inspectionList">
+                        <div class="insp-empty"><div class="ie-icon">🔍</div><p style="font-size:13px;color:var(--text-muted);">No inspections logged yet.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="panel-checklist" class="tab-panel card panel-card" style="border-radius:0 0 10px 10px;">
+                <div class="card-header"><div class="card-heading-group"><span class="card-heading-icon gold"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-file-document-plus-outline"></use></svg></span><div class="occ-card-copy"><h2>Documentary Requirements</h2><p>Submission and completion checklist</p></div></div></div>
+                <div class="card-body">
+                    <div class="checklist-progress-bar">
+                        <div class="ring-wrap">
+                            <svg width="52" height="52" viewBox="0 0 52 52">
+                                <circle cx="26" cy="26" r="21" fill="none" stroke="var(--border)" stroke-width="5"/>
+                                <circle id="ringFill" cx="26" cy="26" r="21" fill="none" stroke="var(--occ)" stroke-width="5"
+                                    stroke-dasharray="131.95" stroke-dashoffset="131.95" stroke-linecap="round"/>
+                            </svg>
+                            <div class="ring-text" id="ringPct">0%</div>
+                        </div>
+                        <div class="cp-details">
+                            <div class="cp-label">Overall Completion</div>
+                            <div class="cp-value" id="clProgressLabel">0 of 0 items submitted</div>
+                            <div class="bar-thin"><div class="bar-thin-fill" id="clProgressBar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                    <div id="checklistContainer"></div>
+                    <button class="btn-save-checklist" id="saveClBtn" onclick="saveChecklist()">Save Checklist State</button>
+                </div>
+            </div>
+
+            <section data-project-records="occupancy" aria-label="Project activity and comments"></section>
+<div id="panel-history" class="card" style="margin-top:20px;">
+                <div class="card-header"><div class="card-heading-group"><span class="card-heading-icon red"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-alert-circle-outline"></use></svg></span><div class="occ-card-copy"><h2>Rejection History</h2><p>Recorded issues and review remarks</p></div></div></div>
+                <div class="card-body" id="historicalTimeline">
+                    <em style="color:var(--text-muted);font-size:12px;">No rejection records logged.</em>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="remarksModal" class="modal-overlay">
+    <div class="modal-window" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3>Edit Feedback / Remarks</h3>
+            <button class="modal-close" onclick="closeRemarksModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <textarea id="activeRemarksText" placeholder="Enter engineering feedback or remarks here..."></textarea>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-mc" onclick="closeRemarksModal()">Cancel</button>
+            <button class="btn-ms" onclick="saveRemarksToRow()">Apply Remarks</button>
+        </div>
+    </div>
+</div>
+
+<div id="inspModal" class="modal-overlay">
+    <div class="modal-window">
+        <div class="modal-header">
+            <h3 id="inspModalTitle">Log Inspection</h3>
+            <button class="modal-close" onclick="closeInspModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editInspId">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Inspection Type</label>
+                    <select id="inspType">
+                        <option value="Preliminary">Preliminary</option>
+                        <option value="Final">Final</option>
+                        <option value="Follow-up">Follow-up</option>
+                        <option value="Special">Special</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Inspection Date</label>
+                    <input type="date" id="inspDate" required>
+                </div>
+            </div>
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Inspector Name</label>
+                    <input type="text" id="inspInspector" placeholder="Full name">
+                </div>
+                <div class="form-group">
+                    <label>Result</label>
+                    <select id="inspResult">
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Passed">Passed</option>
+                        <option value="Failed">Failed</option>
+                        <option value="Conditional">Conditional Pass</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Findings / Remarks</label>
+                <textarea id="inspFindings" placeholder="Describe inspection findings, deficiencies, or notes…"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Next Inspection Date <span style="font-weight:400;color:var(--text-muted);text-transform:none;letter-spacing:0;">(optional)</span></label>
+                <input type="date" id="inspNextDate">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-mc" onclick="closeInspModal()">Cancel</button>
+            <button class="btn-ms" id="inspSaveBtn" onclick="saveInspection()">Save Inspection</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ══════════════════════════
+   BOOTSTRAP
+══════════════════════════ */
+const urlParams  = new URLSearchParams(window.location.search);
+const permitId   = urlParams.get('id');
+let matrixState  = [], isEditing = false;
+let inspections  = [], checklistState = {};
+
+function getStoredUser() { try { return JSON.parse(sessionStorage.getItem('oboUser') || 'null'); } catch(e) { return null; } }
+function getAuthHeaders() {
+    const user = getStoredUser();
+    return { 'Content-Type': 'application/json', 'x-user-role': user?.role || '', 'x-user-id': user?.id ? String(user.id) : '' };
+}
+function isAdminOrAbove() { const u = getStoredUser(); return u && (u.role === 'admin' || u.role === 'superadmin'); }
+function currentUserRole() { const u = getStoredUser(); return u ? u.role : ''; }
+
+const CHECKLIST = [
+    { section:'Primary Documents', items:[
+        {id:'cl01',title:'Duly Accomplished Application Form',note:'Signed by owner / authorized representative',req:true},
+        {id:'cl02',title:'Building Permit (Original or CTC)',note:'With corresponding official receipt',req:true},
+        {id:'cl03',title:'Certificate of Final Electrical Inspection (CFEI)',note:'Issued by the Office of the Building Official',req:true},
+        {id:'cl04',title:'Certificate of Final Mechanical Inspection (CFMI)',note:'If mechanical works are involved',req:false},
+        {id:'cl_new1',title:'Photocopy of Valid Licenses',note:'Valid licenses of all involved professionals',req:true},
+        {id:'cl_new2',title:'Construction Logbook',note:"Signed by the owner's architect or civil engineer who undertook full-time inspection and supervision",req:true}
+    ]},
+    { section:'Plans & Technical Documents', items:[
+        {id:'cl05',title:'As-Built Architectural & Civil Plans',note:'Signed and sealed by respective PRC licensees',req:false},
+        {id:'cl06',title:'As-Built Electrical Plans',note:'Signed and sealed by licensed Electrical Engineer',req:false},
+        {id:'cl07',title:'As-Built Sanitary / Plumbing Plans',note:'If applicable',req:false},
+        {id:'cl08',title:'As-Built Mechanical Plans',note:'If applicable',req:false},
+        {id:'cl09',title:'Structural Stability Certificate',note:'From the Structural Engineer of Record',req:false},
+        {id:'cl_new3',title:'Captioned Photographs of Site',note:'Completed building/structure showing front, sides, and rear areas.',req:false}
+    ]},
+    { section:'Clearances & Certifications', items:[
+        {id:'cl10',title:'BFP Fire Safety Inspection Certificate',note:'Bureau of Fire Protection — for all occupancy types',req:true},
+        {id:'cl11',title:'Certification from zoning',note:'Issued by the local zoning office',req:true}
+    ]},
+    { section:'Proof of Payments', items:[
+        {id:'cl16',title:"Contractor's Affidavit of Completion",note:'Notarized, if applicable',req:false}
+    ]}
+];
+
+if (!permitId) { alert('No Occupancy ID in URL.'); window.location.href='/occupancy'; }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const user = getStoredUser();
+    if (!user) { window.location.href = '/occupancy_login.html'; return; }
+    if (user.role === 'admin' || user.role === 'superadmin') {
+        window.location.replace('/superadmin');
+        return;
+    }
+    if (user.role !== 'operator') { window.location.replace('/occupancy_login.html'); return; }
+
+    // Set default mode badge label based on role
+    if (isAdminOrAbove()) {
+        // Admins see "Admin Mode" and a different colored edit button
+        ['modeBadgeTable'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.textContent = 'Admin Mode'; el.style.background='#ecfdf5'; el.style.color='#065f46'; el.style.borderColor='#a7f3d0'; }
+        });
+        document.getElementById('editTriggerBtn').textContent = 'Edit';
+        // Admin can also see a "Return to Registry" note
+        const addDiscForm = document.getElementById('addDisciplineForm');
+        if (addDiscForm) addDiscForm.style.display = 'block';
+    } else {
+        // Operators begin in view mode and submit edits for approval.
+        ['modeBadgeTable'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.textContent = 'View Only'; }
+        });
+        document.getElementById('editTriggerBtn').textContent = 'Edit';
+        // Hide the discipline select form label note for operators
+        const addDiscForm = document.getElementById('addDisciplineForm');
+        if (addDiscForm) {
+            const note = document.createElement('p');
+            note.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:6px;font-style:italic;';
+            note.textContent = 'Stations can be added; removal requires admin.';
+            addDiscForm.after(note);
+        }
+    }
+
+    fetchPermitData();
+    loadInspections();
+    loadChecklist();
+    document.getElementById('addDisciplineForm').addEventListener('submit', FormSafety.guard('addDisciplineForm', async e => { e.preventDefault(); await appendStation(); }));
+});
+
+/* ══ TAB SWITCHING ══ */
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.ws-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-'+name).classList.add('active');
+    btn.classList.add('active');
+}
+
+/* ══════════════════════════
+   ROUTING MATRIX
+══════════════════════════ */
+async function fetchPermitData() {
+    try {
+        const r = await RequestFeedback.fetch('/api/occupancy/'+permitId);
+        if (!r.ok) throw new Error();
+        const p = await r.json();
+        document.getElementById('profileTitle').textContent       = p.project_title;
+        document.getElementById('profileLocation').textContent    = p.location;
+        document.getElementById('profileOwner').textContent       = p.owner_name;
+        document.getElementById('profileBpRef').textContent       = p.bp_reference_no;
+        document.getElementById('profileDateApplied').textContent = fmtDate(p.date_applied);
+        document.getElementById('titleCrumb').textContent         = p.project_title;
+        document.title = p.project_title + ' — OP Workspace';
+        matrixState = p.matrix || [];
+        renderStationChips(); renderMatrixTable();
+        renderRejectionTimeline(p.rejection_history);
+        evaluateGlobalStatus();
+        document.getElementById('tbRouting').textContent = matrixState.length;
+    } catch(e) { RequestFeedback.report(e); }
+}
+
+function renderStationChips() {
+    const w = document.getElementById('disciplineConfigList');
+    if (!matrixState.length) { w.innerHTML='<em style="color:var(--text-muted);font-size:11px;">No stations assigned.</em>'; return; }
+    w.innerHTML = matrixState.map(d => {
+        const removeBtn = `<button class="station-delete-btn" onclick="removeStation('${esc(d.discipline_name).replace(/'/g,"\\'")}')">×</button>`;
+        return `<span class="station-badge-chip">${esc(d.discipline_name)}${removeBtn}</span>`;
+    }).join('');
+}
+
+async function appendStation() {
+    const val = document.getElementById('disciplineSelect').value;
+    if (!val) return;
+    try {
+        const r = await RequestFeedback.fetch('/api/occupancy/matrix/add',{method:'POST',headers:getAuthHeaders(),body:JSON.stringify({occupancy_id:permitId,discipline_name:val})});
+        const d = await r.json();
+        if (r.ok && d.success) { document.getElementById('disciplineSelect').value=''; FormSafety.clean('addDisciplineForm'); await fetchPermitData(); }
+        else alert(d.message||d.error||'Failed to add station.');
+    } catch(e) { RequestFeedback.report(e); }
+}
+
+async function removeStation(name) {
+    if (!confirm(`Remove ${name} from this workflow?`)) return;
+    try {
+        const r = await RequestFeedback.fetch(`/api/occupancy/matrix/remove?occupancy_id=${permitId}&discipline_name=${encodeURIComponent(name)}`,{method:'DELETE',headers:getAuthHeaders()});
+        const d = await r.json();
+        if (d.success) await fetchPermitData(); else alert(d.message||'Failed to remove.');
+    } catch(e) { RequestFeedback.report(e); }
+}
+
+function renderMatrixTable() {
+    const tbody = document.getElementById('matrixTableBody');
+    tbody.innerHTML = '';
+    if (!matrixState.length) {
+        tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">No disciplines added yet. Use the Matrix Architect.</td></tr>';
+        return;
+    }
+    matrixState.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-id', row.id);
+        tr.setAttribute('data-discipline', row.discipline_name);
+        const statusLc = (row.signature_status||'pending').toLowerCase();
+        let eng    = esc(row.engineer_name||'—');
+        let status = `<span class="status-chip status-${statusLc}">${statusLc==='approved'?'✓ ':statusLc==='rejected'?'✗ ':'○ '}${row.signature_status}</span>`;
+        let feed   = esc(row.feedback_remarks||'—');
+        // Only admins see the delete button in view mode
+        let cmd    = isAdminOrAbove()
+            ? `<button class="btn-icon-danger" onclick="removeStation('${esc(row.discipline_name).replace(/'/g,"\\'")}')">🗑</button>`
+            : `<span style="color:var(--text-muted);font-size:11px;">—</span>`;
+        if (isEditing) {
+            eng    = `<input type="text" class="input-engineer" value="${esc(row.engineer_name)}" placeholder="Engineer name">`;
+            status = `<select class="input-status" data-original="${row.signature_status}">
+                <option value="Pending"  ${row.signature_status==='Pending'  ?'selected':''}>Pending</option>
+                <option value="Approved" ${row.signature_status==='Approved' ?'selected':''}>Approved</option>
+                <option value="Rejected" ${row.signature_status==='Rejected' ?'selected':''}>Rejected</option>
+            </select>`;
+            feed   = `
+                <div class="remarks-control">
+                    <span class="remarks-preview${row.feedback_remarks ? '' : ' is-empty'}">${esc(row.feedback_remarks || 'No remarks')}</span>
+                    <button type="button" class="remarks-edit" onclick="openRemarksModal(this)">✎ Edit</button>
+                    <input type="hidden" class="input-feedback" value="${esc(row.feedback_remarks)}">
+                </div>
+            `;
+            cmd    = `<span style="color:var(--text-muted);font-size:11px;">Lock</span>`;
+        }
+        tr.innerHTML = `
+            <td style="font-weight:600;color:var(--navy);">${esc(row.discipline_name)}</td>
+            <td>${eng}</td><td>${status}</td><td>${feed}</td>
+            <td style="text-align:center;">${cmd}</td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+function enableEditingMode() {
+    isEditing = true;
+    updateEditingControls(true);
+    renderMatrixTable();
+        FormSafety.remember(document.getElementById('matrixTableBody'));
+}
+
+function cancelEditingMode() {
+        if (!FormSafety.discard('matrixTableBody')) return;
+    isEditing = false;
+    closeRemarksModal();
+    updateEditingControls(false);
+    renderMatrixTable();
+}
+
+function updateEditingControls(editing) {
+    const editButton = document.getElementById('editTriggerBtn');
+    const tableBadge = document.getElementById('modeBadgeTable');
+    editButton.textContent = editing ? 'Editing' : 'Edit';
+    editButton.disabled = editing;
+    document.getElementById('cancelEditBtn').style.display = editing ? 'inline-grid' : 'none';
+    document.getElementById('saveMatrixBtn').style.display = editing ? 'block' : 'none';
+    tableBadge.textContent = editing ? 'Edit Mode' : 'View Only';
+    tableBadge.classList.toggle('edit-active', editing);
+}
+
+document.getElementById('saveMatrixBtn').addEventListener('click', FormSafety.guard('saveMatrixBtn', async () => {
+    const rows = document.querySelectorAll('#matrixTableBody tr[data-id]');
+    for (const row of rows) {
+        const engineer=row.querySelector('.input-engineer'), status=row.querySelector('.input-status').value, remarks=row.querySelector('.input-feedback');
+        if (status !== 'Pending' && !engineer.value.trim()) { engineer.setCustomValidity('Enter the reviewing engineer before approving or rejecting.'); engineer.reportValidity(); return; }
+        if (status === 'Rejected' && !remarks.value.trim()) { alert('Please add rejection remarks for '+row.getAttribute('data-discipline')+'.'); return; }
+    }
+    const payloadRows=[], newHistory=[];
+    rows.forEach(tr => {
+        const id=tr.getAttribute('data-id'), discipline=tr.getAttribute('data-discipline');
+        const eng=tr.querySelector('.input-engineer').value;
+        const statSel=tr.querySelector('.input-status');
+        const stat=statSel.value, origStat=statSel.getAttribute('data-original');
+        const feed=tr.querySelector('.input-feedback').value;
+        payloadRows.push({id,engineer_name:eng,signature_status:stat,feedback_remarks:feed});
+        if (stat==='Rejected'&&origStat!=='Rejected') newHistory.push({discipline,engineer:eng||'Unknown',reason:feed||'No reason provided.'});
+    });
+    let response, result;
+    try {
+        response = await RequestFeedback.fetch(`/api/occupancy/${permitId}/signatures`, {method:'PUT', headers:getAuthHeaders(), body:JSON.stringify({updatedMatrixRows:payloadRows,newHistoricalEntries:newHistory})});
+    } catch (error) {
+        RequestFeedback.report(error);
+        return;
+    }
+    try { result = await response.json(); }
+    catch (error) {
+        RequestFeedback.report(error);
+        return;
+    }
+    if (result.duplicate) { FormSafety.clean('matrixTableBody'); showPendingToast(result.message); return; }
+    if (!response.ok || !result.success) { alert(result.message || 'Save failed.'); return; }
+    FormSafety.clean('matrixTableBody');
+    isEditing = false;
+    updateEditingControls(false);
+    if (result.pending) {
+        showPendingToast('Your routing matrix changes have been submitted and are awaiting administrator approval.');
+    }
+    await fetchPermitData();
+}));
+
+function evaluateGlobalStatus() {
+    const badge=document.getElementById('globalWorkflowStatus');
+    if (!matrixState.length) { badge.className='global-status-badge status-pending'; badge.textContent='⟳ Awaiting Matrix'; return; }
+    const hasRej=matrixState.some(r=>r.signature_status==='Rejected');
+    const allApp=matrixState.every(r=>r.signature_status==='Approved');
+    if (hasRej)   { badge.className='global-status-badge status-rejected'; badge.textContent='⚠ Action needed'; }
+    else if(allApp){ badge.className='global-status-badge status-approved'; badge.textContent='★ Approved'; }
+    else           { badge.className='global-status-badge status-pending';  badge.textContent='⟳ Evaluating...'; }
+}
+
+function renderRejectionTimeline(h) {
+    const w=document.getElementById('historicalTimeline');
+    let logs=[];
+    try { if(h) logs=typeof h === 'string' ? JSON.parse(h) : h; } catch(e){}
+    if (!Array.isArray(logs)) logs=[];
+    if (!logs.length) { w.innerHTML='<em style="color:var(--text-muted);font-size:12px;">No rejection records logged.</em>'; return; }
+    w.innerHTML = [...logs].reverse().map(l=>`
+        <div class="rejection-entry">
+            <strong>${esc(l.discipline)} — Rejected</strong>
+            <div class="entry-meta">${esc(l.timestamp)} &bull; Reviewer: ${esc(l.engineer)}</div>
+            <div class="entry-reason">"${esc(l.reason)}"</div>
+        </div>`).join('');
+}
+
+/* ══════════════════════════
+   REMARKS MODAL HELPERS
+══════════════════════════ */
+let currentRemarksInput = null;
+let currentRemarksPreview = null;
+
+function openRemarksModal(btn) {
+    const control = btn.closest('.remarks-control');
+    currentRemarksInput = control.querySelector('.input-feedback');
+    currentRemarksPreview = control.querySelector('.remarks-preview');
+    document.getElementById('activeRemarksText').value = currentRemarksInput.value;
+    document.getElementById('remarksModal').style.display = 'flex';
+}
+
+function closeRemarksModal() {
+        if (!FormSafety.discard('remarksModal')) return;
+    document.getElementById('remarksModal').style.display = 'none';
+}
+
+function saveRemarksToRow() {
+    const val = document.getElementById('activeRemarksText').value;
+    if (currentRemarksInput) {
+        currentRemarksInput.value = val;
+        currentRemarksPreview.textContent = val || 'No remarks';
+        currentRemarksPreview.classList.toggle('is-empty', !val);
+    }
+    FormSafety.clean('remarksModal'); closeRemarksModal();
+}
+
+/* ══════════════════════════
+   INSPECTIONS
+══════════════════════════ */
+async function loadInspections() {
+    try {
+        const r = await RequestFeedback.fetch(`/api/occupancy/${permitId}/inspections`);
+        if (!r.ok) { inspections=[]; renderInspections(); return; }
+        const d = await r.json();
+        inspections = d.inspections || [];
+    } catch(e) { RequestFeedback.report(e); return; }
+    renderInspections();
+}
+
+function openInspModal(id) {
+    const isEdit = !!id;
+    document.getElementById('inspModalTitle').textContent = isEdit ? 'Edit Inspection Record' : 'Log New Inspection';
+    document.getElementById('editInspId').value = id || '';
+    if (isEdit) {
+        const i = inspections.find(x=>x.id===id) || {};
+        document.getElementById('inspType').value      = i.inspection_type || 'Preliminary';
+        document.getElementById('inspDate').value      = (i.inspection_date||'').split('T')[0];
+        document.getElementById('inspInspector').value = i.inspector_name || '';
+        document.getElementById('inspResult').value    = i.result || 'Scheduled';
+        document.getElementById('inspFindings').value  = i.findings || '';
+        document.getElementById('inspNextDate').value  = (i.next_inspection_date||'').split('T')[0];
+    } else {
+        document.getElementById('inspType').value      = 'Preliminary';
+        document.getElementById('inspDate').value      = new Date().toISOString().split('T')[0];
+        document.getElementById('inspInspector').value = '';
+        document.getElementById('inspResult').value    = 'Scheduled';
+        document.getElementById('inspFindings').value  = '';
+        document.getElementById('inspNextDate').value  = '';
+    }
+    document.getElementById('inspModal').style.display='flex';
+}
+
+function closeInspModal() { if (!FormSafety.discard('inspModal')) return; document.getElementById('inspModal').style.display='none'; }
+
+const saveInspection = FormSafety.guard('inspSaveBtn', async function() {
+    const editId = document.getElementById('editInspId').value;
+    const date   = document.getElementById('inspDate').value;
+    if (!FormSafety.validate(document.getElementById('inspModal'))) return;
+    const nextDate=document.getElementById('inspNextDate');
+    if(nextDate.value && nextDate.value < date){nextDate.setCustomValidity('The next inspection must be on or after this inspection.');nextDate.reportValidity();return;}
+    const payload = {
+        occupancy_id: parseInt(permitId),
+        inspection_type: document.getElementById('inspType').value,
+        inspection_date: date,
+        inspector_name:  document.getElementById('inspInspector').value,
+        result:          document.getElementById('inspResult').value,
+        findings:        document.getElementById('inspFindings').value,
+        next_inspection_date: document.getElementById('inspNextDate').value || null
+    };
+    const btn=document.getElementById('inspSaveBtn'); btn.disabled=true; btn.textContent='Saving…';
+    try {
+        const url    = editId ? `/api/occupancy/${permitId}/inspections/${editId}` : `/api/occupancy/${permitId}/inspections`;
+        const method = editId ? 'PUT' : 'POST';
+        const r=await RequestFeedback.fetch(url,{method,headers:getAuthHeaders(),body:JSON.stringify(payload)});
+        const d=await r.json();
+        if (d.success) { FormSafety.clean('inspModal'); closeInspModal(); await loadInspections(); }
+        else alert(d.message||'Save failed.');
+    } catch(e) { RequestFeedback.report(e); }
+    finally { btn.disabled=false; btn.textContent='Save Inspection'; }
+});
+
+async function deleteInspection(id) {
+    if (!isAdminOrAbove()) { alert('Only administrators can delete inspection records.'); return; }
+    if (!confirm('Delete this inspection record?')) return;
+    try {
+        const r=await RequestFeedback.fetch(`/api/occupancy/${permitId}/inspections/${id}`,{method:'DELETE',headers:getAuthHeaders()});
+        const d=await r.json();
+        if (d.success) await loadInspections(); else alert(d.message||'Failed to delete.');
+    } catch(e) { RequestFeedback.report(e); }
+}
+
+function renderInspections() {
+    const list = document.getElementById('inspectionList');
+    document.getElementById('tbInspection').textContent = inspections.length;
+
+    const passed      = inspections.filter(i=>i.result==='Passed').length;
+    const failed      = inspections.filter(i=>i.result==='Failed').length;
+    const scheduled   = inspections.filter(i=>i.result==='Scheduled').length;
+    const conditional = inspections.filter(i=>i.result==='Conditional').length;
+    const badges = document.getElementById('inspSummaryBadges');
+    badges.innerHTML = [
+        inspections.length ? `<span style="font-size:11px;font-weight:600;color:var(--text-muted);">${inspections.length} total</span>` : '',
+        passed      ? `<span class="sbadge sb-passed">✓ ${passed} Passed</span>` : '',
+        failed      ? `<span class="sbadge sb-failed">✗ ${failed} Failed</span>` : '',
+        scheduled   ? `<span class="sbadge sb-scheduled">⏳ ${scheduled} Scheduled</span>` : '',
+        conditional ? `<span class="sbadge sb-conditional">◑ ${conditional} Conditional</span>` : '',
+    ].join('');
+
+    if (!inspections.length) {
+        list.innerHTML=`<div class="insp-empty"><div class="ie-icon">🔍</div><p style="font-size:13px;color:var(--text-muted);">No inspections logged yet. Use the button above.</p></div>`;
+        return;
+    }
+
+    const typeClass = { 'Preliminary':'preliminary','Final':'final','Follow-up':'followup','Special':'special' };
+    const resClass  = { 'Passed':'passed','Failed':'failed','Scheduled':'scheduled','Conditional':'conditional' };
+    const resIcon   = { 'Passed':'✓','Failed':'✗','Scheduled':'⏳','Conditional':'◑' };
+
+    const sorted = [...inspections].sort((a,b)=>new Date(b.inspection_date)-new Date(a.inspection_date));
+    list.innerHTML = sorted.map(i => {
+        const tc = typeClass[i.inspection_type]||'preliminary';
+        const rc = resClass[i.result]||'scheduled';
+        const ri = resIcon[i.result]||'?';
+        const nextDate = i.next_inspection_date
+            ? `<div class="insp-meta-item"><div class="iml">Next Inspection</div><div class="imv">📅 ${fmtDate(i.next_inspection_date)}</div></div>` : '';
+        const deleteInspBtn = isAdminOrAbove()
+            ? `<button class="btn-icon-danger" onclick="deleteInspection(${i.id})" title="Delete">🗑</button>`
+            : `<button class="btn-icon-danger" style="opacity:.35;cursor:not-allowed;" title="Only admins can delete" disabled>🗑</button>`;
+        return `
+        <div class="insp-card">
+            <div class="insp-card-head">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="type-badge tb-${tc}">${esc(i.inspection_type)}</span>
+                    <span style="font-size:13px;font-weight:600;color:var(--text-primary);">${fmtDate(i.inspection_date)}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span class="result-badge rb-${rc}">${ri} ${esc(i.result)}</span>
+                    <button class="btn-icon-edit"   onclick="openInspModal(${i.id})" title="Edit">✏</button>
+                    ${deleteInspBtn}
+                </div>
+            </div>
+            <div class="insp-card-body">
+                <div class="insp-meta-grid">
+                    <div class="insp-meta-item"><div class="iml">Inspector</div><div class="imv">${esc(i.inspector_name||'—')}</div></div>
+                    <div class="insp-meta-item"><div class="iml">Type</div><div class="imv">${esc(i.inspection_type)}</div></div>
+                    ${nextDate}
+                </div>
+                ${i.findings?`<div class="insp-findings">${esc(i.findings)}</div>`:''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* ══════════════════════════
+   REQUIREMENTS CHECKLIST
+══════════════════════════ */
+async function loadChecklist() {
+    try {
+        const r=await RequestFeedback.fetch(`/api/occupancy/${permitId}/checklist`);
+        if (!r.ok) { checklistState={}; renderChecklist(); return; }
+        const d=await r.json();
+        checklistState = d.checklist_state || {};
+        document.getElementById('saveClBtn').disabled=false;
+    } catch(e) { RequestFeedback.report(e); document.getElementById('saveClBtn').disabled=true; return; }
+    renderChecklist();
+}
+
+function renderChecklist() {
+    const container = document.getElementById('checklistContainer');
+    let total=0, checked=0;
+    container.innerHTML = CHECKLIST.map(sec => {
+        const sChecked = sec.items.filter(i=>checklistState[i.id]).length;
+        total += sec.items.length; checked += sChecked;
+        return `
+        <div class="cl-section">
+            <div class="cl-section-title">
+                <span>${esc(sec.section)}</span>
+                <span style="font-size:10px;font-weight:700;color:var(--text-muted);">${sChecked}/${sec.items.length}</span>
+            </div>
+            ${sec.items.map(item=>`
+            <div class="cl-item ${checklistState[item.id]?'checked':''}" onclick="toggleClItem('${item.id}')">
+                <div class="cl-checkbox">${checklistState[item.id]?'✓':''}</div>
+                <div class="cl-content">
+                    <div class="cl-title">${esc(item.title)}</div>
+                    <div class="cl-note">${esc(item.note)}</div>
+                </div>
+                <span class="cl-tag ${item.req?'tag-req':'tag-opt'}">${item.req?'Required':'Optional'}</span>
+            </div>`).join('')}
+        </div>`;
+    }).join('');
+
+    const pct = total ? Math.round(checked/total*100) : 0;
+    document.getElementById('clProgressLabel').textContent = `${checked} of ${total} items submitted`;
+    document.getElementById('clProgressBar').style.width   = pct+'%';
+    document.getElementById('ringPct').textContent         = pct+'%';
+    document.getElementById('ringFill').style.strokeDashoffset = 131.95 - (131.95*pct/100);
+    document.getElementById('tbChecklist').textContent     = `${checked}/${total}`;
+    document.getElementById('checklistSideCard').style.display = 'block';
+    document.getElementById('sideClPct').textContent       = pct+'%';
+    document.getElementById('sideClBar').style.width       = pct+'%';
+    document.getElementById('sideClCount').textContent     = `${checked} of ${total} items`;
+    document.getElementById('sideClEmoji').textContent     = pct===100?'🎉':pct>60?'📋':'📂';
+}
+
+function toggleClItem(id) { FormSafety.rememberValue('checklistContainer',()=>JSON.stringify(checklistState)); checklistState[id]=!checklistState[id]; renderChecklist(); }
+
+const saveChecklist = FormSafety.guard('saveClBtn', async function() {
+    const btn=document.getElementById('saveClBtn'); btn.disabled=true; btn.textContent='Saving…';
+    try {
+        const r=await RequestFeedback.fetch(`/api/occupancy/${permitId}/checklist`,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify({checklist_state:checklistState})});
+        const d=await r.json();
+        if (!d.success) alert(d.message||'Save failed.');
+        else { FormSafety.clean('checklistContainer'); btn.textContent='✓ Saved!'; setTimeout(()=>{btn.textContent='Save Checklist State';},2000); }
+    } catch(e) { RequestFeedback.report(e); }
+    finally { btn.disabled=false; }
+});
+
+/* ══ Helpers ══ */
+function fmtDate(d){
+    if (!d) return '—';
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(d);
+    const date = new Date(dateOnly ? d + 'T00:00:00Z' : d);
+    if (!Number.isFinite(date.getTime())) return '—';
+    return date.toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric',...(dateOnly ? {timeZone:'UTC'} : {})});
+}
+function esc(v){ return v?v.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'):''; }
+</script>
+
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const centerStyle = document.createElement('style');
+        centerStyle.textContent = '.has-philippine-clock{position:relative}.has-philippine-clock .philippine-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;align-items:center;text-align:center}@media(max-width:1100px){.has-philippine-clock{display:flex;flex-wrap:wrap}.has-philippine-clock .philippine-clock{position:static;transform:none;flex-basis:100%;order:99;margin:8px 0;box-sizing:border-box;align-items:center}}';
+        document.head.append(centerStyle);
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script>
+</body>
+</html>

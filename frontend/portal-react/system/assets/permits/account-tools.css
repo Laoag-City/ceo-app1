@@ -1,0 +1,75 @@
+/* Scoped to React-owned account panels; legacy forms and dialogs keep their own styles. */
+.account-dialog { --ac-bg:#fff; --ac-surface:#f5f8fb; --ac-text:#18354b; --ac-muted:#62798d; --ac-border:#dbe5ed; --ac-accent:#176db7; box-sizing:border-box; width:min(640px,calc(100vw - 32px)); max-width:640px; max-height:calc(100dvh - 48px); margin:auto; padding:0; border:1px solid var(--ac-border); border-radius:20px; background:var(--ac-bg); color:var(--ac-text); box-shadow:0 24px 90px #0f263d40; font:14px/1.5 'DM Sans','Segoe UI',sans-serif; overflow:hidden; }
+.account-dialog[open] { display:flex; flex-direction:column; }
+.account-dialog::backdrop { background:#0d243d70; backdrop-filter:blur(3px); }
+.account-dialog * { box-sizing:border-box; }
+.account-dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:22px 28px; border-bottom:1px solid var(--ac-border); flex-shrink:0; }
+.account-dialog-heading span { color:var(--ac-muted); font-size:10px; font-weight:700; letter-spacing:.15em; }
+.account-dialog h2 { margin:4px 0 0; font-size:25px; line-height:1.25; color:var(--ac-text); }
+.account-dialog .account-close { border:0; padding:0; width:36px; height:36px; font-size:26px; line-height:1; border-radius:50%; background:var(--ac-surface); }
+.account-dialog-body { padding:24px 28px; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+.account-dialog p { margin:0 0 16px; }
+.account-help { color:var(--ac-muted); font-size:13px; }
+.account-dialog label { display:block; margin-bottom:18px; font-size:13px; font-weight:600; color:var(--ac-text); }
+.account-dialog input:not([type=radio]):not([hidden]),.account-dialog textarea { display:block; width:100%; margin-top:7px; border:1px solid var(--ac-border); border-radius:9px; background:var(--ac-surface); color:var(--ac-text); padding:11px 13px; font:400 14px/1.5 'DM Sans','Segoe UI',sans-serif; box-shadow:none; }
+.account-dialog textarea { resize:vertical; min-height:88px; max-height:180px; }
+.account-dialog input::placeholder,.account-dialog textarea::placeholder { color:var(--ac-muted); opacity:1; }
+.account-dialog button { border:1px solid var(--ac-border); background:var(--ac-bg); color:var(--ac-text); border-radius:8px; padding:8px 13px; font:600 13px/1.4 'DM Sans','Segoe UI',sans-serif; cursor:pointer; }
+.account-dialog button:hover { background:var(--ac-surface); }
+.account-dialog button:disabled { opacity:.5; cursor:default; }
+.account-dialog :is(button,input,textarea,summary,a):focus-visible { outline:2px solid var(--ac-accent); outline-offset:3px; }
+.account-dialog .account-primary { color:#fff; background:#176db7; border-color:#176db7; padding:11px 18px; }
+.account-dialog .account-primary:hover { background:#105a9a; }
+.account-dialog a { color:var(--ac-accent); text-decoration:underline; }
+.account-status-key { display:flex; gap:18px; font-size:11px; color:var(--ac-muted); padding:0 0 14px; border-bottom:1px solid var(--ac-border); }
+.account-person { display:flex; align-items:flex-start; gap:13px; padding:18px 0; border-bottom:1px solid var(--ac-border); }
+.account-avatar { flex:0 0 44px; width:44px; height:44px; display:grid; place-items:center; font-size:15px; font-weight:700; border-radius:14px; background:var(--avatar-bg); color:var(--avatar-text); }
+.color-blue { --avatar-bg:#e7f2ff; --avatar-text:#155da3; }
+.color-green { --avatar-bg:#def4eb; --avatar-text:#12664c; }
+.color-purple { --avatar-bg:#eee8fc; --avatar-text:#7040a6; }
+.color-rose { --avatar-bg:#fbe7ed; --avatar-text:#a33454; }
+.color-amber { --avatar-bg:#fff0cc; --avatar-text:#855800; }
+.color-slate { --avatar-bg:#e8edf2; --avatar-text:#4c6072; }
+.account-person-copy { flex:1; min-width:0; overflow-wrap:anywhere; }
+.account-person-copy strong,.account-profile-heading strong { display:block; font-size:15px; color:var(--ac-text); }
+.account-person-copy>span,.account-profile-heading>div>span { display:block; color:var(--ac-muted); font-size:12px; margin-top:3px; }
+.account-person-copy p { white-space:pre-wrap; margin:8px 0 0; font-size:13px; }
+.account-status { display:flex; align-items:center; gap:6px; font-size:11px; white-space:nowrap; margin-top:3px; color:var(--ac-muted); }
+.account-status i { width:7px; height:7px; border-radius:50%; background:#8395a5; }
+.account-status.is-online i { background:#15936d; }
+.account-status.is-away i { background:#d89b23; }
+.account-pagination { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:18px 0; color:var(--ac-muted); font-size:12px; }
+.account-dialog .account-footnote { margin-bottom:0; font-size:11px; }
+.account-dialog .account-empty { padding:36px 0; text-align:center; color:var(--ac-muted); }
+.account-profile-heading { display:flex; gap:14px; align-items:center; margin-bottom:16px; overflow-wrap:anywhere; }
+.account-profile-heading>div { min-width:0; }
+.account-profile-heading .account-avatar { width:56px; height:56px; flex-basis:56px; font-size:19px; }
+.account-dialog fieldset { border:0; padding:0; margin:0; min-width:0; }
+.account-dialog .account-colors { display:flex; gap:10px; margin:0 0 20px; }
+.account-colors legend { font-size:13px; font-weight:600; margin-bottom:9px; }
+.account-dialog .account-colors label { width:34px; height:34px; position:relative; margin:0; cursor:pointer; }
+.account-colors input { opacity:0; position:absolute; inset:0; width:100%; height:100%; margin:0; }
+.account-colors label>span { display:grid; place-items:center; width:100%; height:100%; border-radius:50%; background:var(--avatar-bg); color:var(--avatar-text); border:2px solid transparent; }
+.account-colors input:checked+span { border-color:var(--avatar-text); }
+.account-colors input:focus-visible+span { outline:2px solid var(--ac-accent); outline-offset:3px; }
+.account-optional { font-size:11px; font-weight:400; color:var(--ac-muted); margin-left:5px; }
+.account-form-actions { display:flex; justify-content:flex-end; gap:12px; }
+.account-profile-actions { justify-content:space-between; align-items:center; }
+.account-dialog .account-notice { padding:12px 14px; background:var(--ac-surface); border:1px solid var(--ac-border); border-radius:9px; font-size:13px; overflow-wrap:anywhere; }
+.account-dialog .account-notice.is-error { border-color:#db9a9f; }
+.account-password { margin-top:24px; border-top:1px solid var(--ac-border); padding-top:20px; }
+.account-password[hidden] { display:none; }
+.account-launchers { display:flex; align-items:center; gap:8px; }
+.account-launchers button { color:inherit; border:1px solid #ffffff55; background:transparent; border-radius:8px; padding:9px 12px; font:600 12px 'DM Sans','Segoe UI',sans-serif; cursor:pointer; }
+#account-tools-launcher { margin-left:auto; }
+html[data-theme='dark'] .account-dialog { --ac-bg:#253240; --ac-surface:#1d2936; --ac-text:#e4edf4; --ac-muted:#acbdcc; --ac-border:#425466; --ac-accent:#a7d4ff; }
+@media(max-width:600px) {
+ .account-dialog { width:calc(100% - 20px); max-height:calc(100dvh - 20px); border-radius:16px; }
+ .account-dialog-heading { padding:18px; }
+ .account-dialog-body { padding:18px; }
+ .account-person { flex-wrap:wrap; gap:10px; }
+ .account-person-copy { flex-basis:calc(100% - 54px); }
+ .account-status { margin:-6px 0 0 54px; }
+ .account-launchers { gap:4px; }.account-launchers button { padding:8px; }
+}
+@media print { .account-dialog,#account-tools-launcher { display:none!important; } }

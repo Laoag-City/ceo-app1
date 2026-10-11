@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/appearance.js"></script>
+    <script src="/destructive-action.js"></script>
+    <script src="/request-feedback.js"></script>
+    <script src="/form-safety.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Occupancy Permit Registry — Office of the City Engineer</title>
+    <link rel="stylesheet" href="/index.css">
+    <style>
+        :root { --occ:#059669; --occ-dark:#047857; --occ-light:#ecfdf5; --occ-mid:#a7f3d0; }
+
+        body.occ-page { background:var(--surface); }
+
+        .occ-page .top-bar { position:relative; width:100%; height:70px; margin:0; padding:0 max(28px, calc((100vw - 1540px) / 2)); gap:18px; background:var(--navy); box-shadow:0 4px 14px rgba(16,42,67,.14); }
+        .occ-page .top-bar-logo { width:44px; height:44px; }
+        .occ-page .top-bar-subtitle { color:#c2d2de; }
+        .occ-page .top-bar-meta { margin-left:auto; color:#d5e1e9; font-weight:600; font-size:12px; white-space:nowrap; }
+        .top-bar { border-bottom:4px solid var(--gold); }
+        .top-bar-logo { display:block; object-fit:cover; background:white !important; }
+        .top-bar-controls { margin-left:auto;display:flex;align-items:center;gap:10px; }
+
+        .page-intro { display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:20px;padding:0 2px; }
+        .page-intro-kicker { display:flex;align-items:center;gap:8px;color:var(--occ);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:7px; }
+        .page-intro-kicker::before { content:"";width:25px;height:2px;background:var(--gold); }
+        .page-intro h1 { font-family:'Libre Franklin',sans-serif;color:var(--navy);font-size:28px;line-height:1.2;letter-spacing:-.035em; }
+        .page-intro p { color:var(--text-secondary);font-size:13px;margin-top:6px; }
+        .page-note { display:flex;align-items:center;gap:8px;color:var(--text-secondary);font-size:11px;font-weight:600;padding:8px 11px;border:1px solid var(--border);background:white;border-radius:8px; }
+        .page-note-dot { width:7px;height:7px;border-radius:50%;background:var(--occ);box-shadow:0 0 0 3px rgba(5,150,105,.11); }
+
+        /* Stat cards */
+        .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+        .stat-card { background:var(--white); border:1px solid var(--border); border-radius:13px; padding:17px 18px; display:flex; align-items:center; gap:14px; box-shadow:var(--shadow-sm); }
+        .stat-icon { width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; flex-shrink:0; }
+        .si-total{background:#eff6ff;} .si-eval{background:var(--amber-light);} .si-cleared{background:var(--occ-light);} .si-flagged{background:var(--red-light);}
+        .stat-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:2px; }
+        .stat-num   { font-family:'Libre Franklin',sans-serif;font-size:24px; font-weight:800; color:var(--navy); line-height:1; }
+
+        /* Buttons */
+        .btn-new-permit { padding:9px 13px; background:var(--occ); color:white; border:1px solid var(--occ); border-radius:8px; font-family:inherit;font-size:12px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:5px; transition:.2s ease; }
+        .btn-new-permit:hover { background:var(--occ-dark); }
+        .btn-new-permit.portal { background:transparent;color:#e7f1f7;border-color:rgba(255,255,255,.28); }
+        .btn-new-permit.portal:hover { background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.5); }
+        .btn-action { display:inline-block; padding:5px 10px; background:var(--occ-light); color:var(--occ); border:1px solid var(--occ-mid); border-radius:5px; font-size:11px; font-weight:700; text-decoration:none; transition:all .15s; white-space:nowrap; }
+        .btn-action:hover { background:var(--occ); color:white; border-color:var(--occ); }
+        .record-count-badge.occ { background:var(--occ-light); color:var(--occ); border:1px solid var(--occ-mid); }
+
+        /* Toolbar */
+        .registry-header { border-bottom:none;padding-bottom:10px; }
+        .registry-header-copy h2 { font-size:16px; }
+        .registry-header-copy p { color:var(--text-muted);font-size:11px;margin-top:3px; }
+        .toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 24px 18px; flex-wrap:wrap; }
+        .filter-tabs { display:flex; gap:4px; background:var(--surface); padding:4px; border-radius:10px; border:1px solid var(--border); flex-wrap:wrap; }
+        .filter-tab { padding:7px 11px; background:transparent; border:none; border-radius:7px; font-size:11px; font-weight:700; color:var(--text-secondary); cursor:pointer; transition:all .15s; white-space:nowrap; }
+        .filter-tab:hover { background:var(--white); color:var(--text-primary); }
+        .filter-tab.active { background:var(--white); color:var(--occ); box-shadow:var(--shadow-sm); }
+        .search-wrap { position:relative; min-width:260px; }
+        .search-wrap input { min-height:40px;padding-left:34px; font-size:12px;border-radius:8px;background:#fbfcfd; }
+        .search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:13px; pointer-events:none; }
+
+        /* Pills */
+        .pill { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+        .pill-cleared{background:var(--occ-light);color:var(--occ);border:1px solid var(--occ-mid);}
+        .pill-flagged{background:var(--red-light);color:var(--red);border:1px solid var(--red-mid);}
+        .pill-eval{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-mid);}
+        .pill-empty{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);}
+
+        /* Progress */
+        .prog-wrap { display:flex; align-items:center; gap:8px; margin-top:5px; font-size:11px; color:var(--text-muted); }
+        .prog-bg   { flex:1; height:5px; background:var(--border); border-radius:99px; overflow:hidden; }
+        .prog-fill { height:100%; border-radius:99px; background:var(--occ); transition:width .4s; }
+        .prog-fill.flagged { background:var(--red); }
+
+        /* Track row */
+        .status-track-row { background:var(--white); }
+        .status-track-cell { padding:4px 14px 14px !important; border-bottom:1px solid var(--border) !important; }
+        .status-track-container { display:inline-flex; flex-wrap:wrap; gap:8px; background:var(--surface); padding:5px 10px; border-radius:6px; border:1px solid var(--border); align-items:center; }
+        .track-item { display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.03em; }
+        .track-icon{font-size:13px;font-weight:800;} .icon-approved{color:var(--green);} .icon-rejected{color:var(--red);} .icon-pending{color:var(--text-muted);}
+        .main-data-row:hover td { background:#f9fafb; }
+
+        /* Modal */
+        .modal-overlay { display:none; position:fixed; inset:0; background:rgba(7,26,44,.72);backdrop-filter:blur(5px); align-items:center; justify-content:center; z-index:100; padding:20px; }
+        .modal-window { background:var(--white); border-radius:16px; width:100%; max-width:530px; box-shadow:0 30px 80px rgba(7,26,44,.35); overflow:hidden; }
+        .modal-header { padding:19px 22px; background:var(--navy); color:white; display:flex; align-items:center; justify-content:space-between; border-bottom:4px solid var(--gold); }
+        .modal-header h3 { font-family:'Libre Franklin',sans-serif;font-size:15px; font-weight:700; }
+        .modal-close { background:none; border:none; color:#cbd5e1; font-size:22px; cursor:pointer; line-height:1; }
+        .modal-close:hover { color:white; }
+        .modal-body { padding:25px; }
+        .modal-body .form-group { margin-bottom:14px; }
+        .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .btn-cancel { padding:10px 16px; background:var(--white); color:var(--text-secondary); border:1px solid var(--border-strong); border-radius:8px; font-family:inherit;font-size:12px; font-weight:700; cursor:pointer; }
+        .btn-cancel:hover { background:var(--surface); }
+        .btn-submit { padding:10px 18px; background:var(--occ); color:white; border:none; border-radius:8px; font-family:inherit;font-size:12px; font-weight:700; cursor:pointer; }
+        .btn-submit:hover { background:var(--occ-dark); }
+        select:focus, input:focus { box-shadow:0 0 0 3px rgba(5,150,105,.12)!important; border-color:var(--occ)!important; }
+        @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr);}.top-bar{height:auto;min-height:76px;padding:12px 16px;flex-wrap:wrap}.top-bar-controls{width:100%}.btn-new-permit{flex:1;justify-content:center}.page-intro{align-items:flex-start;flex-direction:column}}
+        @media(max-width:560px){.page-wrapper{padding:24px 12px 40px}.page-intro h1{font-size:24px}.page-note{display:none}.stats-row{gap:8px}.stat-card{padding:13px 12px;gap:9px}.stat-icon{width:36px;height:36px}.stat-num{font-size:20px}.toolbar{padding:8px 14px 16px}.filter-tabs{overflow-x:auto;width:100%;flex-wrap:nowrap}.search-wrap{min-width:100%;width:100%}.form-row-2{grid-template-columns:1fr}.card{border-radius:12px}}
+
+        /* Compact, clearly separated occupancy records */
+        .occ-page .mdi-icon{width:18px;height:18px;fill:currentColor;flex:0 0 auto;vertical-align:middle}
+        .occ-page .btn-new-permit,.occ-page .btn-action,.occ-page .pagination-btn,.occ-page .filter-tab{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:14px}
+        .occ-page .top-bar-controls{flex-wrap:wrap}
+        .occ-page .top-bar-controls .btn-new-permit{font-size:12px;padding:9px 13px;gap:7px}
+        .occ-page .top-bar-controls .mdi-icon{width:1.1em;height:1.1em;display:block}
+        /* Header actions follow DOM order: create, logout, theme. */
+        .occ-page .btn-logout:hover{background:#a93636;border-color:#c95b5b;color:white}
+        .occ-page .stat-label{font-size:12px;line-height:1.4}
+        .occ-page .stat-icon .mdi-icon{width:23px;height:23px}
+        .si-total{color:var(--blue)}.si-eval{color:var(--amber)}.si-cleared{color:var(--occ)}.si-flagged{color:var(--red)}
+        .occ-page .registry-header{padding:22px 24px 14px}
+        .occ-page .registry-header-copy h2{font-size:18px}
+        .occ-page .registry-header-copy p,.occ-page .page-intro p{font-size:14px}
+        .occ-page .toolbar{align-items:center;padding:12px 24px 22px;gap:16px}
+        .occ-page .filter-tabs{border:none;background:#eef3f5;padding:5px}
+        .occ-page .filter-tab{min-height:40px;padding:8px 12px}
+        .occ-page .filter-tab.active{background:var(--occ-dark);color:white}
+        .occ-page .search-wrap{flex:1;min-width:260px}
+        .occ-page .search-wrap input{width:100%;font-size:14px;min-height:44px;padding-left:38px}
+        .occ-page .table-wrap{padding:0 18px 6px;background:#f3f6f8;border-top:1px solid var(--border)}
+        .occ-page table{min-width:1100px;border-collapse:separate;border-spacing:0}
+        .occ-page th{font-size:12px;padding:16px 14px;background:transparent;color:var(--text-secondary);border-bottom:0}
+        .occ-page .main-data-row td{font-size:14px!important;padding:18px 14px 12px;background:white;vertical-align:middle;border-top:1px solid var(--border);border-bottom:0}
+        .occ-page .main-data-row td:first-child{border-left:1px solid var(--border);border-radius:10px 0 0 0}
+        .occ-page .main-data-row td:last-child{border-right:1px solid var(--border);border-radius:0 10px 0 0}
+        .occ-page .project-title-main{font-size:16px;font-weight:700;line-height:1.4;display:block;min-width:160px;max-width:270px;overflow-wrap:anywhere}
+        .occ-page .lot-badge-inline{font-size:12px;max-width:160px;overflow-wrap:anywhere}
+        .occ-page .pill{font-size:12px;text-transform:none;letter-spacing:0;white-space:nowrap;padding:6px 9px}
+        .occ-page .pill .mdi-icon{width:16px;height:16px}
+        .occ-page .action-group{flex-wrap:nowrap}
+        .occ-page .btn-action,.occ-page .btn-delete-record{min-height:36px;font-size:14px;padding:7px 10px;border-radius:7px}
+        .occ-page .status-track-cell{padding:0 14px 12px!important;background:white;border:1px solid var(--border)!important;border-top:0!important;border-radius:0 0 10px 10px}
+        .occ-page .record-gap td{height:12px;padding:0;border:0;background:#f3f6f8}
+        .occ-page .routing-details{border-top:1px solid #edf1f4}
+        .occ-page .routing-details summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;padding:11px 0 0;color:var(--text-secondary);font-size:14px}
+        .occ-page .routing-details summary::-webkit-details-marker{display:none}
+        .occ-page .routing-details[open] summary>.mdi-icon{transform:rotate(90deg)}
+        .occ-page .routing-count{margin-left:auto;font-size:12px;color:var(--text-muted)}
+        .occ-page .routing-content{padding-top:14px}
+        .occ-page .status-track-container{display:flex;gap:8px;background:transparent;border:0;padding:0}
+        .occ-page .track-item{font-size:12px;text-transform:none;letter-spacing:0;background:#f5f8fa;border:1px solid var(--border);border-radius:6px;padding:7px 10px}
+        .occ-page .icon-pending{color:var(--amber)}
+        .occ-page .prog-wrap{font-size:12px;margin-top:8px}
+        .occ-page .pagination-bar{padding:16px 24px}
+        .occ-page button:focus-visible,.occ-page a:focus-visible,.occ-page summary:focus-visible{outline:3px solid #79bda8;outline-offset:3px}
+        .occ-page .modal-window{max-height:calc(100dvh - 40px);overflow-y:auto}
+        @media(max-width:900px){.occ-page .toolbar{align-items:stretch}.occ-page .search-wrap{min-width:100%}.occ-page .top-bar-controls{gap:8px}.occ-page .btn-new-permit{flex:1 1 auto}}
+        @media(max-width:560px){.occ-page .toolbar,.occ-page .registry-header{padding-left:14px;padding-right:14px}.occ-page .table-wrap{padding:0 8px 6px}.occ-page .pagination-bar{padding:14px;gap:12px;flex-wrap:wrap}}
+        @media(max-width:900px){
+            .occ-page .top-bar{height:auto;min-height:112px;padding:13px 18px;flex-wrap:wrap}
+            .occ-page .top-bar-meta{font-size:11px}
+            .occ-page .top-bar-controls{width:100%;margin-left:0;gap:10px}
+        }
+        @media(max-width:560px){
+            .occ-page .top-bar-brand{width:100%}
+            .occ-page .top-bar-meta{margin-left:0}
+        }
+
+        /* Registry presentation matches Building Permit; occupancy keeps its green accents. */
+        .occ-page .occupancy-intro-band{background:white;border-bottom:1px solid var(--border)}
+        .occ-page .page-intro.hero-content{margin:0 auto;padding:26px 0;align-items:center;gap:28px}
+        .occ-page .hero-copy .page-intro-kicker{margin-bottom:6px;color:var(--occ)}
+        .occ-page .hero-copy h1{font-family:'Libre Franklin',sans-serif;font-size:clamp(29px,3vw,40px);line-height:1.12;letter-spacing:-.04em}
+        .occ-page .hero-copy p{margin-top:8px;font-size:13px;line-height:1.55}
+        .occ-page .page-note{color:#315668;border-color:#cfe0e8;background:#f3f9fb}
+        .occ-page .page-wrapper{max-width:1540px;padding:24px 28px 52px}
+        .occ-page .stat-label{font-size:12px;font-weight:700;line-height:1.4;color:var(--text-secondary);margin-bottom:3px}
+        .occ-page .stat-num{font-family:'Libre Franklin',sans-serif;font-size:24px;font-weight:800;line-height:1.1}
+        .occ-page .toolbar{display:block;padding:0}
+        .occ-page .filter-tabs{max-width:none;margin:0;padding:14px 18px;gap:10px;background:white;border:0;border-bottom:1px solid var(--border);border-radius:0}
+        .occ-page .filter-tab{flex:0 0 auto;min-width:136px;min-height:0;padding:10px 18px;border:1px solid transparent;border-radius:7px;font-family:inherit;font-size:13px;color:#526774;box-shadow:none}
+        .occ-page .filter-tab .mdi-icon{width:15px;height:15px}
+        .occ-page .filter-tab:hover{color:var(--occ-dark);background:var(--occ-light)}
+        .occ-page .filter-tab.active{color:white;background:var(--occ-dark);border-color:var(--occ-dark);box-shadow:0 4px 10px rgba(5,150,105,.18)}
+        .occ-page .search-wrap{min-width:0;width:100%}
+        .occ-page .search-wrap input{min-height:43px;padding-left:41px;border:1px solid #bccbd5;border-radius:6px;background:white;font-family:inherit;font-size:13px}
+        .occ-page .search-icon{left:14px;color:var(--occ-dark)}
+        .occ-page .record-count-badge{padding:10px 14px;border-radius:6px;white-space:nowrap;font-size:12px}
+        .occ-page .table-wrap{padding:0;background:white}
+        .occ-page th{padding:14px 18px;background:#e9edf1;color:#4d5c67;font-size:11px}
+        .occ-page .main-data-row td{padding:18px;font-size:14px!important}
+        .occ-page .project-title-main{font-size:15px;color:var(--navy)}
+        .occ-page .lot-badge-inline{padding:3px 8px;font-size:11px;border-radius:4px}
+        .occ-page .btn-action,.occ-page .btn-delete-record{min-height:0;padding:7px 12px;font-family:inherit;font-size:12px;border-radius:6px}
+        .occ-page .btn-action .mdi-icon{width:15px;height:15px}
+        .occ-page .routing-details summary{font-size:12px}
+        .occ-page .pagination-bar{min-height:60px;padding:13px 18px;background:#fafbfc}
+        .occ-page .pagination-btn{min-width:88px;padding:8px 14px;font-family:inherit;font-size:12px;border-radius:6px}
+        @media(max-width:900px){.occ-page .page-wrapper{padding:20px 18px 42px}.occ-page .search-wrap{min-width:0}}
+        @media(max-width:600px){
+            .occ-page .page-intro.hero-content{min-height:0;padding:22px 0;align-items:flex-start;flex-direction:column;gap:14px}
+            .occ-page .hero-copy h1{font-size:28px}
+            .occ-page .page-note{display:flex}
+            .occ-page .filter-tabs{overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start;padding:12px}
+            .occ-page .filter-tab{min-width:120px;padding:9px 13px}
+            .occ-page .record-count-badge{align-self:flex-start;order:-1}
+        }
+
+        /* A quieter, compact registry with a single routing summary per record. */
+        .occ-page .registry-card{overflow:hidden;border:1px solid #dce5e9;box-shadow:0 8px 28px rgba(25,52,65,.05)}
+        .occ-page .registry-card .filter-tabs{padding:16px 20px 0;gap:24px;border-bottom:1px solid #e7edef}
+        .occ-page .registry-card .filter-tab{min-width:0;padding:10px 2px 15px;border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;box-shadow:none;color:#71818b;font-size:13px}
+        .occ-page .registry-card .filter-tab.active{color:var(--occ-dark);border-bottom-color:var(--occ);background:transparent;box-shadow:none}
+        .occ-page .registry-card .filter-tab:hover{color:var(--occ-dark);background:transparent}
+        .occ-page .registry-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 20px;background:white}
+        .occ-page .registry-toolbar .search-block{display:block;flex:1;max-width:540px;min-width:0}
+        .occ-page .registry-toolbar label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+        .occ-page .registry-toolbar .search-wrap input{background:#f7f9fa;border-color:#e1e8ec;border-radius:9px;min-height:42px}
+        .occ-page .registry-card .record-count-badge{padding:0;border:0;background:transparent;color:#71818b;font-weight:500;order:0}
+        .occ-page .registry-card .table-wrap{padding:0 20px;background:white;border-top:0}
+        .occ-page .registry-card table{min-width:1000px}
+        .occ-page .registry-card th{background:#f6f8f9;padding:12px 14px;color:#7b8a94;font-size:10px;letter-spacing:.07em}
+        .occ-page .registry-card .main-data-row td{padding:20px 14px 16px;border-top:0;font-size:13px!important}
+        .occ-page .registry-card .main-data-row td:first-child,.occ-page .registry-card .main-data-row td:last-child{border-left:0;border-right:0;border-radius:0}
+        .occ-page .registry-card .lot-badge-inline{background:#f1f5f7;border:0;color:#536777;padding:5px 8px}
+        .occ-page .registry-card .status-track-cell{padding:0 14px 18px!important;border:0!important;border-bottom:1px solid #e7edef!important;border-radius:0}
+        .occ-page .registry-card .routing-details{border:0;background:#f8fafb;border-radius:9px;padding:0 12px}
+        .occ-page .registry-card .routing-details summary{padding:12px 0;gap:8px;font-size:12px}
+        .occ-page .registry-card .routing-count{margin-left:4px;color:#667d88;font-variant-numeric:tabular-nums}
+        .occ-page .routing-summary-bar{margin-left:auto;width:140px;height:5px;background:#e3eaee;border-radius:99px;overflow:hidden}
+        .occ-page .routing-summary-bar .prog-fill{height:100%;border-radius:inherit}
+        .occ-page .registry-card .routing-content{padding:2px 0 14px}
+        .occ-page .registry-card .status-track-container{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+        .occ-page .registry-card .track-item{display:flex;align-items:center;gap:6px;padding:9px 10px;background:white;border:1px solid #e6ecef;border-radius:7px;font-size:11px;font-weight:500;color:#607481}
+        .occ-page .registry-card .track-item .mdi-icon{flex-shrink:0;width:15px;height:15px}
+        .occ-page .registry-card .record-gap td{height:8px;background:white}
+        .occ-page .registry-card .pagination-bar{background:white;border-top:0;padding:14px 20px;color:#7b8a94}
+        @media(max-width:600px){
+            .occ-page .registry-card .filter-tabs{gap:20px;padding:10px 14px 0}
+            .occ-page .registry-toolbar{padding:14px;gap:12px}
+            .occ-page .registry-card .table-wrap{padding:0 8px}
+            .occ-page .registry-card .record-count-badge{align-self:center}
+        }
+
+        /* Create permit: shared Building Permit dialog layout, occupancy accents. */
+        #createModal{z-index:300;padding:24px;overflow:hidden;backdrop-filter:blur(6px)}
+        #createModal .modal-window{display:flex;flex-direction:column;width:min(820px,100%);max-width:820px;max-height:calc(100dvh - 48px);overflow:hidden;border:1px solid rgba(255,255,255,.18);border-radius:16px;box-shadow:0 30px 90px rgba(7,26,44,.38)}
+        #createModal .modal-header{flex:0 0 auto;padding:20px 24px;gap:20px}
+        #createModal .occ-modal-heading{display:flex;align-items:center;gap:14px;min-width:0}
+        #createModal .occ-modal-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(255,255,255,.08);color:#ffd478}
+        #createModal .occ-modal-icon .mdi-icon{width:22px;height:22px}
+        #createModal .occ-modal-kicker{margin-bottom:3px;color:#c6d9e6;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+        #createModal .modal-header h3{margin:0;color:white;font-size:22px;letter-spacing:-.02em}
+        #createModal .occ-modal-heading p{margin:4px 0 0;color:#c9d9e5;font-size:13px;line-height:1.5}
+        #createModal .modal-close{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;padding:0;border:1px solid rgba(255,255,255,.22);border-radius:8px;background:rgba(255,255,255,.07);color:white}
+        #createModal .modal-close:hover{background:rgba(255,255,255,.16)}
+        #createModal .modal-body{min-height:0;overflow-y:auto;padding:24px;background:#f8fafb}
+        #createModal .occ-permit-form-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:17px 20px}
+        #createModal .form-group{margin:0;min-width:0}
+        #createModal .field-wide{grid-column:1/-1}
+        #createModal label{display:block;margin-bottom:6px;color:#425563;font-size:14px;font-weight:700;letter-spacing:0;text-transform:none}
+        #createModal input{width:100%;min-width:0;min-height:45px;padding:11px 13px;border:1px solid #bdcad3;border-radius:8px;background:white;color:var(--text-primary);font-family:inherit;font-size:14px;box-shadow:0 1px 2px rgba(16,42,67,.025)}
+        #createModal input::placeholder{color:#748593;opacity:1}
+        #createModal .occ-modal-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:23px;padding-top:18px;border-top:1px solid var(--border)}
+        #createModal .occ-modal-footer p{display:flex;align-items:center;gap:6px;margin:0;color:var(--text-muted);font-size:12px;line-height:1.5}
+        #createModal .occ-modal-footer p .mdi-icon{color:var(--occ-dark);width:16px;height:16px}
+        #createModal .occ-modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+        #createModal .occ-modal-actions button{width:auto;margin:0;padding:10px 18px;border-radius:7px;font-family:inherit;font-size:14px;font-weight:700}
+        #createModal .btn-submit{border:1px solid var(--occ-dark);background:var(--occ-dark)}
+        #createModal .btn-submit:hover{background:#065f46;border-color:#065f46}
+        #createModal .btn-submit:disabled{opacity:.65;cursor:wait}
+        @media(max-width:620px){
+            #createModal{padding:10px}
+            #createModal .modal-window{max-height:calc(100dvh - 20px);border-radius:12px}
+            #createModal .modal-header{padding:16px;gap:12px}
+            #createModal .occ-modal-heading p{display:none}
+            #createModal .modal-body{padding:18px 16px}
+            #createModal .occ-permit-form-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+            #createModal .field-wide{grid-column:auto}
+            #createModal .occ-modal-footer{align-items:stretch;flex-direction:column;gap:12px}
+            #createModal .occ-modal-actions{display:grid;grid-template-columns:1fr 1.4fr}
+            #createModal .occ-modal-actions button{width:100%}
+        }
+    
+        /* Document-list registry presentation. */
+        .occ-page .registry-card{border-radius:12px;box-shadow:none;border-color:#e7ebed}
+        .occ-page .registry-card .table-wrap{padding:0 20px}
+        .occ-page .registry-card table{min-width:920px}
+        .occ-page .registry-card th{background:white;color:#889198;font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;padding:14px 12px;border-bottom:1px solid #edf0f2}
+        .occ-page .registry-card .main-data-row td{padding:16px 12px 8px;font-size:12px!important;color:#6f7c84!important;vertical-align:middle}
+        .occ-page .registry-card .project-title-main{font-size:13px;font-weight:600;color:#283b45;min-width:180px;max-width:340px}
+        .occ-record-title{display:flex;align-items:center;gap:13px}
+        .occ-document-icon{width:26px;height:26px;flex-shrink:0;object-fit:contain}
+        .occ-record-owner{display:block;font-size:11px;color:#8a949b;margin-top:5px;line-height:1.5}
+        .occ-page .registry-card .lot-badge-inline{background:transparent;padding:0;border:0;color:#77838c;font-size:11px}
+        .occ-page .registry-card .pill{display:inline-flex;align-items:center;gap:6px;padding:0;background:transparent;border:0;font-size:11px;font-weight:500;white-space:nowrap}
+        .occ-page .registry-card .pill .mdi-icon{display:none}
+        .occ-page .registry-card .pill::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+        .occ-page .registry-card .pill-cleared{color:#429a67}
+        .occ-page .registry-card .pill-eval{color:#b08740}
+        .occ-page .registry-card .pill-flagged{color:#c56767}
+        .occ-page .registry-card .pill-empty{color:#939ba1}
+        .occ-page .registry-card .btn-action{background:transparent;border:0;color:#39816a;padding:6px 8px;font-size:11px;box-shadow:none}
+        .occ-page .registry-card .btn-action:hover{background:#eef7f2}
+        .occ-page .registry-card .btn-delete-record{background:transparent;border:0;padding:6px 8px;font-size:11px}
+        .occ-page .registry-card .status-track-cell{padding:0 12px 8px 45px!important;border-bottom:1px solid #edf0f2!important}
+        .occ-page .registry-card .routing-details{background:transparent;padding:0;border-radius:0}
+        .occ-page .registry-card .routing-details summary{padding:4px 0;gap:6px;font-size:10px;color:#89979f}
+        .occ-page .registry-card .routing-count{font-size:10px;color:#89979f}
+        .occ-page .registry-card .routing-summary-bar{width:90px;height:3px;opacity:.7}
+        .occ-page .registry-card .routing-content{padding:12px 0}
+        .occ-page .registry-card .record-gap{display:none}
+        .occ-page .registry-card .pagination-bar{font-size:11px;padding:16px 20px}
+        .occ-page .registry-card .filter-tabs{gap:18px;padding:16px 20px 0}
+        .occ-page .registry-card .filter-tab{font-size:12px}
+        .occ-page .registry-card .registry-toolbar{padding:14px 20px}
+        @media(max-width:600px){.occ-page .registry-card .table-wrap{padding:0 12px}}
+
+    
+        /* Minimal summary cards with a clear label, count, and supporting footer. */
+        .occ-page .stats-row{gap:14px;margin-bottom:18px;align-items:stretch}
+        .occ-page .stats-row .stat-card{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;overflow:hidden;background:#fff;border:1px solid #e5e9ec;border-radius:18px;box-shadow:none;min-width:0}
+        .occ-page .occ-stat-body{padding:14px 18px 16px;flex:1}
+        .occ-page .occ-stat-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+        .occ-page .stats-row .stat-label{margin:0;color:#74808a;font-size:13px;font-weight:500;line-height:1.5;letter-spacing:0;text-transform:none}
+        .occ-page .stats-row .stat-icon{width:24px;height:24px;flex:0 0 24px;background:transparent;border-radius:0}
+        .occ-page .stats-row .stat-icon .mdi-icon{width:19px;height:19px}
+        .occ-page .stats-row .stat-num{font-family:inherit;font-size:26px;font-weight:650;line-height:1.15;letter-spacing:-.045em;color:#172a35;font-variant-numeric:tabular-nums}
+        .occ-page .occ-stat-footer{padding:10px 18px;border-top:1px solid #e9edef;color:#87929b;font-size:11px;line-height:1.5;background:#fff}
+        .occ-page .registry-card{border-radius:18px;border-color:#e5e9ec}
+        @media(max-width:900px){.occ-page .stats-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:560px){.occ-page .stats-row{gap:10px}.occ-page .stats-row .stat-card{border-radius:18px}.occ-page .occ-stat-body{padding:12px 14px}.occ-page .occ-stat-heading{gap:6px;margin-bottom:8px}.occ-page .stats-row .stat-label{font-size:11px}.occ-page .stats-row .stat-num{font-size:24px}.occ-page .occ-stat-footer{padding:8px 14px;font-size:10px}}
+        @media(max-width:360px){.occ-page .stats-row{grid-template-columns:1fr}}
+
+            #permitProgressDialog{position:fixed;inset:0;margin:auto;box-sizing:border-box;overflow:auto;width:min(820px,calc(100vw - 40px));max-height:85dvh;padding:0;border:1px solid #e0e7ed;border-radius:18px;color:#243f53;box-shadow:0 24px 80px #102a4333}
+        #permitProgressDialog::backdrop{background:rgba(7,26,44,.5);backdrop-filter:blur(3px)}
+        .progress-dialog-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:22px 24px;border-bottom:1px solid #e6edf2}
+        .progress-dialog-header h2{margin:0;font-size:20px}
+        #progressProjectTitle{margin:7px 0 0;font-size:13px;color:#728594;overflow-wrap:anywhere}
+        .progress-close{width:32px;height:32px;border:1px solid #dfe7ed;border-radius:8px;background:#f5f8fa;color:#526d80;font-size:24px;cursor:pointer}
+        .progress-dialog-body{padding:20px 24px 24px}
+        #progressSummary{margin:0 0 12px;font-size:13px;font-weight:600}
+        .progress-legend{display:flex;gap:18px;font-size:11px;color:#758895;margin-bottom:20px}
+        #progressContent .route-line{display:block;background:#f7f9fb;border:1px solid #e3eaf0;border-radius:10px;padding:16px}
+        #progressContent .route-label{padding:0 0 12px}
+        #progressContent .route-stations{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:0;padding:0;gap:10px}
+        #progressContent .track-item{font-size:12px;text-transform:none;letter-spacing:0;padding:10px;background:white;border:1px solid #e3eaf0;border-radius:7px;overflow-wrap:anywhere}
+        @media(max-width:600px){#progressContent .route-stations{grid-template-columns:1fr}.progress-dialog-header,.progress-dialog-body{padding:18px}}
+
+        .occ-page .registry-card .btn-progress{padding:6px 9px;background:#eef8f3;border:1px solid #d3e9dd;border-radius:6px;color:#39816a;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}
+        .occ-page .registry-card .main-data-row td{padding-top:16px;padding-bottom:16px;border-bottom:1px solid #edf0f2}
+        #progressContent .status-track-container{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;background:transparent;border:0;padding:0}
+        @media(max-width:600px){#progressContent .status-track-container{grid-template-columns:1fr}}
+            /* Condensed white registry, consistent with the permit workspace. */
+        .occ-page .registry-card{--text-muted:#7c8c98;--text-secondary:#637987;background:#ffffff;border:1px solid #e1e8ed;border-radius:12px;box-shadow:none;overflow:hidden;color:#334e63}
+        .occ-page .registry-list-heading{padding:26px 28px 12px}
+        .occ-page .registry-list-heading h2{margin:0 0 8px;color:#243f53;font-size:17px;font-weight:650;letter-spacing:-.02em}
+        .occ-page .registry-list-heading p{margin:0;color:#7c8c98;font-size:12px;line-height:1.6}
+        .occ-page .registry-card .registry-controls{background:transparent;padding:0}
+        .occ-page .registry-card .filter-tabs{background:transparent;border-bottom:1px solid #e8edf1;padding:8px 28px 0;gap:22px}
+        .occ-page .registry-card .filter-tab{background:transparent;color:#6e8291;border-bottom-color:transparent;padding:10px 0 12px;font-size:12px;box-shadow:none}
+        .occ-page .registry-card .filter-tab.active{color:#047857;border-bottom-color:#047857;background:transparent}
+        .occ-page .registry-card .filter-tab:hover{color:#244b68;background:transparent}
+        .occ-page .registry-card .registry-toolbar{background:transparent;padding:16px 28px;gap:18px}
+        .occ-page .registry-card .search-row input{background:#f7f9fb;border-color:#dce5ec!important;color:#334e63;min-height:38px;font-size:12px;border-radius:7px}
+        .occ-page .registry-card .search-row input::placeholder{color:#8b9ba7}
+        .occ-page .registry-card .search-icon{color:#7d94a5}
+        .occ-page .registry-card .search-row input:focus{border-color:#047857!important;box-shadow:0 0 0 3px #04785718;outline:none}
+        .occ-page .registry-card .record-count-badge{color:#7c8c98;background:transparent;border:0}
+        .occ-page .registry-card .table-wrap{padding:0 28px;background:transparent;border:0;overflow:auto}
+        .occ-page .registry-card table{width:100%;min-width:1040px;border-collapse:collapse;background:transparent}
+        .occ-page .registry-card th{padding:13px 10px;background:transparent;color:#607887;border-bottom:1px solid #dde6ed;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0}
+        .occ-page .registry-card .main-data-row td{padding:11px 10px;background:transparent!important;color:#687f90!important;border:0;border-bottom:1px solid #edf1f4!important;font-size:12px;line-height:1.4}
+        .occ-page .registry-card .main-data-row:hover td{background:#f8fafc!important}
+        .occ-page .registry-card .main-data-row:last-child td{border-bottom:0!important}
+        .occ-page .registry-card .permit-heading{gap:10px;min-width:240px;align-items:center}
+        .occ-page .registry-card .bp-project-icon{width:22px;height:22px;flex-basis:22px;opacity:.65;margin-top:0}
+        .occ-page .registry-card .project-title-main{font-size:12px;line-height:1.4;color:#233e51;font-weight:600}
+        .occ-page .registry-card .permit-title-line{gap:8px}
+        .occ-page .registry-card .permit-progress-summary{margin-top:4px;color:#8999a5;font-size:10px;line-height:1.3}
+        .occ-page .registry-card .sub-title-row{color:#7c8c98;font-size:10px;margin-top:4px}
+        .occ-page .registry-card .sub-label{background:#edf3f8;color:#6a8396;border:0}
+        .occ-page .registry-card .permit-status-chip{font-size:9px;padding:3px 6px;border:0;line-height:1.3}
+        .occ-page .registry-card .permit-status-pending{color:#9b762d;background:#fff7e8}
+        .occ-page .registry-card .permit-status-approved{color:#278259;background:#edf8f1}
+        .occ-page .registry-card .permit-status-rejected{color:#ad5656;background:#fff1f1}
+        .occ-page .registry-card .lot-badge-inline{background:transparent;border:0;color:#687f90;padding:2px 4px;font-size:11px}
+        .occ-page .registry-card .action-group{justify-content:flex-end;gap:12px;flex-wrap:nowrap}
+        .occ-page .registry-card .btn-progress,.occ-page .registry-card .btn-action,.occ-page .registry-card .btn-delete-record{padding:5px 0;min-height:28px;border:0;border-radius:3px;background:transparent!important;box-shadow:none;color:#047857;font-family:inherit;font-size:11px;font-weight:600;text-decoration:none}
+        .occ-page .registry-card .btn-delete-record{color:#b56666}
+        .occ-page .registry-card .btn-progress:hover,.occ-page .registry-card .btn-action:hover{color:#065f46;text-decoration:underline}
+        .occ-page .registry-card .btn-delete-record:hover{color:#943f3f!important;text-decoration:underline}
+        .occ-page .registry-card .pagination-bar{padding:16px 28px;background:transparent;border-top:1px solid #e8edf1;color:#7c8c98}
+        .occ-page .registry-card .pagination-btn{background:transparent;border:1px solid #dce5ec;color:#6d8394;border-radius:6px;padding:7px 12px;font-size:11px}
+        .occ-page .registry-card .pagination-btn:disabled{opacity:.4}
+        .occ-page .registry-card .pagination-info{color:#7c8c98;font-size:11px}
+        .occ-page .registry-card button:focus-visible,.occ-page .registry-card a:focus-visible{outline:2px solid #047857;outline-offset:4px}
+        @media(max-width:600px){.occ-page .registry-list-heading{padding:20px 16px 10px}.occ-page .registry-card .filter-tabs{padding-left:16px;padding-right:16px;gap:18px}.occ-page .registry-card .registry-toolbar{padding:14px 16px}.occ-page .registry-card .table-wrap{padding:0 16px}.occ-page .registry-card .pagination-bar{padding:14px 16px}}
+
+    
+        .occ-page .registry-card .main-data-row td{padding:11px 10px!important}
+        .occ-page .registry-card .occ-record-title{gap:10px}
+        .occ-page .registry-card .occ-document-icon{width:22px;height:22px;opacity:.65}
+        .occ-page .registry-card .occ-record-owner{font-size:10px;margin-top:4px;color:#8999a5}
+    
+        .occ-page .registry-card .action-group{display:flex;align-items:center;justify-content:flex-end;gap:12px}
+        .occ-page .registry-card .btn-progress,.occ-page .registry-card .btn-action,.occ-page .registry-card .btn-delete-record{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:30px;min-height:30px;margin:0;padding:0 2px;line-height:1;font-family:inherit;font-size:11px;font-weight:600;vertical-align:middle;border:0;text-decoration:none}
+    </style>
+<link rel="stylesheet" href="/shared-header.css">
+<link rel="stylesheet" href="/status-badges.css">
+<link rel="stylesheet" href="/registry-filters.css">
+<script src="/registry-filters.js"></script>
+<link rel="stylesheet" href="/appearance.css">
+<link rel="stylesheet" href="/project-records.css">
+<script src="/project-records.js"></script>
+<link rel="stylesheet" href="/station-dates.css"><script src="/station-dates.js"></script>
+<link rel="stylesheet" href="/progress-layout.css">
+<link rel="stylesheet" href="/location-picker.css">
+<script src="/permit-barangays.js" defer></script><script src="/location-picker.js" defer></script>
+</head>
+<body class="occ-page">
+
+<div class="top-bar site-header">
+    <div class="top-bar-brand">
+        <img class="top-bar-logo" src="/assets/laoag-city-official-seal.png" alt="Laoag City official seal">
+        <div>
+            <div class="top-bar-title">Occupancy Permit Registry</div>
+            <div class="top-bar-subtitle">Office of the City Engineer — Laoag City</div>
+        </div>
+    </div>
+    <div class="top-bar-controls">
+        <button class="outline-action btn-new-permit" id="addPermitBtn" onclick="openModal()"><svg data-icon="inline-start" class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-file-document-plus-outline"></use></svg>Create permit</button>
+        <button class="outline-action btn-new-permit portal btn-logout" onclick="handleLogout()"><svg data-icon="inline-start" class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-logout-variant"></use></svg>Log out</button>
+    </div>
+</div>
+
+<div class="occupancy-intro-band">
+    <section class="page-intro hero-content">
+        <div class="hero-copy">
+            <div class="page-intro-kicker">Post-construction permits</div>
+            <h1>Occupancy Permit Registry</h1>
+            <p>Monitor applications, inspection readiness, and routing progress toward issuance.</p>
+        </div>
+        <div class="page-note"><span class="page-note-dot"></span> Registry connected</div>
+    </section>
+</div>
+
+<div class="page-wrapper">
+
+    <div class="stats-row">
+        <div class="stat-card"><div class="occ-stat-body"><div class="occ-stat-heading"><div class="stat-label">Total records</div><span class="stat-icon si-total"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-file-document-plus-outline"></use></svg></span></div><div class="stat-num" id="stTotal">0</div></div><div class="occ-stat-footer">All occupancy applications</div></div>
+        <div class="stat-card"><div class="occ-stat-body"><div class="occ-stat-heading"><div class="stat-label">Under evaluation</div><span class="stat-icon si-eval"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-alert-circle-outline"></use></svg></span></div><div class="stat-num" id="stEval">0</div></div><div class="occ-stat-footer">Routing review in progress</div></div>
+        <div class="stat-card"><div class="occ-stat-body"><div class="occ-stat-heading"><div class="stat-label">Approved</div><span class="stat-icon si-cleared"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-check-circle-outline"></use></svg></span></div><div class="stat-num" id="stCleared">0</div></div><div class="occ-stat-footer">All routing stations approved</div></div>
+        <div class="stat-card"><div class="occ-stat-body"><div class="occ-stat-heading"><div class="stat-label">Action needed</div><span class="stat-icon si-flagged"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-close-circle-outline"></use></svg></span></div><div class="stat-num" id="stFlagged">0</div></div><div class="occ-stat-footer">Applications needing attention</div></div>
+    </div>
+
+    <div class="card registry-card">
+        <div class="registry-list-heading"><h2>Permit records</h2><p>Review occupancy applications and track their progress through each engineering station.</p></div>
+        <div class="toolbar">
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-registry-status="all" onclick="setFilter('all',this)">All permits</button>
+                <button class="filter-tab" data-registry-status="cleared" onclick="setFilter('cleared',this)"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-check-circle-outline"></use></svg>Approved</button>
+                <button class="filter-tab" data-registry-status="eval" onclick="setFilter('eval',this)"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-alert-circle-outline"></use></svg>Evaluating</button>
+                <button class="filter-tab" data-registry-status="flagged" onclick="setFilter('flagged',this)"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-close-circle-outline"></use></svg>Action needed</button>
+                <button class="filter-tab" data-registry-status="empty" onclick="setFilter('empty',this)"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-information-outline"></use></svg>No Matrix</button>
+            </div>
+            <div class="registry-toolbar">
+            <div class="search-block">
+                <label for="searchInput">Search permit records</label>
+                <div class="search-wrap">
+                <span class="search-icon"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-magnify"></use></svg></span>
+                <input type="text" id="searchInput" aria-label="Search occupancy permit records" placeholder="Project, owner, location, or BP reference">
+                </div>
+            </div>
+            <span class="record-count-badge occ" id="recordCounter" role="status" aria-live="polite">0 Records</span>
+            </div>
+        </div>
+        <div class="registry-filter-controls" role="group" aria-label="Date and sort filters">
+            <div class="registry-filter-field"><label for="registryDateFrom">Date applied · From</label><input type="date" id="registryDateFrom" aria-describedby="registryFilterError"></div>
+            <div class="registry-filter-field"><label for="registryDateTo">Date applied · To</label><input type="date" id="registryDateTo" aria-describedby="registryFilterError"></div>
+            <div class="registry-filter-field"><label for="registrySort">Sort by</label><select id="registrySort"><option value="newest">Newest date first</option><option value="oldest">Oldest date first</option><option value="az">Project name A–Z</option><option value="za">Project name Z–A</option></select></div>
+            <button type="button" id="registryClear" class="registry-clear">Clear filters</button>
+            <p id="registryFilterError" class="registry-filter-error" role="alert" hidden>From date must be on or before To date.</p>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Project / Applicant</th>
+                        <th>Location</th>
+                        <th>BP Reference</th>
+                        <th>Date Applied</th>
+                        <th>Status</th>
+                        <th style="text-align:right;width:170px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="permitTableBody"></tbody>
+            </table>
+        </div>
+        <div class="pagination-bar">
+            <span class="pagination-info" id="pgInfo">—</span>
+            <div style="display:flex;gap:6px;align-items:center;">
+                <button class="pagination-btn" id="prevBtn" onclick="changePage(-1)" disabled><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-arrow-left"></use></svg>Prev</button>
+                <span style="font-size:12px;color:var(--text-muted);padding:0 6px;" id="pgLabel">Page 1</span>
+                <button class="pagination-btn" id="nextBtn" onclick="changePage(1)" disabled>Next<svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-arrow-right"></use></svg></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div id="createModal" class="modal-overlay">
+    <div class="modal-window" role="dialog" aria-modal="true" aria-labelledby="createOccupancyTitle">
+        <div class="modal-header">
+            <div class="occ-modal-heading">
+                <span class="occ-modal-icon"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-file-document-plus-outline"></use></svg></span>
+                <div>
+                    <div class="occ-modal-kicker">Occupancy Permit Registry</div>
+                    <h3 id="createOccupancyTitle">Create permit</h3>
+                    <p>Enter the project details and building permit reference.</p>
+                </div>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal()" aria-label="Close create permit form"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-close"></use></svg></button>
+        </div>
+        <div class="modal-body">
+            <form id="createPermitForm">
+                <div class="occ-permit-form-grid">
+                    <div class="form-group field-wide"><label for="f_title">Project title</label><input type="text" id="f_title" required placeholder="Enter project name"></div>
+                    <div class="form-group field-wide"><label for="f_loc">Location</label><input type="text" id="f_loc" data-location-picker required placeholder="Street, Barangay"></div>
+                    <div class="form-group field-wide"><label for="f_owner">Owner / Applicant name</label><input type="text" id="f_owner" required placeholder="Full name or corporation"></div>
+                    <div class="form-group"><label for="f_bp">BP reference no.</label><input type="text" id="f_bp" required placeholder="e.g. BP-2026-0001"></div>
+                    <div class="form-group"><label for="f_date">Date applied</label><input type="date" id="f_date" required></div>
+                </div>
+                <div class="occ-modal-footer">
+                    <p><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-information-outline"></use></svg> Required fields must be completed.</p>
+                    <div class="occ-modal-actions">
+                        <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="outline-action btn-submit" id="submitBtn"><svg data-icon="inline-start" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8M14 2v6h6M14 2l6 6M8 12h4M8 16h4M19 14v8M15 18h8"/></svg>Create permit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<dialog id="permitProgressDialog" aria-labelledby="progressHeading" aria-describedby="progressSummary">
+    <div class="progress-dialog-header">
+        <div class="progress-title-block"><span class="progress-eyebrow">PERMIT OVERVIEW</span><h2 id="progressHeading">Routing progress</h2><p id="progressProjectTitle"></p></div>
+        <form method="dialog"><button class="progress-close" aria-label="Close routing progress" autofocus>×</button></form>
+        <div class="progress-header-meta"><p id="progressSummary"></p><div class="progress-legend"><span class="legend-approved">✓ Approved</span><span class="legend-pending">• Pending</span><span class="legend-rejected">× Rejected</span></div></div>
+    </div>
+    <div class="progress-dialog-body"><div id="progressContent"></div><section id="progressRecords" aria-label="Project remarks"></section></div>
+</dialog>
+<script>
+const permitProgressViews = new Map();
+    function openPermitProgress(permitId) {
+        const view = permitProgressViews.get(permitId);
+        if (!view) return;
+        document.getElementById('progressProjectTitle').textContent = view.title;
+        document.getElementById('progressSummary').textContent = view.summary;
+        document.getElementById('progressContent').innerHTML = view.html;
+        document.getElementById('permitProgressDialog').showModal();
+        let recordsHost = document.getElementById('progressRecords');
+        if (!recordsHost) { recordsHost = document.createElement('section'); recordsHost.id = 'progressRecords'; document.querySelector('#permitProgressDialog .progress-dialog-body').append(recordsHost); }
+        recordsHost.dataset.projectRecords = 'occupancy';
+        ProjectRecords.mount(recordsHost, 'occupancy', permitId);
+    }
+
+
+const PER_PAGE = 15;
+let allPermits=[], allMatrix=[], filtered=[], currentPage=1, activeFilter='all';
+const registryFilters = RegistryFilters.create({
+    kind: 'occupancy', searchId: 'searchInput', statuses: ['all', 'cleared', 'eval', 'flagged', 'empty'],
+    status: () => activeFilter, page: () => currentPage,
+    restore: state => { activeFilter = state.status; currentPage = state.page; },
+    change: () => { currentPage = 1; applyFilters(); }
+});
+
+
+function mdiIcon(name) { return `<svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-${name}"></use></svg>`; }
+function handleLogout() { if (!FormSafety.leave()) return;
+    sessionStorage.removeItem('oboUser');
+    window.location.href = '/occupancy_login.html';
+}
+
+// --- Auth helpers ---
+function getStoredUser() { try { return JSON.parse(sessionStorage.getItem('oboUser') || 'null'); } catch(e) { return null; } }
+function getAuthHeaders() {
+    const user = getStoredUser();
+    return { 'Content-Type': 'application/json', 'x-user-role': user?.role || '', 'x-user-id': user?.id ? String(user.id) : '' };
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const user = getStoredUser();
+    if (!user) { window.location.href = '/occupancy_login.html'; return; }
+
+    if (user.role === 'admin' || user.role === 'superadmin') {
+        window.location.replace('/superadmin');
+        return;
+    }
+    if (user.role !== 'operator') { window.location.replace('/occupancy_login.html'); return; }
+
+    loadData();
+});
+
+async function loadData() {
+    try {
+        const r = await RequestFeedback.fetch('/api/occupancy');
+        const d = await r.json();
+        allPermits = d.permits || [];
+        allMatrix  = d.matrix  || [];
+        updateStats(); applyFilters();
+    } catch(e) { console.error(e); }
+}
+
+function computeStatus(pid) {
+    const rows = allMatrix.filter(m => m.occupancy_id === pid);
+    if (!rows.length) return 'empty';
+    if (rows.some(r => r.signature_status==='Rejected')) return 'flagged';
+    if (rows.every(r => r.signature_status==='Approved')) return 'cleared';
+    return 'eval';
+}
+
+function updateStats() {
+    document.getElementById('stTotal').textContent   = allPermits.length;
+    document.getElementById('stEval').textContent    = allPermits.filter(p=>computeStatus(p.id)==='eval').length;
+    document.getElementById('stCleared').textContent = allPermits.filter(p=>computeStatus(p.id)==='cleared').length;
+    document.getElementById('stFlagged').textContent = allPermits.filter(p=>computeStatus(p.id)==='flagged').length;
+}
+
+function setFilter(f,btn) {
+    activeFilter=f; currentPage=1;
+    document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active'); applyFilters();
+}
+
+function applyFilters() {
+    filtered = RegistryFilters.select(allPermits, registryFilters.state(), 'occupancy', p => computeStatus(p.id));
+    renderTable();
+}
+
+function renderTable() {
+    const user = getStoredUser();
+    const isAdminOrAbove = user && (user.role === 'admin' || user.role === 'superadmin');
+
+    const tbody = document.getElementById('permitTableBody');
+    tbody.innerHTML = '';
+    permitProgressViews.clear();
+    const total=filtered.length, pages=Math.max(1,Math.ceil(total/PER_PAGE));
+    currentPage = Math.max(1, Math.min(currentPage, pages));
+    registryFilters.sync();
+    const start=(currentPage-1)*PER_PAGE, slice=filtered.slice(start,start+PER_PAGE);
+
+    document.getElementById('recordCounter').textContent=`${total} of ${allPermits.length} records`;
+    document.getElementById('pgInfo').textContent = total?`Showing ${start+1}–${Math.min(start+PER_PAGE,total)} of ${total}`:'No records';
+    document.getElementById('pgLabel').textContent=`Page ${currentPage} of ${pages}`;
+    document.getElementById('prevBtn').disabled=currentPage<=1;
+    document.getElementById('nextBtn').disabled=currentPage>=pages;
+
+    if (!slice.length) {
+        tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:50px;color:var(--text-muted);font-size:13px;">No records match this filter.</td></tr>`;
+        return;
+    }
+
+    const pillMap = {
+        cleared:`<span class="pill pill-cleared">${mdiIcon('check-circle-outline')} Approved</span>`,
+        flagged:`<span class="pill pill-flagged">${mdiIcon('close-circle-outline')} Action needed</span>`,
+        eval:`<span class="pill pill-eval">${mdiIcon('alert-circle-outline')} Evaluating</span>`,
+        empty:`<span class="pill pill-empty">${mdiIcon('information-outline')} No Matrix</span>`,
+    };
+
+    slice.forEach(p => {
+        const tracks=allMatrix.filter(m=>m.occupancy_id===p.id);
+        const status=computeStatus(p.id);
+        const approved=tracks.filter(t=>t.signature_status==='Approved').length;
+        const pct=tracks.length?Math.round(approved/tracks.length*100):0;
+
+        const deleteBtn = `<button class="btn-delete-record" onclick="deletePermit(${p.id},'${esc(p.project_title).replace(/'/g,"\\'")}')">Delete</button>`;
+
+        const mr=document.createElement('tr'); mr.className='main-data-row';
+        mr.innerHTML=`
+            <td><div class="occ-record-title"><img class="occ-document-icon" src="/assets/occupancy-project-icon.png" alt="" aria-hidden="true"><div><span class="project-title-main">${esc(p.project_title)}</span><span class="occ-record-owner">${esc(p.owner_name)}</span></div></div></td>
+            <td style="color:var(--text-secondary);font-size:12px;">${esc(p.location)}</td>
+            <td><span class="lot-badge-inline">${esc(p.bp_reference_no)}</span></td>
+            <td style="color:var(--text-muted);white-space:nowrap;font-size:12px;">${fmtDate(p.date_applied)}</td>
+            <td>${pillMap[status]}</td>
+            <td style="text-align:right;">
+                <div class="action-group" style="justify-content:flex-end;">
+                    <button type="button" class="btn-progress" onclick="openPermitProgress(${p.id})" aria-haspopup="dialog">Progress</button>
+                    <a href="/occupancy/edit?id=${p.id}" class="btn-action">Details</a>
+                    ${deleteBtn}
+                </div>
+            </td>`;
+        tbody.appendChild(mr);
+
+
+        let html='';
+        if (tracks.length) {
+            const chips=tracks.map(t=>`<div class="track-item">${trackIcon(t.signature_status)} <span class="progress-station-name">${esc(t.discipline_name)}</span> ${StationDates.button('occupancy',p.id,t.id)}</div>`).join('');
+            html=`<div class="route-line"><div class="route-label"><span class="badge-stream-type">Occupancy Permit</span></div><div class="status-track-container">${chips}</div></div>`;
+        } else { html='<div class="route-line"><div class="route-label"><span class="badge-stream-type">Occupancy Permit</span></div><p class="progress-empty">No routing stations assigned yet.</p></div>'; }
+        permitProgressViews.set(p.id, { title: p.project_title, summary: tracks.length ? approved + ' of ' + tracks.length + ' stations approved' : 'No routing matrix established', html });
+    });
+}
+
+function changePage(d) { currentPage+=d; renderTable(); }
+function openModal()  { document.getElementById('createModal').style.display='flex'; }
+function closeModal() { if (!FormSafety.discard('createPermitForm')) return; document.getElementById('createModal').style.display='none'; document.getElementById('createPermitForm').reset(); }
+
+document.getElementById('createPermitForm').addEventListener('submit', FormSafety.guard('createPermitForm', async e => {
+    e.preventDefault();
+    const btn=document.getElementById('submitBtn'); btn.disabled=true; btn.textContent='Saving…';
+    try {
+        const r=await RequestFeedback.fetch('/api/occupancy',{method:'POST',headers:getAuthHeaders(),body:JSON.stringify({
+            project_title:document.getElementById('f_title').value,
+            location:document.getElementById('f_loc').value,
+            owner_name:document.getElementById('f_owner').value,
+            bp_reference_no:document.getElementById('f_bp').value,
+            date_applied:document.getElementById('f_date').value
+        })});
+        const d=await r.json();
+        if(d.success){FormSafety.clean('createPermitForm');closeModal();await loadData();}else alert('Error: '+d.message);
+    } catch(e) { RequestFeedback.report(e); }
+    finally{btn.disabled=false;btn.textContent='Create permit';}
+}));
+
+async function deletePermit(id,title) {
+    return DestructiveAction.run({
+        title:'Request permit deletion?',
+        message:'Request deletion of “'+title+'” (Permit #'+id+')? The permit stays available until an administrator approves its deletion.',
+        confirmLabel:'Request deletion',
+        action:async()=>{
+            const response=await RequestFeedback.fetch('/api/occupancy/'+id,{method:'DELETE',headers:getAuthHeaders()});
+            const data=await response.json();
+            if(!data.success)throw new Error(data.message||'Deletion request was not accepted.');
+            alert(data.message||'Deletion request submitted. The permit remains until approval.');
+            await loadData();
+        }
+    });
+}
+
+function trackIcon(s){
+    const state = s === 'Approved' ? ['approved','check-circle-outline'] : s === 'Rejected' ? ['rejected','close-circle-outline'] : ['pending','alert-circle-outline'];
+    return `<span class="track-icon icon-${state[0]}" title="${esc(s || 'Pending')}">${mdiIcon(state[1])}</span>`;
+}
+function fmtDate(d){
+    if (!d) return '—';
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(d);
+    const date = new Date(dateOnly ? d + 'T00:00:00Z' : d);
+    if (!Number.isFinite(date.getTime())) return '—';
+    return date.toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric',...(dateOnly ? {timeZone:'UTC'} : {})});
+}
+function esc(v){return v?v.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'):''; }
+</script>
+
+<script data-philippine-clock>
+(() => {
+    function mount() {
+        if (document.querySelector('.philippine-clock')) return;
+        const header = document.querySelector('.header-inner, .app-header-bar, .header-content, .office-bar, .app-header, .top-bar');
+        if (!header) return;
+        const style = document.createElement('style');
+        style.textContent = '.philippine-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex:0 0 auto;margin-left:auto;padding:7px 12px;border:0;border-radius:0;background:transparent;color:#f3f7fb;line-height:1.5;white-space:nowrap;font-family:inherit;font-variant-numeric:tabular-nums}.philippine-clock time{font-size:16px;font-weight:700;letter-spacing:.02em}.philippine-clock span{font-size:10px;color:#a9bfd2}.has-philippine-clock{gap:14px;flex-wrap:wrap;height:auto;min-height:76px}@media(max-width:600px){.philippine-clock{padding:5px 8px}.philippine-clock time{font-size:13px}.philippine-clock span{font-size:9px}}';
+        document.head.append(style);
+        header.classList.add('has-philippine-clock');
+        const centerStyle = document.createElement('style');
+        centerStyle.textContent = '.has-philippine-clock{position:relative}.has-philippine-clock .philippine-clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;align-items:center;text-align:center}@media(max-width:1100px){.has-philippine-clock{display:flex;flex-wrap:wrap}.has-philippine-clock .philippine-clock{position:static;transform:none;flex-basis:100%;order:99;margin:8px 0;box-sizing:border-box;align-items:center}}';
+        document.head.append(centerStyle);
+        const clock = document.createElement('div');
+        clock.className = 'philippine-clock';
+        clock.setAttribute('aria-label','Philippine date and time');
+        const time = document.createElement('time');
+        const date = document.createElement('span');
+        clock.append(time,date);
+        header.append(clock);
+        const tf = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const df = new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'short',year:'numeric',month:'short',day:'numeric'});
+        function update(){const now=new Date();time.dateTime=now.toISOString();time.textContent=tf.format(now);date.textContent=df.format(now);}
+        update();setInterval(update,1000);
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+</script>
+</body>
+</html>

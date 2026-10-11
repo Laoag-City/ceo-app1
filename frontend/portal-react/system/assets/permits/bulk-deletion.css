@@ -1,0 +1,11 @@
+.registry-bulk-delete{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 28px 18px;border-bottom:1px solid var(--border);background:var(--white);color:var(--text-secondary)}
+.registry-bulk-delete-copy{min-width:0;overflow-wrap:anywhere}
+.registry-bulk-delete-copy p{font-size:12px;line-height:1.6;margin:0;color:var(--text-secondary)}
+.registry-bulk-delete-copy p[role=status]{color:var(--text-muted);font-size:11px}
+.registry-bulk-delete .registry-delete-all{flex:0 0 auto;padding:10px 13px;min-height:42px;border:1px solid var(--red);border-radius:8px;background:transparent;color:var(--red);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:normal}
+.registry-bulk-delete .registry-delete-all:hover:not(:disabled){background:var(--red-light);color:var(--red)}
+.registry-bulk-delete .registry-delete-all:disabled{opacity:.55;cursor:not-allowed}
+.registry-bulk-delete button:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.registry-bulk-delete-copy p.registry-bulk-delete-error{color:var(--red)}
+.registry-bulk-delete-error button{margin-left:6px;border:0;background:transparent;text-decoration:underline;color:inherit;font:inherit;cursor:pointer}
+@media(max-width:600px){.registry-bulk-delete{align-items:stretch;flex-direction:column;padding:12px 14px 16px;gap:10px}.registry-bulk-delete .registry-delete-all{width:100%}}
