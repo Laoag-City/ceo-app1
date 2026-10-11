@@ -5,6 +5,42 @@ Node web services, two separate Neon databases, and Cloudinary for videos.
 This is a team test; the IT department will handle the official deployment.
 Local records remain separate from these new cloud copies.
 
+## Current test deployment — 11 October 2026
+
+| Resource | Address or name |
+| --- | --- |
+| Private source repository | [majingamo/laoag-engineerings-office](https://github.com/majingamo/laoag-engineerings-office) |
+| Systems portal | [Open portal](https://laoag-engineering-permits.onrender.com/portal.html) |
+| Permit login | [Open Permit Management](https://laoag-engineering-permits.onrender.com/login) |
+| Queue login | [Open Queue Management](https://laoag-engineering-queue.onrender.com/log-in.html) |
+| Queue monitor | [Open public monitor](https://laoag-engineering-queue.onrender.com/monitor.html) |
+| Neon project | `laoag-engineerings-office` — PostgreSQL 18, AWS Singapore |
+| Permit database | `laoag_permits_test` |
+| Queue database | `laoag_queue_test` |
+
+Both Render services use the Free plan in Singapore, with automatic deploys off.
+The deployed application commit is `f29f57c`. Both services have the actual Permit
+and Queue origins configured; portal navigation was checked in the browser.
+Both public health endpoints passed, and staff video controls rejected requests
+without a login.
+
+The fresh database archives were restored and verified against their table data
+checksums, foreign keys and identity sequences. The one backed-up local video
+(8,038,054 bytes) was uploaded to the existing Cloudinary account. Its existing
+playlist record now uses the cloud URL, retaining its ID, name, enabled state
+and position. Playback was checked on the hosted monitor. New staff uploads
+also use Cloudinary; no uploaded files depend on Render's temporary filesystem.
+
+Queue was then restarted through Render. Both services remained healthy, the
+video remained in the public playlist, and both database copies still matched
+their backup checksums and identity sequences after accounting for that one
+intentional video-path change. All 324 Permit rows and 1,000 Queue rows across
+their respective tables were retained.
+
+Use existing copied staff accounts for hosted acceptance tests. Authentication,
+permit workflows, queue actions and reports still need the normal signed-in UAT;
+successful hosting checks do not replace those tests.
+
 ## Prepared on 11 October 2026
 
 The latest source and both published React builds are ready. All 230 frontend
