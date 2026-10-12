@@ -19,17 +19,39 @@ Local records remain separate from these new cloud copies.
 | Queue database | `laoag_queue_test` |
 
 Both Render services use the Free plan in Singapore, with automatic deploys off.
-The latest application commit is `002a504`. Both services have the actual Permit
-and Queue origins configured; portal navigation was checked in the browser.
-Both public health endpoints passed, and staff video controls rejected requests
-without a login.
+The latest application commit is `d0abe868f27810b2db6418a926de3ea7765932ca`.
+Both services are live on this commit, with the actual Permit and Queue origins
+configured. Both health endpoints, login pages, hosted navigation and security
+headers passed verification. Served frontend assets match the exact committed
+files, including Building inspection controls and the Routing Matrix / Inspections
+tabs. This update also includes the current Appearance placement, regular lot-number
+text, Occupancy status badges and inspection card design.
 
-The 12 October update clears stale cookies and consumes the replacement notice
+The additive `permit_inspections` migration is applied to `laoag_permits_test`.
+There are now **22 Permit tables** and **6 Queue tables**. Its `permit_id` foreign
+key points to `permits.id`, and its cascade and runtime permissions were verified.
+All 355 rows in the 21 existing Permit tables were unchanged by the migration.
+The Queue video records match their pre-deployment backup, and the enabled clip
+still delivers a playable video. No database restore or reset was performed.
+
+Before this release, consistent backups captured 355 Permit rows and 1,005 Queue
+rows across their respective tables. Private backup directory:
+
+`C:\Users\Majin\PermitManagementPostgresBackups\pilot-pre-inspections-20261012075142459-a3ca506a`
+
+Release checks passed: **244 frontend checks**, **14 backend unit checks**,
+**15 PostgreSQL inspection checks**, and **12 PostgreSQL bulk-deletion checks**.
+Signed-in acceptance checks remain available in [Building inspection UAT](BUILDING-INSPECTIONS-UAT.md).
+The previous application commit `002a504` remains available for a code rollback;
+keep the additive inspection table and any new records if reverting the code.
+
+The earlier 12 October update clears stale cookies and consumes the replacement notice
 once, adds staff video deletion with confirmation and monitor updates, and moves
 the portal service cards beneath the office header. It also includes the locally
 tested audit-log rendering, login handling and HTTP security improvements.
-All 234 frontend checks and 42 targeted backend checks passed. No database
-migration, restore or reset is needed for this code update. The existing cloud
+That earlier release passed 234 frontend checks and 42 targeted backend checks.
+It required no database migration. The Building inspection release above adds
+its separate table without restoring or resetting records. The existing cloud
 video remained available during verification. See [update acceptance tests](OCT12-UPDATE-UAT.md).
 
 The fresh database archives were restored and verified against their table data
@@ -111,8 +133,14 @@ FROM information_schema.tables
 WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
 ```
 
-Expect 21 Permit tables and 6 Queue tables. Inspect restore errors before retrying;
-do not delete existing records to force the counts to match.
+Immediately after restoring the 11 October archives, expect 21 Permit tables and
+6 Queue tables. Before starting the latest code, run
+`backend/migration/permit-inspections.sql` as the owner in the Permit database's
+`public` schema. This adds the Building inspection table and brings Permit to 22
+tables. Grant the application's role table CRUD and identity-sequence USAGE/SELECT
+if it differs from the owner. The current pilot already has this migration.
+Inspect restore errors before retrying; do not delete existing records to force
+the counts to match.
 
 ## 3. New private GitHub repository
 

@@ -1,8 +1,9 @@
 # Building inspection acceptance checks
 
-Local implementation, October 12, 2026. No pilot deployment was changed.
-The additive local PostgreSQL migration has already been applied. Existing
-Building and Occupancy records were retained.
+Implemented locally and deployed to the pilot on October 12, 2026, at application
+commit `d0abe86`. The additive PostgreSQL migration is applied to both the local
+and pilot Permit databases. Existing Building and Occupancy records were retained.
+See [deployment details](RENDER-DEPLOYMENT.md) for the verified hosted addresses.
 
 ## Start testing
 
@@ -61,7 +62,7 @@ station routing statuses or final project approval.
   include Building inspections. Changes after a bulk deletion request block that
   stale approval; old requests with no inspections remain compatible.
 - Fresh PostgreSQL schema generation and test database copies include the new table.
-- Verified: 243 frontend checks, 15 real PostgreSQL inspection checks, 12 bulk
+- Verified for this release: 244 frontend checks, 15 real PostgreSQL inspection checks, 12 bulk
   deletion checks, local backend initialization and unauthenticated API rejection.
   Database tests used disposable fixtures; browser layout verification used sample
   records held in memory.
