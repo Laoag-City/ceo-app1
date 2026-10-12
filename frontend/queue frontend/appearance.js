@@ -43,6 +43,7 @@
     apply(readTheme());
     remember(root.dataset.theme);
     function mount() {
+        if (document.body.classList.contains('staff-sign-in')) return;
         const header = document.querySelector('.site-header,.queue-auth-theme');
         if (!header || document.getElementById('appearanceToggle')) return;
         let actions = header.querySelector('.top-bar-actions,.top-bar-controls');
@@ -64,7 +65,8 @@
             remember(theme);
             apply(theme);
         });
-        actions.appendChild(button);
+        const walkthrough = document.querySelector('[data-appearance-target="queue-walkthrough"]');
+        (walkthrough || actions).appendChild(button);
         apply(root.dataset.theme);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();

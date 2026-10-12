@@ -1,4 +1,6 @@
 [
+  {"source":"assets/permits/permit-inspections.js","folder":"monitorBP frontend","file":"permit-inspections.js"},
+  {"source":"assets/permits/permit-inspections.css","folder":"monitorBP frontend","file":"permit-inspections.css"},
   {"source":"assets/permits/remarks-viewer.js","folder":"monitorBP frontend","file":"remarks-viewer.js"},
   {"source":"assets/permits/remarks-viewer.css","folder":"monitorBP frontend","file":"remarks-viewer.css"},
   {"source":"assets/common/staff-login.css","folder":"monitorBP frontend","file":"staff-login.css"},

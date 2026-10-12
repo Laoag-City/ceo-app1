@@ -33,7 +33,7 @@ async function fixture(kind,datesSupported=true){
   return new Response(JSON.stringify(body));
  };
  w.eval(fs.readFileSync(path.resolve(base,'../system-dist/app.js'),'utf8'));await wait();
- for(const asset of ['project-identity.js','request-feedback.js','form-safety.js','login-feedback.js','workspace-notice.js','occupancy-checklist.js','station-dates.js','remarks-viewer.js','project-approval.js'])w.eval(fs.readFileSync(path.join(base,'assets/permits',asset),'utf8'));
+ for(const asset of ['project-identity.js','request-feedback.js','form-safety.js','permit-inspections.js','login-feedback.js','workspace-notice.js','occupancy-checklist.js','station-dates.js','remarks-viewer.js','project-approval.js'])w.eval(fs.readFileSync(path.join(base,'assets/permits',asset),'utf8'));
  const shell=fs.readFileSync(path.join(base,'features',occupancy?'occupancy':'building','details.html'),'utf8');
  const controller=[...shell.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]).find(s=>s.includes('const urlParams'));
  w.eval(controller);await w.fetchPermitData();w.enableEditingMode();

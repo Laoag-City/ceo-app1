@@ -12,7 +12,7 @@ function renderApprovalChanges(request, { compact = false } = {}) {
     }
     if (request.change_type === 'inspection_delete') {
         const inspection = changes.inspection || {};
-        return '<p class="approval-delete-note">Delete inspection #'+approvalEscape(changes.inspection_id)+' only. The occupancy permit will remain.</p><dl>'+[['Type',inspection.inspection_type],['Inspection date',String(inspection.inspection_date || '').slice(0,10)],['Inspector',inspection.inspector_name],['Result',inspection.result],['Findings / remarks',inspection.findings]].map(([label,value])=>'<dt>'+approvalEscape(label)+'</dt><dd>'+approvalEscape(value || '—')+'</dd>').join('')+'</dl>';
+        return '<p class="approval-delete-note">Delete inspection #'+approvalEscape(changes.inspection_id)+' only. The parent permit will remain.</p><dl>'+[['Type',inspection.inspection_type],['Inspection date',String(inspection.inspection_date || '').slice(0,10)],['Inspector',inspection.inspector_name],['Result',inspection.result],['Findings / remarks',inspection.findings]].map(([label,value])=>'<dt>'+approvalEscape(label)+'</dt><dd>'+approvalEscape(value || '—')+'</dd>').join('')+'</dl>';
     }
     const before = changes._before;
     const rows = [];

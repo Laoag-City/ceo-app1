@@ -9,6 +9,7 @@ const {requireVersion}=require('./recordVersion');
 const invalid = (message, status=400) => Object.assign(new Error(message), {status});
 const hash = row => crypto.createHash('sha256').update(JSON.stringify(row)).digest('hex');
 function validate(body) {
+    if(!body||Array.isArray(body)||typeof body!=='object')throw invalid('Inspection details are required.');
     for (const [key,label] of [['inspection_date','Inspection date'],['inspector_name','Inspector name'],['findings','Findings / remarks']]) {
         if(typeof body[key]!=='string' || !body[key].trim()) throw invalid(label+' is required.');
     }
@@ -19,7 +20,19 @@ function validate(body) {
     if(!calendar(body.inspection_date)) throw invalid('Enter a valid inspection date.');
     if(body.next_inspection_date && (!calendar(body.next_inspection_date) || body.next_inspection_date<body.inspection_date)) throw invalid('Next inspection must be a valid date on or after this inspection.');
 }
-module.exports = function createInspectionWorkflow(openConnection) {
+module.exports = function createInspectionWorkflow(openConnection, kind='occupancy') {
+    // Identifiers come only from this fixed configuration, never request data.
+    const configs = {
+        occupancy: {parent:'occupancy_permits', inspections:'occupancy_inspections', requests:'occupancy_change_requests', key:'occupancy_id', label:'Occupancy'},
+        permits: {parent:'permits', inspections:'permit_inspections', requests:'permit_change_requests', key:'permit_id', label:'Building'}
+    };
+    const c=configs[kind];
+    if(!c) throw new Error('Unknown inspection workspace.');
+    const recordId=value=>{
+        const id=Number(value);
+        if(!Number.isSafeInteger(id)||id<1)throw invalid('Invalid inspection or permit ID.');
+        return id;
+    };
     async function actor(conn,req,roles) {
         const id=Number(req.user?.id);
         if(!Number.isSafeInteger(id)||id<1)throw invalid('Please sign in again.',403);
@@ -34,60 +47,60 @@ module.exports = function createInspectionWorkflow(openConnection) {
         finally{if(conn)await conn.end();}
     }
     async function lockParent(conn,id) {
-        const [rows]=await conn.query('SELECT id FROM occupancy_permits WHERE id=? FOR UPDATE',[id]);
-        if(!rows.length)throw invalid('Occupancy record not found.',404);
+        const [rows]=await conn.query(`SELECT id FROM ${c.parent} WHERE id=? FOR UPDATE`,[recordId(id)]);
+        if(!rows.length)throw invalid(c.label+' record not found.',404);
     }
     const submit=(req,res)=>run(res,async conn=>{
         const user=await actor(conn,req,['operator','admin','superadmin']);
         const id=Number(req.params.id),inspectionId=Number(req.params.inspId);
         if(![id,inspectionId].every(n=>Number.isSafeInteger(n)&&n>0))throw invalid('Invalid inspection ID.');
         await lockParent(conn,id);
-        const [rows]=await conn.query('SELECT * FROM occupancy_inspections WHERE id=? AND occupancy_id=? FOR UPDATE',[inspectionId,id]);
+        const [rows]=await conn.query(`SELECT * FROM ${c.inspections} WHERE id=? AND ${c.key}=? FOR UPDATE`,[inspectionId,id]);
         if(!rows.length)throw invalid('Inspection not found.',404);
         requireVersion(req,hash(rows[0]));
         if(user.role!=='operator') {
-            await conn.query('DELETE FROM occupancy_inspections WHERE id=? AND occupancy_id=?',[inspectionId,id]);
+            await conn.query(`DELETE FROM ${c.inspections} WHERE id=? AND ${c.key}=?`,[inspectionId,id]);
             return {body:{success:true,message:'Inspection record deleted.'}};
         }
-        const [pending]=await conn.query("SELECT id, changes FROM occupancy_change_requests WHERE occupancy_id=? AND change_type='inspection_delete' AND status='pending' FOR UPDATE",[id]);
+        const [pending]=await conn.query(`SELECT id, changes FROM ${c.requests} WHERE ${c.key}=? AND change_type='inspection_delete' AND status='pending' FOR UPDATE`,[id]);
         for(const request of pending) {
             const changes=typeof request.changes==='string'?JSON.parse(request.changes):request.changes;
             if(Number(changes.inspection_id)===inspectionId)return {status:409,body:{success:false,duplicate:true,message:'A deletion request for this inspection is already awaiting administrator approval.'}};
         }
         const changes={inspection_id:inspectionId,inspection:rows[0],_inspectionSnapshot:hash(rows[0])};
-        await conn.query("INSERT INTO occupancy_change_requests (occupancy_id,requested_by,change_type,changes,status,remarks) VALUES (?,?,'inspection_delete',?,'pending',?)",[id,user.id,JSON.stringify(changes),'Delete this inspection only; retain the occupancy permit.']);
+        await conn.query(`INSERT INTO ${c.requests} (${c.key},requested_by,change_type,changes,status,remarks) VALUES (?,?,'inspection_delete',?,'pending',?)`,[id,user.id,JSON.stringify(changes),'Delete this inspection only; retain the '+c.label.toLowerCase()+' permit.']);
         return {body:{success:true,pending:true,message:'Inspection deletion submitted for administrator approval. The inspection remains until approved.'}};
     });
     function review(decision) {
         return async(req,res,next)=>{
             // Dispatch only this request type; existing edit/deletion handlers retain theirs.
             let probe;
-            try {probe=await openConnection();const [rows]=await probe.query('SELECT change_type FROM occupancy_change_requests WHERE id=?',[req.params.id]);if(rows[0]?.change_type!=='inspection_delete')return next();}
+            try {probe=await openConnection();const [rows]=await probe.query(`SELECT change_type FROM ${c.requests} WHERE id=?`,[req.params.id]);if(rows[0]?.change_type!=='inspection_delete')return next();}
             catch(e){return res.status(500).json({success:false,message:'Unable to read inspection request.'});}
             finally{if(probe)await probe.end();}
             return run(res,async conn=>{
                 const user=await actor(conn,req,['admin','superadmin']);
-                const [initial]=await conn.query('SELECT occupancy_id FROM occupancy_change_requests WHERE id=?',[req.params.id]);
+                const [initial]=await conn.query(`SELECT ${c.key} FROM ${c.requests} WHERE id=?`,[req.params.id]);
                 if(!initial.length)throw invalid('Request no longer exists.',404);
-                const id=initial[0].occupancy_id;await lockParent(conn,id);
-                const [requests]=await conn.query('SELECT * FROM occupancy_change_requests WHERE id=? FOR UPDATE',[req.params.id]);
+                const id=initial[0][c.key];await lockParent(conn,id);
+                const [requests]=await conn.query(`SELECT * FROM ${c.requests} WHERE id=? FOR UPDATE`,[req.params.id]);
                 const request=requests[0];
                 if(!request || request.status!=='pending')throw invalid('This request was already reviewed.',409);
                 const changes=typeof request.changes==='string'?JSON.parse(request.changes):request.changes;
                 let status='rejected',message='Inspection deletion declined. Inspection retained.';
                 if(decision==='approve') {
-                    const [rows]=await conn.query('SELECT * FROM occupancy_inspections WHERE id=? AND occupancy_id=? FOR UPDATE',[changes.inspection_id,id]);
+                    const [rows]=await conn.query(`SELECT * FROM ${c.inspections} WHERE id=? AND ${c.key}=? FOR UPDATE`,[changes.inspection_id,id]);
                     if(!rows.length || hash(rows[0])!==changes._inspectionSnapshot){status='conflict';message='Inspection changed or no longer exists. Deletion blocked; refresh and submit a fresh request.';}
-                    else {await conn.query('DELETE FROM occupancy_inspections WHERE id=? AND occupancy_id=?',[changes.inspection_id,id]);status='approved';message='Inspection deletion approved. Occupancy permit retained.';}
+                    else {await conn.query(`DELETE FROM ${c.inspections} WHERE id=? AND ${c.key}=?`,[changes.inspection_id,id]);status='approved';message='Inspection deletion approved. '+c.label+' permit retained.';}
                 }
-                await conn.query('UPDATE occupancy_change_requests SET status=?,reviewed_by=?,reviewed_at=NOW(),remarks=? WHERE id=?',[status,String(user.id),message,request.id]);
+                await conn.query(`UPDATE ${c.requests} SET status=?,reviewed_by=?,reviewed_at=NOW(),remarks=? WHERE id=?`,[status,String(user.id),message,request.id]);
                 return {status:status==='conflict'?409:200,body:{success:status!=='conflict',conflict:status==='conflict',message}};
             });
         };
     }
     const readInspections=(req,res)=>run(res,async conn=>{
         await lockParent(conn,Number(req.params.id));
-        const [rows]=await conn.query('SELECT * FROM occupancy_inspections WHERE occupancy_id=? ORDER BY inspection_date DESC,id DESC',[req.params.id]);
+        const [rows]=await conn.query(`SELECT * FROM ${c.inspections} WHERE ${c.key}=? ORDER BY inspection_date DESC,id DESC`,[req.params.id]);
         return {body:{success:true,inspections:rows.map(row=>({...row,inspection_date:require('./stationDates').calendar(row.inspection_date),next_inspection_date:row.next_inspection_date?require('./stationDates').calendar(row.next_inspection_date):null,_version:hash(row)}))}};
     });
     function save(update=false) {
@@ -95,16 +108,17 @@ module.exports = function createInspectionWorkflow(openConnection) {
             await actor(conn,req,['operator','admin','superadmin']);validate(req.body);
             const id=Number(req.params.id);await lockParent(conn,id);
             if(update) {
-                const [rows]=await conn.query('SELECT * FROM occupancy_inspections WHERE id=? AND occupancy_id=? FOR UPDATE',[req.params.inspId,id]);
+                const [rows]=await conn.query(`SELECT * FROM ${c.inspections} WHERE id=? AND ${c.key}=? FOR UPDATE`,[recordId(req.params.inspId),id]);
                 if(!rows.length)throw invalid('Inspection no longer exists.',404);
                 requireVersion(req,hash(rows[0]));
             }
             const clean=value=>String(value??'').trim().replace(/<[^>]*>/g,'');
             const fields=['inspection_type','inspection_date','inspector_name','result','findings','next_inspection_date'];
             const values=fields.map(key=>key==='next_inspection_date'&&!req.body[key]?null:clean(req.body[key]));
+            if(!values[2]||!values[4])throw invalid('Inspector name and findings must contain text.');
             let inspectionId=Number(req.params.inspId);
-            if(update)await conn.query('UPDATE occupancy_inspections SET '+fields.map(key=>key+'=?').join(',')+' WHERE id=? AND occupancy_id=?',[...values,req.params.inspId,id]);
-            else {const [inserted]=await conn.query('INSERT INTO occupancy_inspections (occupancy_id,'+fields.join(',')+') VALUES (?,?,?,?,?,?,?)',[id,...values]);inspectionId=inserted.insertId;}
+            if(update)await conn.query(`UPDATE ${c.inspections} SET `+fields.map(key=>key+'=?').join(',')+` WHERE id=? AND ${c.key}=?`,[...values,req.params.inspId,id]);
+            else {const [inserted]=await conn.query(`INSERT INTO ${c.inspections} (${c.key},`+fields.join(',')+') VALUES (?,?,?,?,?,?,?)',[id,...values]);inspectionId=inserted.insertId;}
             return {body:{success:true,id:inspectionId,message:update?'Inspection updated.':'Inspection record logged.'}};
         });
     }

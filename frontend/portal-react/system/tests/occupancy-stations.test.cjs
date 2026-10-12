@@ -44,7 +44,7 @@ async function fixture({saved, matrix = [], supported = true, conflict = false, 
     };
     w.eval(fs.readFileSync(path.resolve(base, '../system-dist/app.js'), 'utf8'));
     await settle();
-    for (const name of ['project-identity.js', 'request-feedback.js', 'form-safety.js', 'login-feedback.js', 'workspace-notice.js', 'occupancy-checklist.js', 'station-dates.js', 'project-approval.js', 'occupancy-templates.js']) {
+    for (const name of ['project-identity.js', 'request-feedback.js', 'form-safety.js','permit-inspections.js', 'login-feedback.js', 'workspace-notice.js', 'occupancy-checklist.js', 'station-dates.js', 'project-approval.js', 'occupancy-templates.js']) {
         w.eval(fs.readFileSync(path.join(base, 'assets/permits', name), 'utf8'));
     }
     const html = fs.readFileSync(path.join(base, 'features/occupancy/details.html'), 'utf8');

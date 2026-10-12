@@ -29,15 +29,8 @@
         .station-badge-chip { background:#d1fae5; color:#065f46; }
         .station-delete-btn { color:var(--occ); }
 
-        .status-chip { display:inline-flex; align-items:center; padding:5px 12px; border-radius:4px; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
-        .status-pending  { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
-        .status-approved { background:var(--green-light); color:var(--green); border:1px solid var(--green-mid); }
-        .status-rejected { background:var(--red-light);   color:var(--red);   border:1px solid var(--red-mid); }
-
         .btn-icon-danger { background:none; border:none; color:var(--red); cursor:pointer; font-size:14px; padding:4px; line-height:1; transition:opacity .15s; }
         .btn-icon-danger:hover { opacity:.6; }
-        .btn-icon-edit   { background:none; border:none; color:var(--occ); cursor:pointer; font-size:14px; padding:4px; line-height:1; transition:opacity .15s; }
-        .btn-icon-edit:hover { opacity:.6; }
 
         /* ══════════════════════════════
            TAB SYSTEM
@@ -70,42 +63,6 @@
         /* ══════════════════════════════
            INSPECTION PANEL
         ══════════════════════════════ */
-        .insp-toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
-        .btn-add-insp { padding:9px 14px; background:var(--occ); color:white; border:none; border-radius:8px; font-family:inherit;font-size:12px; font-weight:700; cursor:pointer; transition:background .15s; }
-        .btn-add-insp:hover { background:var(--occ-dark); }
-
-        .summary-badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
-        .sbadge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:5px; font-size:11px; font-weight:700; text-transform:uppercase; }
-        .sb-passed     { background:var(--occ-light); color:var(--occ); border:1px solid var(--occ-mid); }
-        .sb-failed     { background:var(--red-light); color:var(--red); border:1px solid var(--red-mid); }
-        .sb-scheduled  { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
-        .sb-conditional{ background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; }
-
-        .insp-card { background:var(--white); border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; transition:box-shadow .15s; }
-        .insp-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.07); }
-        .insp-card-head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); background:var(--surface); }
-        .insp-card-body { padding:14px 16px; }
-
-        .type-badge { display:inline-flex; align-items:center; padding:4px 10px; border-radius:5px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
-        .tb-preliminary{ background:#eff6ff; color:#1d4ed8; border:1px solid #dbeafe; }
-        .tb-final      { background:var(--navy); color:white; }
-        .tb-followup   { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
-        .tb-special    { background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; }
-
-        .result-badge { display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:700; text-transform:uppercase; }
-        .rb-passed    { background:var(--occ-light); color:var(--occ); border:1px solid var(--occ-mid); }
-        .rb-failed    { background:var(--red-light); color:var(--red); border:1px solid var(--red-mid); }
-        .rb-scheduled { background:var(--amber-light); color:var(--amber); border:1px solid var(--amber-mid); }
-        .rb-conditional{ background:#f3e8ff; color:#7c3aed; border:1px solid #e9d5ff; }
-
-        .insp-meta-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px; }
-        .insp-meta-item .iml { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:2px; }
-        .insp-meta-item .imv { font-size:12px; color:var(--text-primary); font-weight:600; }
-        .insp-findings { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px 12px; font-size:12px; color:var(--text-secondary); line-height:1.5; }
-
-        .insp-empty { text-align:center; padding:50px 20px; }
-        .insp-empty .ie-icon { font-size:36px; opacity:.3; margin-bottom:10px; }
-
         /* ══════════════════════════════
            CHECKLIST PANEL
         ══════════════════════════════ */
@@ -207,6 +164,8 @@
 <script src="/project-approval.js"></script><link rel="stylesheet" href="/project-approval.css">
 <link rel="stylesheet" href="/permit-responsive.css">
 <script src="/permit-responsive.js" defer></script>
+<link rel="stylesheet" href="/permit-inspections.css">
+<script src="/permit-inspections.js" defer></script>
 </head>
 <body>
 <div id="system-react-root" data-page="permits-occupancy_edit" style="display:contents"></div>
@@ -222,9 +181,9 @@ let projectData = null;
 let initializingStations = false;
 window.addEventListener('permit-profile-updated', event => StationDates.updateEngineers(matrixState, event.detail));
 let signatureDatesSupported = false;
-let inspections  = [], checklistState = {};
+let checklistState = {};
 // Keep the version loaded with each editor; never replace it on a failed save.
-let permitVersion = "", checklistVersion = "", inspectionVersion = "";
+let permitVersion = "", checklistVersion = "";
 
 function getStoredUser() { try { return JSON.parse(sessionStorage.getItem('oboUser') || 'null'); } catch(e) { return null; } }
 function getAuthHeaders(version = permitVersion) {
@@ -400,9 +359,11 @@ function renderMatrixTable() {
         const tr = document.createElement('tr');
         tr.setAttribute('data-id', row.id);
         tr.setAttribute('data-discipline', row.discipline_name);
-        const statusLc = (row.signature_status||'pending').toLowerCase();
+        const statusValue = (row.signature_status || 'Pending').trim();
+        const statusLc = statusValue.toLowerCase();
+        const statusClass = ['approved', 'rejected'].includes(statusLc) ? statusLc : 'pending';
         const eng = StationDates.engineer(row);
-        let status = `<span class="status-chip status-${statusLc}">${statusLc==='approved'?'✓ ':statusLc==='rejected'?'✗ ':'○ '}${row.signature_status}</span>`;
+        let status = `<span class="badge status-${statusClass}">${esc(statusValue)}</span>`;
         let feed   = StationDates.remarks(row, 'View remarks') || '—';
         let cmd = currentUserRole() === 'admin' ? `<button type="button" class="btn-icon-danger" onclick="removeStation(decodeURIComponent('${encodeURIComponent(row.discipline_name).replace(/'/g,'%27')}'))">Remove</button>` : '—';
         if (isEditing && row.can_edit === true) {
@@ -566,137 +527,6 @@ function saveRemarksToRow() {
 /* ══════════════════════════
    INSPECTIONS
 ══════════════════════════ */
-async function loadInspections() {
-    try {
-        const r = await RequestFeedback.fetch(`/api/occupancy/${permitId}/inspections`);
-        if (!r.ok) { inspections=[]; renderInspections(); return; }
-        const d = await r.json();
-        inspections = d.inspections || [];
-    } catch(e) { RequestFeedback.report(e); return; }
-    renderInspections();
-}
-
-function openInspModal(id) {
-    const isEdit = !!id;
-    inspectionVersion = inspections.find(row=>row.id===id)?._version || "";
-    document.getElementById('inspModalTitle').textContent = isEdit ? 'Edit Inspection Record' : 'Log New Inspection';
-    document.getElementById('editInspId').value = id || '';
-    if (isEdit) {
-        const i = inspections.find(x=>x.id===id) || {};
-        document.getElementById('inspType').value      = i.inspection_type || 'Preliminary';
-        document.getElementById('inspDate').value      = (i.inspection_date||'').split('T')[0];
-        document.getElementById('inspInspector').value = i.inspector_name || '';
-        document.getElementById('inspResult').value    = i.result || 'Scheduled';
-        document.getElementById('inspFindings').value  = i.findings || '';
-        document.getElementById('inspNextDate').value  = (i.next_inspection_date||'').split('T')[0];
-    } else {
-        document.getElementById('inspType').value      = 'Preliminary';
-        document.getElementById('inspDate').value      = new Date().toISOString().split('T')[0];
-        document.getElementById('inspInspector').value = '';
-        document.getElementById('inspResult').value    = 'Scheduled';
-        document.getElementById('inspFindings').value  = '';
-        document.getElementById('inspNextDate').value  = '';
-    }
-    document.getElementById('inspModal').style.display='flex';
-}
-
-function closeInspModal() { if (!FormSafety.discard('inspModal')) return; document.getElementById('inspModal').style.display='none'; }
-
-const saveInspection = FormSafety.guard('inspSaveBtn', async function() {
-    const editId = document.getElementById('editInspId').value;
-    const date   = document.getElementById('inspDate').value;
-    if (!FormSafety.validate(document.getElementById('inspModal'))) return;
-    const nextDate=document.getElementById('inspNextDate'); nextDate.setCustomValidity('');
-    if(nextDate.value && nextDate.value < date){nextDate.setCustomValidity('The next inspection must be on or after this inspection.');nextDate.reportValidity();return;}
-    const payload = {
-        occupancy_id: parseInt(permitId),
-        inspection_type: document.getElementById('inspType').value,
-        inspection_date: date,
-        inspector_name:  document.getElementById('inspInspector').value,
-        result:          document.getElementById('inspResult').value,
-        findings:        document.getElementById('inspFindings').value,
-        next_inspection_date: document.getElementById('inspNextDate').value || null
-    };
-    const btn=document.getElementById('inspSaveBtn'); btn.disabled=true; btn.textContent='Saving…';
-    try {
-        const url    = editId ? `/api/occupancy/${permitId}/inspections/${editId}` : `/api/occupancy/${permitId}/inspections`;
-        const method = editId ? 'PUT' : 'POST';
-        const r=await RequestFeedback.fetch(url,{method,headers:getAuthHeaders(inspectionVersion),body:JSON.stringify(payload)});
-        const d=await r.json();
-        if (d.success) { FormSafety.clean('inspModal'); closeInspModal(); await loadInspections(); }
-        else alert(d.message||'Save failed.');
-    } catch(e) { RequestFeedback.report(e); }
-    finally { btn.disabled=false; btn.textContent='Save Inspection'; }
-});
-
-async function deleteInspection(id) {
-    if (!confirm(isAdminOrAbove() ? 'Permanently delete this inspection record?' : 'Request administrator approval to delete this inspection? It will remain until approved.')) return;
-    try {
-        const r=await RequestFeedback.fetch(`/api/occupancy/${permitId}/inspections/${id}`,{method:'DELETE',headers:getAuthHeaders(inspections.find(row=>row.id===id)?._version)});
-        const d=await r.json();
-        if (d.success) { if(d.pending) alert(d.message); await loadInspections(); } else alert(d.message||'Failed to delete.');
-    } catch(e) { RequestFeedback.report(e); }
-}
-
-function renderInspections() {
-    const list = document.getElementById('inspectionList');
-    document.getElementById('tbInspection').textContent = inspections.length;
-
-    const passed      = inspections.filter(i=>i.result==='Passed').length;
-    const failed      = inspections.filter(i=>i.result==='Failed').length;
-    const scheduled   = inspections.filter(i=>i.result==='Scheduled').length;
-    const conditional = inspections.filter(i=>i.result==='Conditional').length;
-    const badges = document.getElementById('inspSummaryBadges');
-    badges.innerHTML = [
-        inspections.length ? `<span style="font-size:11px;font-weight:600;color:var(--text-muted);">${inspections.length} total</span>` : '',
-        passed      ? `<span class="sbadge sb-passed">✓ ${passed} Passed</span>` : '',
-        failed      ? `<span class="sbadge sb-failed">✗ ${failed} Failed</span>` : '',
-        scheduled   ? `<span class="sbadge sb-scheduled">⏳ ${scheduled} Scheduled</span>` : '',
-        conditional ? `<span class="sbadge sb-conditional">◑ ${conditional} Conditional</span>` : '',
-    ].join('');
-
-    if (!inspections.length) {
-        list.innerHTML=`<div class="insp-empty"><div class="ie-icon">🔍</div><p style="font-size:13px;color:var(--text-muted);">No inspections logged yet. Use the button above.</p></div>`;
-        return;
-    }
-
-    const typeClass = { 'Preliminary':'preliminary','Final':'final','Follow-up':'followup','Special':'special' };
-    const resClass  = { 'Passed':'passed','Failed':'failed','Scheduled':'scheduled','Conditional':'conditional' };
-    const resIcon   = { 'Passed':'✓','Failed':'✗','Scheduled':'⏳','Conditional':'◑' };
-
-    const sorted = [...inspections].sort((a,b)=>new Date(b.inspection_date)-new Date(a.inspection_date));
-    list.innerHTML = sorted.map(i => {
-        const tc = typeClass[i.inspection_type]||'preliminary';
-        const rc = resClass[i.result]||'scheduled';
-        const ri = resIcon[i.result]||'?';
-        const nextDate = i.next_inspection_date
-            ? `<div class="insp-meta-item"><div class="iml">Next Inspection</div><div class="imv">📅 ${fmtDate(i.next_inspection_date)}</div></div>` : '';
-        const deleteInspBtn = `<button class="btn-icon-danger" onclick="deleteInspection(${i.id})" title="${isAdminOrAbove() ? 'Delete inspection' : 'Request inspection deletion'}">🗑</button>`;
-        return `
-        <div class="insp-card">
-            <div class="insp-card-head">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <span class="type-badge tb-${tc}">${esc(i.inspection_type)}</span>
-                    <span style="font-size:13px;font-weight:600;color:var(--text-primary);">${fmtDate(i.inspection_date)}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <span class="result-badge rb-${rc}">${ri} ${esc(i.result)}</span>
-                    <button class="btn-icon-edit"   onclick="openInspModal(${i.id})" title="Edit">✏</button>
-                    ${deleteInspBtn}
-                </div>
-            </div>
-            <div class="insp-card-body">
-                <div class="insp-meta-grid">
-                    <div class="insp-meta-item"><div class="iml">Inspector</div><div class="imv">${esc(i.inspector_name||'—')}</div></div>
-                    <div class="insp-meta-item"><div class="iml">Type</div><div class="imv">${esc(i.inspection_type)}</div></div>
-                    ${nextDate}
-                </div>
-                ${i.findings?`<div class="insp-findings">${esc(i.findings)}</div>`:''}
-            </div>
-        </div>`;
-    }).join('');
-}
-
 /* ══════════════════════════
    REQUIREMENTS CHECKLIST
 ══════════════════════════ */

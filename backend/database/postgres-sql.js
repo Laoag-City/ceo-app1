@@ -2,7 +2,7 @@
  * MySQL parser. Advanced statements have explicit PostgreSQL equivalents below.
  * Add regression coverage when adding dialect-specific SQL. Values always bind.
  */
-const identityTables=new Set(['users','permits','permit_lots','sub_permits','permit_routing_matrix','permit_change_requests','occupancy_permits','occupancy_routing_matrix','occupancy_inspections','occupancy_checklists','occupancy_change_requests','project_records','permit_final_reviews','system_disciplines','tickets','audit_logs','videos']);
+const identityTables=new Set(['users','permits','permit_lots','permit_inspections','sub_permits','permit_routing_matrix','permit_change_requests','occupancy_permits','occupancy_routing_matrix','occupancy_inspections','occupancy_checklists','occupancy_change_requests','project_records','permit_final_reviews','system_disciplines','tickets','audit_logs','videos']);
 function bind(sql,args=[]){
  let index=0;const values=[];
  // Skip quoted SQL strings/identifiers; never substitute question marks in literals.

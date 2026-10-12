@@ -245,7 +245,7 @@
         const data=await res.json();
         const wrap=document.getElementById('permitApprovals');
         if(!data.success || !data.requests.length){wrap.innerHTML='<p class="muted">No pending building permit change requests.</p>';return;}
-        data.requests.forEach(r=>deletionRequestTitles.set('permits:'+(r.bulk?'bulk:':'')+r.id,{title:r.project_title||'Building permit',permitId:r.permit_id,bulk:r.bulk,count:r.record_count}));
+        data.requests.forEach(r=>deletionRequestTitles.set('permits:'+(r.bulk?'bulk:':'')+r.id,{title:r.project_title||'Building permit',permitId:r.permit_id,inspection:r.change_type==='inspection_delete',bulk:r.bulk,count:r.record_count}));
         wrap.innerHTML = data.requests.map(r => renderAdminRequestCard(r, 'permits')).join('');
     }
 
@@ -302,7 +302,7 @@
             const record=deletionRequestTitles.get(key);
             if(!record){RequestFeedback.report(new Error('Refresh the request list before approving deletion.'));return false;}
             if(isBulk)return DestructiveAction.run({title:'Delete all '+(kind==='permits'?'building':'occupancy')+' permit records?',message:'Permanently delete the '+record.count+' permit records listed in request #'+id+' and their related records? This cannot be undone. Newly created permits outside this request are excluded. Approval and activity history are retained.',requireText:'DELETE ALL',confirmLabel:'Approve and delete all',action:()=>reviewChange(kind,id,decision,true,true,true)});
-            return DestructiveAction.run({title:record.inspection?'Permanently delete inspection?':'Permanently delete permit?',message:record.inspection ? 'Delete the requested inspection from “'+record.title+'”? The occupancy permit will remain. Request #'+id+'.' : 'Delete “'+record.title+'” (Permit #'+record.permitId+') and its related records? This cannot be undone. Request #'+id+'.',confirmLabel:'Delete permanently',action:()=>reviewChange(kind,id,decision,true,true)});
+            return DestructiveAction.run({title:record.inspection?'Permanently delete inspection?':'Permanently delete permit?',message:record.inspection ? 'Delete the requested inspection from “'+record.title+'”? The '+(kind==='permits'?'building':'occupancy')+' permit will remain. Request #'+id+'.' : 'Delete “'+record.title+'” (Permit #'+record.permitId+') and its related records? This cannot be undone. Request #'+id+'.',confirmLabel:'Delete permanently',action:()=>reviewChange(kind,id,decision,true,true)});
         }
         reviewsInFlight.add(key);
         try {

@@ -31,8 +31,9 @@
         const button = document.getElementById('appearanceToggle');
         if (button) {
             const label = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
-            button.setAttribute('aria-label', label);
-            button.setAttribute('title', label);
+            const caption = button.dataset.appearanceLabel;
+            button.setAttribute('aria-label', caption ? caption + ': ' + label : label);
+            button.setAttribute('title', caption ? caption + ': ' + label : label);
             button.setAttribute('aria-pressed', String(theme === 'dark'));
         }
     }
@@ -44,9 +45,11 @@
     apply(readTheme());
     remember(root.dataset.theme);
     function mount() {
+        if (document.body.classList.contains('permit-login-page')) return;
         const header = document.querySelector('.site-header');
         if (!header || document.getElementById('appearanceToggle')) return;
-        let actions = header.querySelector('.top-bar-actions,.top-bar-controls');
+        const sidebar = document.querySelector('[data-appearance-target="sidebar"]');
+        let actions = sidebar || header.querySelector('.top-bar-actions,.top-bar-controls');
         if (!actions) {
             actions = document.createElement('div');
             actions.className = 'theme-header-actions';
@@ -57,9 +60,15 @@
         }
         const button = document.createElement('button');
         button.id = 'appearanceToggle';
-        button.className = 'theme-switch';
+        button.className = sidebar ? 'permit-nav-link theme-switch' : 'theme-switch';
         button.type = 'button';
         button.innerHTML = '<svg class="appearance-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg><svg class="appearance-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>';
+        if (sidebar) {
+            button.dataset.appearanceLabel = 'Change Background';
+            const caption = document.createElement('span');
+            caption.textContent = 'Change Background';
+            button.append(caption);
+        }
         button.addEventListener('click', () => {
             const theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
             remember(theme);

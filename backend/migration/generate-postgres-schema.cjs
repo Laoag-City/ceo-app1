@@ -53,7 +53,10 @@ for (const source of ['permit_system', 'queue_system']) {
  if(source==='permit_system') sql.push(`CREATE FUNCTION public.touch_checklist_updated_at() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$ BEGIN IF NEW IS DISTINCT FROM OLD AND NEW.updated_at IS NOT DISTINCT FROM OLD.updated_at THEN NEW.updated_at=statement_timestamp(); END IF; RETURN NEW; END $$;`,
  `REVOKE ALL ON FUNCTION public.touch_checklist_updated_at() FROM PUBLIC;`,
  `CREATE TRIGGER checklist_updated_at BEFORE UPDATE ON public.occupancy_checklists FOR EACH ROW EXECUTE FUNCTION public.touch_checklist_updated_at();`);
- if(source==='permit_system')sql.push(fs.readFileSync(path.join(__dirname,'permit-session-notices.sql'),'utf8'));
+ if(source==='permit_system'){
+  sql.push(fs.readFileSync(path.join(__dirname,'permit-session-notices.sql'),'utf8'));
+  sql.push(fs.readFileSync(path.join(__dirname,'permit-inspections.sql'),'utf8'));
+ }
  sql.push(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${q(role)};`, `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${q(role)};`, 'COMMIT;');
  fs.writeFileSync(path.join(__dirname,target+'.sql'),sql.join('\n\n')+'\n');
  console.log(`${target}: ${s.tables.length} tables, ${s.columns.length} columns, ${s.foreignKeys.length} foreign keys`);

@@ -81,6 +81,8 @@ export default function PermitSidebar({ page }) {
         <p className="permit-nav-label" style={{marginTop:24}}>ACCOUNT</p>
         {['People', 'My Profile'].map(label => <button key={label} type="button" className="permit-nav-link" title={label} aria-label={label} onClick={() => { if(mobile) close(); window.dispatchEvent(new CustomEvent('permit-account-panel', {detail:label === 'People' ? 'people' : 'profile'})) }}><Icon name={label === 'People' ? 'people' : 'profile'}/><span>{label}</span></button>)}
         <button type="button" className="permit-nav-link context-help-guide" title="Walkthrough" aria-label="Walkthrough" aria-haspopup="dialog" onClick={event => { const opener=mobile?trigger.current:event.currentTarget; if(mobile) close(); window.dispatchEvent(new CustomEvent('system-walkthrough',{detail:{opener}})) }}><Icon name="help"/><span>Walkthrough</span></button>
+        <p className="permit-nav-label" style={{marginTop:24}}>Appearance</p>
+        <div className="permit-nav-appearance" data-appearance-target="sidebar"/>
       </nav>
       <div className="permit-nav-footer">
         <button type="button" className="permit-nav-link permit-nav-logout" title="Log out" aria-label="Log out" disabled={signingOut} onClick={async () => { setSigningOut(true); try { await window.PermitRouting.logout() } finally { setSigningOut(false) } }}><Icon name="logout"/><span>{signingOut ? 'Signing out…' : 'Log out'}</span></button>

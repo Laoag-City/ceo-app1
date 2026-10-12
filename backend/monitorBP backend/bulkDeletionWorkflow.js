@@ -71,6 +71,7 @@ module.exports = function bulkDeletionWorkflow(open) {
         const [reviews] = await db.query('SELECT * FROM permit_final_reviews WHERE kind=? AND project_id IN (?) ORDER BY id', [kind, selected]);
         let lots = [], subs = [], subMatrix = [], inspections = [], checklists = [];
         if (kind === 'permits') {
+            [inspections] = await db.query('SELECT * FROM permit_inspections WHERE permit_id IN (?) ORDER BY id FOR UPDATE', [selected]);
             [lots] = await db.query('SELECT * FROM permit_lots WHERE permit_id IN (?) ORDER BY id FOR UPDATE', [selected]);
             [subs] = await db.query('SELECT * FROM sub_permits WHERE permit_id IN (?) ORDER BY id FOR UPDATE', [selected]);
             if (subs.length) [subMatrix] = await db.query('SELECT * FROM permit_routing_matrix WHERE sub_permit_id IN (?) ORDER BY id FOR UPDATE', [subs.map(s => Number(s.id))]);
@@ -82,7 +83,11 @@ module.exports = function bulkDeletionWorkflow(open) {
             const id = Number(record.id), own = rows => rows.filter(row => Number(row[c.key]) === id);
             const ownSubs = own(subs), subIds = new Set(ownSubs.map(s => Number(s.id)));
             return { record, matrix: own(matrix), requests: own(requests), final_reviews: reviews.filter(r => Number(r.project_id) === id),
-                ...(kind === 'permits' ? { lots: own(lots), subs: ownSubs, subMatrix: subMatrix.filter(m => subIds.has(Number(m.sub_permit_id))) } : { inspections: own(inspections), checklists: own(checklists) }) };
+                ...(kind === 'permits' ? { lots: own(lots), subs: ownSubs, subMatrix: subMatrix.filter(m => subIds.has(Number(m.sub_permit_id))),
+                    // Preserve snapshots of requests submitted before this feature
+                    // when their projects still have no building inspections.
+                    ...(own(inspections).length ? {inspections:own(inspections)} : {})
+                } : { inspections: own(inspections), checklists: own(checklists) }) };
         });
     }
     function status(kind) {

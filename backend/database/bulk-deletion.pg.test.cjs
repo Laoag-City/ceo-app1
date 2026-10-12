@@ -17,6 +17,7 @@ async function fixture(t) {
         sub_permits: 'id INT PRIMARY KEY,permit_id INT REFERENCES permits(id) ON DELETE CASCADE,sub_project_title VARCHAR(255)',
         permit_routing_matrix: 'id INT PRIMARY KEY,permit_id INT REFERENCES permits(id) ON DELETE CASCADE,sub_permit_id INT REFERENCES sub_permits(id) ON DELETE CASCADE,discipline_name VARCHAR(100),signature_status VARCHAR(30),feedback_remarks TEXT',
         occupancy_routing_matrix: 'id INT PRIMARY KEY,occupancy_id INT REFERENCES occupancy_permits(id) ON DELETE CASCADE,discipline_name VARCHAR(100),signature_status VARCHAR(30),feedback_remarks TEXT',
+        permit_inspections: 'id INT PRIMARY KEY,permit_id INT REFERENCES permits(id) ON DELETE CASCADE,findings TEXT',
         occupancy_inspections: 'id INT PRIMARY KEY,occupancy_id INT REFERENCES occupancy_permits(id) ON DELETE CASCADE,findings TEXT',
         occupancy_checklists: 'id INT PRIMARY KEY,occupancy_id INT REFERENCES occupancy_permits(id) ON DELETE CASCADE,checklist_state JSON',
         permit_change_requests: 'id INT PRIMARY KEY,permit_id INT REFERENCES permits(id) ON DELETE CASCADE,changes JSON,status VARCHAR(30)',
@@ -118,4 +119,19 @@ test('preview scope and explicit confirmation are required; both registries can 
     const building=await f.submit('permits'),occupancy=await f.submit('occupancy');
     assert.equal(building.body.count,3);assert.equal(occupancy.body.count,2);
     assert.equal((await f.rows('project_records')).length,2);
+});
+
+test('new or edited Building inspections invalidate pending bulk deletion and are archived on fresh approval',async t=>{
+    const f=await fixture(t),empty=await f.submit('permits');
+    await f.db.query("INSERT INTO permit_inspections VALUES (1,10,'Building inspection findings')");
+    assert.equal((await f.review('permits',empty.body.requestId)).body.conflict,true);
+    const submitted=await f.submit('permits');
+    await f.db.query("UPDATE permit_inspections SET findings='Edited findings' WHERE id=1");
+    assert.equal((await f.review('permits',submitted.body.requestId)).body.conflict,true);
+    const fresh=await f.submit('permits');
+    assert.equal((await f.review('permits',fresh.body.requestId)).body.success,true);
+    assert.equal((await f.rows('permit_inspections')).length,0);
+    const archive=JSON.parse((await f.rows('project_records')).find(row=>row.id===fresh.body.requestId).details);
+    assert.equal(archive.projects[0].inspections[0].findings,'Edited findings');
+    assert.equal((await f.rows('occupancy_inspections')).length,1);
 });

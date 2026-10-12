@@ -48,7 +48,7 @@ async function capture(query, kind, id, path, payload) {
     }
     if(path.includes('/inspections')) {
         const inspectionId=path.match(/\/inspections\/(\d+)$/)?.[1];
-        const rows=inspectionId?await query('SELECT * FROM occupancy_inspections WHERE id=? AND occupancy_id=?',[inspectionId,id]):[];
+        const rows=inspectionId?await query(occupancy ? 'SELECT * FROM occupancy_inspections WHERE id=? AND occupancy_id=?' : 'SELECT * FROM permit_inspections WHERE id=? AND permit_id=?',[inspectionId,id]):[];
         return compare(rows[0] || {},payload,['inspection_type','inspection_date','inspector_name','result','findings','next_inspection_date']);
     }
     if(payload.checklist_state && typeof payload.checklist_state==='object') {

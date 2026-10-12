@@ -18,7 +18,7 @@ function WorkstationIcon({name,className=''}) {
 }
 
 function GroupHeading({id,title,description,walkthrough=false}) {
- return <div className="workstation-group-heading"><h3 id={id}>{title}</h3>{walkthrough?<div className="workstation-group-meta"><button type="button" className="workstation-walkthrough context-help-guide" aria-haspopup="dialog" onClick={event=>window.dispatchEvent(new CustomEvent('system-walkthrough',{detail:{opener:event.currentTarget}}))}><WorkstationIcon name="help"/>Walkthrough</button><span>{description}</span></div>:<span>{description}</span>}</div>
+ return <div className="workstation-group-heading"><h3 id={id}>{title}</h3>{walkthrough?<div className="workstation-group-meta"><div className="workstation-guide-actions"><button type="button" className="workstation-walkthrough context-help-guide" aria-haspopup="dialog" onClick={event=>window.dispatchEvent(new CustomEvent('system-walkthrough',{detail:{opener:event.currentTarget}}))}><WorkstationIcon name="help"/>Walkthrough</button><span data-appearance-target="queue-walkthrough"/></div><span>{description}</span></div>:<span>{description}</span>}</div>
 }
 
 const windows=[

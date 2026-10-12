@@ -33,6 +33,8 @@
 <script src="/project-approval.js"></script><link rel="stylesheet" href="/project-approval.css">
 <link rel="stylesheet" href="/permit-responsive.css">
 <script src="/permit-responsive.js" defer></script>
+<link rel="stylesheet" href="/permit-inspections.css">
+<script src="/permit-inspections.js" defer></script>
 </head>
 <body>
 <div id="system-react-root" data-page="permits-edit" style="display:contents"></div>
@@ -80,6 +82,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         if (!permitId) { alert("Missing permit ID."); window.location.href = "/"; return; }
         fetchPermitData();
+        loadInspections();
         setupConfigFormListeners();
     });
 
@@ -159,7 +162,7 @@
         isEditingMode = false;
 
         let lotsList = data.lot_numbers || [];
-        let lotsSidebarHtml = lotsList.map(lot => `<span class="lot-badge-sidebar">${escapeHTML(lot)}</span>`).join(' ');
+        let lotsSidebarHtml = lotsList.map(lot => escapeHTML(lot)).join(', ');
         if (lotsList.length === 0) lotsSidebarHtml = '<em style="color:var(--text-muted);">None</em>';
 
         document.getElementById('permitMetaDetails').innerHTML = `
@@ -168,7 +171,7 @@
             <div class="meta-item"><span class="meta-label">Owner</span><span class="meta-value">${escapeHTML(data.owner_name)}</span></div>
             <div class="meta-item"><span class="meta-label">Designer</span><span class="meta-value">${escapeHTML(data.designer_name)}</span></div>
             <div class="meta-item"><span class="meta-label">Date Filed</span><span class="meta-value">${formatDisplayDate(data.permit_date)}</span></div>
-            <div class="meta-item"><span class="meta-label">Lot Numbers</span><span class="meta-value" style="margin-top:4px; display:block;">${lotsSidebarHtml}</span></div>
+            <div class="meta-item"><span class="meta-label">Lot Numbers</span><span class="meta-value">${lotsSidebarHtml}</span></div>
         `;
 
         const scopeSelector = document.getElementById('targetFlowScopeSelector');
@@ -269,6 +272,8 @@
                 appendGroup(sub.matrix, `Sub: ${sub.sub_project_title}`, true, sub.id);
             });
         }
+
+        document.getElementById('tbRouting').textContent = globalTotalRows;
 
         if (globalTotalRows === 0) {
             body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">No routing stations configured yet.</td></tr>`;

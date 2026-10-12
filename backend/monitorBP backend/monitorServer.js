@@ -35,6 +35,7 @@ const bulkDeletionPool = mysql.createPool({
 });
 const bulkDeletionWorkflow = require('./bulkDeletionWorkflow')(() => bulkDeletionPool.getConnection());
 const inspectionWorkflow = require('./inspectionWorkflow')(() => mysql.createConnection({host:db.config.host,port:db.config.port,user:db.config.user,password:db.config.password,database:db.config.database}).promise());
+const buildingInspections = require('./inspectionWorkflow')(() => mysql.createConnection({host:db.config.host,port:db.config.port,user:db.config.user,password:db.config.password,database:db.config.database}).promise(), 'permits');
 // Keep transaction snapshot serialization stable for requests already awaiting review.
 // Detail responses format calendar fields explicitly; internal snapshot dates retain
 // the old serialization so existing approval requests remain comparable.
@@ -128,6 +129,19 @@ db.connect(async (err) => {
             feedback_remarks TEXT,
             FOREIGN KEY (occupancy_id) REFERENCES occupancy_permits(id) ON DELETE CASCADE
         );`,
+        `CREATE TABLE IF NOT EXISTS permit_inspections (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            permit_id INT NOT NULL,
+            inspection_type VARCHAR(50) NOT NULL DEFAULT 'Preliminary',
+            inspection_date DATE NOT NULL,
+            inspector_name VARCHAR(150) NOT NULL,
+            result VARCHAR(50) NOT NULL DEFAULT 'Scheduled',
+            findings TEXT NOT NULL,
+            next_inspection_date DATE NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX permit_inspections_parent_date (permit_id, inspection_date, id),
+            FOREIGN KEY (permit_id) REFERENCES permits(id) ON DELETE CASCADE
+        )`,
         `CREATE TABLE IF NOT EXISTS occupancy_inspections (
             id INT AUTO_INCREMENT PRIMARY KEY,
             occupancy_id INT NOT NULL,
@@ -354,9 +368,11 @@ app.get('/api/permits/change-requests/pending', (req, res) => {
     });
 });
 
-app.put('/api/permits/change-requests/:id/approve', deletionWorkflow.review('permits', 'approve'), editWorkflow.review('permits', 'approve'));
+app.put('/api/permits/change-requests/:id/approve', buildingInspections.review('approve'), deletionWorkflow.review('permits', 'approve'), editWorkflow.review('permits', 'approve'));
 
-app.put('/api/permits/change-requests/:id/reject', deletionWorkflow.review('permits', 'reject'), editWorkflow.review('permits', 'reject'));
+app.put('/api/permits/change-requests/:id/reject', buildingInspections.review('reject'), deletionWorkflow.review('permits', 'reject'), editWorkflow.review('permits', 'reject'));
+
+app.use('/api/permits/:id/inspections', require('./inspectionRoutes')(buildingInspections,sessions));
 
 app.delete('/api/permits/:id', deletionWorkflow.submit('permits'));
 

@@ -313,6 +313,39 @@ select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px r
 
 .right-col { display: flex; flex-direction: column; gap: 20px; }
 
+/* Building workspace tabs follow the Occupancy layout with the Building accent. */
+.building-workspace { min-width:0; }
+.building-workspace > .workspace-tabs {
+    display:flex; background:var(--white); border:1px solid var(--border);
+    border-radius:15px 15px 0 0; overflow:hidden; box-shadow:var(--shadow-sm);
+}
+.building-workspace .ws-tab {
+    flex:1; min-height:52px; padding:13px 8px; border:0;
+    border-right:1px solid var(--border); border-bottom:2px solid transparent;
+    background:var(--surface); color:var(--text-secondary); font-family:inherit;
+    font-size:12px; font-weight:700; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.building-workspace .ws-tab:last-child { border-right:0; }
+.building-workspace .ws-tab:hover { background:var(--white); color:var(--text-primary); }
+.building-workspace .ws-tab.active { background:var(--white); color:var(--blue); border-bottom-color:var(--blue); }
+.building-workspace .ws-tab:focus-visible { outline:3px solid var(--blue); outline-offset:-4px; }
+.building-workspace .tab-badge {
+    background:var(--surface); border:1px solid var(--border); border-radius:20px;
+    font-size:10px; padding:1px 7px; font-weight:700;
+}
+.building-workspace .ws-tab.active .tab-badge { background:var(--blue-light); border-color:var(--blue-mid); color:var(--blue); }
+.building-workspace > [role='tabpanel'][hidden] { display:none!important; }
+.building-workspace > .panel-card { border-top:0; border-radius:0 0 15px 15px; }
+.building-routing-panel > .project-final-approval { border-top:0; border-radius:0 0 15px 15px; }
+.building-routing-panel > .project-final-approval strong { color:var(--text-primary); }
+.building-routing-panel > .card:first-child { border-top:0; border-radius:0 0 15px 15px; }
+html[data-theme='dark'] .building-workspace .ws-tab.active { border-bottom-color:#a3cff5!important; }
+html[data-theme='dark'] .building-workspace .ws-tab.active .tab-badge { background:#263f55; color:#c5e4ff; border-color:#57768e; }
+@media(max-width:760px) {
+    .building-workspace .ws-tab { min-width:0; white-space:nowrap; padding:12px 6px; }
+}
+
 .matrix-card-header {
     display: flex;
     align-items: center;

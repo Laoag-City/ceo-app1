@@ -52,9 +52,9 @@
       root.append(el('h3', group.title));
       table(root, ['Station', 'Engineer', 'Status', 'Checked', 'Approved'], group.matrix.map(row => [row.discipline_name, row.engineer_name, row.signature_status, date(row.date_checked), date(row.date_approved)]));
     }
+    root.append(el('h2', 'Inspections'));
+    table(root, ['Date / type', 'Inspector', 'Result', 'Findings', 'Next inspection'], inspections.map(row => [`${date(row.inspection_date)}\n${row.inspection_type}`, row.inspector_name, row.result, row.findings, date(row.next_inspection_date)]));
     if (occupancy) {
-      root.append(el('h2', 'Inspections'));
-      table(root, ['Date / type', 'Inspector', 'Result', 'Findings', 'Next inspection'], inspections.map(row => [`${date(row.inspection_date)}\n${row.inspection_type}`, row.inspector_name, row.result, row.findings, date(row.next_inspection_date)]));
       root.append(el('h2', 'Documentary requirements'));
       for (const group of window.OccupancyChecklist) {
         root.append(el('h3', group.section));
@@ -75,7 +75,7 @@
       const [profile, project, inspections, checklist] = await Promise.all([
         get('/api/profile'),
         get(base),
-        occupancy ? get(base + '/inspections') : { inspections: [] },
+        get(base + '/inspections'),
         occupancy ? get(base + '/checklist') : { checklist_state: {} }
       ]);
       render(project, profile.profile, inspections.inspections, checklist.checklist_state);
