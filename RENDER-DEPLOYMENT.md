@@ -5,7 +5,7 @@ Node web services, two separate Neon databases, and Cloudinary for videos.
 This is a team test; the IT department will handle the official deployment.
 Local records remain separate from these new cloud copies.
 
-## Current test deployment — 11 October 2026
+## Current test deployment — 12 October 2026
 
 | Resource | Address or name |
 | --- | --- |
@@ -19,10 +19,18 @@ Local records remain separate from these new cloud copies.
 | Queue database | `laoag_queue_test` |
 
 Both Render services use the Free plan in Singapore, with automatic deploys off.
-The deployed application commit is `f29f57c`. Both services have the actual Permit
+The latest application commit is `002a504`. Both services have the actual Permit
 and Queue origins configured; portal navigation was checked in the browser.
 Both public health endpoints passed, and staff video controls rejected requests
 without a login.
+
+The 12 October update clears stale cookies and consumes the replacement notice
+once, adds staff video deletion with confirmation and monitor updates, and moves
+the portal service cards beneath the office header. It also includes the locally
+tested audit-log rendering, login handling and HTTP security improvements.
+All 234 frontend checks and 42 targeted backend checks passed. No database
+migration, restore or reset is needed for this code update. The existing cloud
+video remained available during verification. See [update acceptance tests](OCT12-UPDATE-UAT.md).
 
 The fresh database archives were restored and verified against their table data
 checksums, foreign keys and identity sequences. The one backed-up local video

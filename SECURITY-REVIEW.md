@@ -1,9 +1,11 @@
 # Security review — 12 October 2026
 
-Local update: the audit-log text rendering, proxy-aware limiter configuration,
+Local and pilot update: the audit-log text rendering, proxy-aware limiter configuration,
 browser headers and password-before-status checks have now been fixed and tested
 in the local checkout. Strict resource CSP is report-only during rollout. The
-deployed pilot was not updated. See [local acceptance checks](LOCAL-SECURITY-UAT.md)
+fixes were included in the 12 October pilot redeployment after local tests.
+Explicit trusted proxy addresses still require the hosting team's configuration.
+See [local acceptance checks](LOCAL-SECURITY-UAT.md)
 and [security configuration](SECURITY-CONFIGURATION.md). The findings below
 describe the pre-fix review; ticket-intake abuse limits and production database
 permissions remain separate work.
