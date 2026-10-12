@@ -88,8 +88,7 @@ function App() {
       <div className="clock"><strong>{now.toLocaleTimeString('en-US', timeOptions)}</strong><span>{now.toLocaleDateString('en-US', { ...timeOptions, weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span></div>
       <Button size="icon" className="theme-toggle" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? <Sun/> : <Moon/>}</Button>
     </div></header>
-    <main id="services">
-      <div className="intro"><div><h1>Good work starts here.</h1><p>Choose a system to begin your day.</p></div><div className="portal-label"><span>OFFICE SYSTEMS</span><strong>One office. Better service.</strong></div></div>
+    <main id="services" aria-label="Office systems">
       <div className="service-grid">{services.map(service => <ServiceCard key={service.id} service={service} status={statuses[service.id]}/>)}</div>
       <div className="support-strip"><div><ShieldCheck size={17}/><span>Authorized personnel only<span className="support-detail"> · Sign in to your workspace to continue.</span></span></div><Button variant="ghost" onClick={() => setRefresh(value => value + 1)} disabled={Object.values(statuses).includes('checking')}><RefreshCw className={Object.values(statuses).includes('checking') ? 'refreshing' : ''}/>Refresh status</Button></div>
     </main>

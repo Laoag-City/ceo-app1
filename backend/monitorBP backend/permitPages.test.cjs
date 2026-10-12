@@ -18,3 +18,14 @@ for(const [role, destination] of [[null,'/login'],['operator','/'],['admin','/ad
         }
     });
 }
+
+test('a protected-page redirect consumes only the invalid cookie and retains its one-time explanation',()=>{
+ let clears=0,redirect;
+ const gate=require('./permitPages')(__dirname,{clearCookie(){clears++;}});
+ gate({path:'/',user:null,sessionReplaced:true},{set(){},redirect(value){redirect=value;}},()=>assert.fail('Protected root must redirect'));
+ assert.equal(redirect,'/login?session=replaced');assert.equal(clears,1);
+ gate({path:'/',user:null,sessionReplaced:false},{set(){},redirect(value){redirect=value;}},()=>assert.fail('Protected root must redirect'));
+ assert.equal(redirect,'/login');assert.equal(clears,2);
+ gate({path:'/admin',user:{role:'operator'}},{set(){},redirect(value){redirect=value;}},()=>assert.fail('Wrong role must redirect'));
+ assert.equal(redirect,'/');assert.equal(clears,2,'A valid session is never cleared');
+});

@@ -8,6 +8,9 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const createAuthLimits = require('./authLimits');
 const passwordPolicy = require('./passwordPolicy');
+// Unknown usernames still perform a bcrypt check, matching the normal password
+// verification path without authenticating or disclosing whether an account exists.
+const unknownAccountHash = bcrypt.hashSync('office-unassigned-account', 10);
 
 
 module.exports = function(db, sessions, openConnection) {
@@ -74,21 +77,20 @@ module.exports = function(db, sessions, openConnection) {
             "SELECT id, username, password, role, is_verified, is_active FROM users WHERE username = ? LIMIT 1",
             [username],
             async (err, results) => {
-                if (err) return res.status(500).json({ success: false, message: err.message });
-                if (results.length === 0) {
-                    return res.status(401).json({ success: false, message: 'Invalid username or password.' });
-                }
-
-                const user = results[0];
-                if (!user.is_active || !user.is_verified) {
-                    return res.status(403).json({ success: false, message: 'Your account is pending approval.' });
-                }
+                if (err) return res.status(503).json({ success: false, message: 'Sign-in service is unavailable. Please try again.' });
+                const user = results?.[0];
 
                 try {
-                    const isMatch = await bcrypt.compare(password, user.password);
-                    if (!isMatch) {
+                    const storedHash = typeof user?.password === 'string' &&
+                        /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(user.password) ? user.password : null;
+                    const isMatch = await bcrypt.compare(password, storedHash || unknownAccountHash);
+                    if (!user || !storedHash || !isMatch) {
                         return res.status(401).json({ success: false, message: 'Invalid username or password.' });
                     }
+                    // Approval status is shown only to someone who knows the
+                    // account password. Pending/inactive users receive no session.
+                    if (!user.is_verified) return res.status(403).json({success:false,message:'Your account is pending approval.'});
+                    if (!user.is_active) return res.status(403).json({success:false,message:'Your account is inactive. Contact an administrator.'});
 
                     const sessionId=await sessions.issue(req,res,user);
 

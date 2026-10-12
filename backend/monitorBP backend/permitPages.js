@@ -1,5 +1,5 @@
 const path = require('node:path');
-module.exports = function permitPages(frontendPath) {
+module.exports = function permitPages(frontendPath, sessions) {
 // Serve protected HTML only after session/role checks. Inject the verified UI
 // identity before legacy controllers run; sessionStorage is never authority.
 const pagePolicy = {
@@ -23,7 +23,12 @@ return (req,res,next)=>{
     const policy=pagePolicy[pagePath];
     if(!policy) return next();
     res.set('Cache-Control','no-store');
-    if(!req.user) return res.redirect(req.sessionReplaced ? '/login?session=replaced' : '/login');
+    if(!req.user) {
+        // A revoked cookie is a one-time explanation, not a permanent login URL.
+        // Only clear it on a protected-page redirect; valid sessions stay intact.
+        sessions?.clearCookie(res);
+        return res.redirect(req.sessionReplaced ? '/login?session=replaced' : '/login');
+    }
 
     if(req.user.role!==policy[1]) return res.redirect(homes[req.user.role]);
     const identity=JSON.stringify(JSON.stringify(req.user)).replace(/</g,'\\u003c');

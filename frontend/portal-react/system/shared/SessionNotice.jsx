@@ -15,6 +15,15 @@ export default function SessionNotice({page}) {
   const ended = useRef(!!message), dialog = useRef(null)
   const staffPage = !isLogin && (page.startsWith('permits-') || (queue && page!=='queue-monitor' && (page!=='queue-kiosk' || !!user || ['PC1','PC2','PC3'].includes(sessionStorage.getItem('currentWorkspace')))))
   useEffect(() => {
+    if(!isLogin || !message)return
+    // Consume the redirect receipt so refreshing sign-in cannot replay it.
+    const url=new URL(location.href)
+    url.searchParams.delete('session')
+    history.replaceState(history.state,'',url.pathname+url.search+url.hash)
+    sessionStorage.removeItem(queue?'queueUser':'oboUser')
+    if(queue)sessionStorage.removeItem('currentWorkspace')
+  }, [isLogin,queue])
+  useEffect(() => {
     if(!staffPage || typeof window.fetch!=='function')return
     let sessionId=user?.session_id || null, inFlight=false, controller=null
     const end = data => {

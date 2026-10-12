@@ -57,5 +57,9 @@ export default function Page() {
    <div className="playlist-preview-heading"><div><p className="playlist-kicker">Video preview</p><h2 id="playlistPreviewTitle">Monitor video</h2></div><button id="playlistPreviewClose" className="playlist-preview-close" type="button" aria-label="Close video preview">×</button></div>
    <div className="playlist-preview-body"><video id="playlistPreviewVideo" controls preload="metadata" playsInline/><p id="playlistPreviewError" className="playlist-feedback" role="status" hidden>This video could not be played. Try an MP4 version of the file.</p></div>
   </dialog>
+  <dialog id="playlistDelete" className="playlist-preview playlist-delete-dialog" aria-labelledby="playlistDeleteTitle" aria-describedby="playlistDeleteDescription">
+   <div className="playlist-preview-heading"><h2 id="playlistDeleteTitle">Delete video?</h2><button id="playlistDeleteClose" className="playlist-preview-close" type="button" aria-label="Close delete confirmation">×</button></div>
+   <div className="playlist-preview-body"><p id="playlistDeleteName" className="playlist-delete-name"/><p id="playlistDeleteDescription">This video will be removed from the playlist and its stored file will be deleted when possible. This cannot be undone. Other videos will stay in their current order.</p><div className="playlist-delete-actions"><button id="playlistDeleteCancel" className="playlist-button" type="button" autoFocus>Cancel</button><button id="playlistDeleteConfirm" className="playlist-button playlist-delete" type="button">Delete video</button></div></div>
+  </dialog>
  </>
 }

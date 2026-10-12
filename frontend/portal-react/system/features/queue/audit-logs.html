@@ -199,11 +199,12 @@
     }
 
     function actionBadge(action) {
-        const cls = `action-${action}`;
-        const label = action.replace(/_/g, ' ');
+        const value = String(action ?? 'UNKNOWN');
         const knownClasses = ['LOGIN','LOGOUT','TICKET_CREATED','CALL_NEXT','RECALL','HOLD','UNHOLD','DROP','SYSTEM_RESET','VIDEO_UPLOAD'];
-        const safeClass = knownClasses.includes(action) ? cls : 'action-default';
-        return `<span class="action-badge ${safeClass}">${label}</span>`;
+        const badge = document.createElement('span');
+        badge.className = `action-badge ${knownClasses.includes(value) ? 'action-' + value : 'action-default'}`;
+        badge.textContent = value.replace(/_/g, ' ');
+        return badge;
     }
 
     function populateStationFilter(logs) {
@@ -254,7 +255,7 @@
         const filtered = allLogs.filter(log => {
             if (actionVal  && log.action       !== actionVal)  return false;
             if (stationVal && log.user_station !== stationVal) return false;
-            if (searchVal  && !log.details.toLowerCase().includes(searchVal)) return false;
+            if (searchVal  && !String(log.details ?? '').toLowerCase().includes(searchVal)) return false;
 
             const ts = new Date(log.timestamp);
             if (startDateVal) {
@@ -282,14 +283,26 @@
             tbody.innerHTML = '<tr class="state-row"><td colspan="4">No matching log entries found.</td></tr>';
             return;
         }
-        tbody.innerHTML = logs.map(log => `
-            <tr>
-                <td style="font-family:monospace; font-size:12px; white-space:nowrap;">${formatDate(log.timestamp)}</td>
-                <td><span class="station-badge">${log.user_station}</span></td>
-                <td>${actionBadge(log.action)}</td>
-                <td style="color:#475569;">${log.details}</td>
-            </tr>
-        `).join('');
+        const rows = document.createDocumentFragment();
+        logs.forEach(log => {
+            const row = document.createElement('tr');
+            const timestamp = document.createElement('td');
+            timestamp.style.cssText = 'font-family:monospace; font-size:12px; white-space:nowrap;';
+            timestamp.textContent = formatDate(log.timestamp);
+            const station = document.createElement('td');
+            const stationBadge = document.createElement('span');
+            stationBadge.className = 'station-badge';
+            stationBadge.textContent = String(log.user_station ?? '—');
+            station.append(stationBadge);
+            const action = document.createElement('td');
+            action.append(actionBadge(log.action));
+            const details = document.createElement('td');
+            details.style.color = '#475569';
+            details.textContent = String(log.details ?? '');
+            row.append(timestamp, station, action, details);
+            rows.append(row);
+        });
+        tbody.replaceChildren(rows);
     }
 
     function fetchLogs() {

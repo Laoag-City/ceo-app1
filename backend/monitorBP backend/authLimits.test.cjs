@@ -52,3 +52,41 @@ test('HTTP auth rejects bad registration before SQL and hashes valid six-charact
  const before=queries;const response=await post('/login',{username:'missing',password:'wrong'});assert.equal(response.status,429);assert.ok(response.headers.get('retry-after'));assert.equal(queries,before);
  } finally {await new Promise(resolve=>server.close(resolve));}
 });
+
+test('failed passwords do not reveal pending accounts; approval still gates valid credentials',async()=>{
+ const express=require('express'),bcrypt=require('bcryptjs');
+ const hash=await bcrypt.hash('correct-password',4);let issues=0,queries=0;
+ const users={
+  active:{id:1,username:'active',password:hash,role:'operator',is_active:1,is_verified:1},
+  pending:{id:2,username:'pending',password:hash,role:'operator',is_active:0,is_verified:0},
+  inactive:{id:3,username:'inactive',password:hash,role:'operator',is_active:0,is_verified:1},
+  broken:{id:4,username:'broken',password:'',role:'operator',is_active:1,is_verified:1}
+ };
+ const db={query(sql,args,cb){queries++;if(args[0]==='db-error')return cb(Error('Private database detail'));
+  cb(null,users[args[0]]?[users[args[0]]]:[]);}};
+ const sessions={requireUser:(req,res,next)=>next(),requireRoles:()=>(req,res,next)=>next(),issue:async()=>{issues++}};
+ const app=express();app.use(express.json());app.use(require('./authServer')(db,sessions));
+ const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
+ const post=(username,password)=>fetch('http://127.0.0.1:'+server.address().port+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+ try {
+  for(const username of ['missing','active','pending','inactive']) {
+   const response=await post(username,'wrong-password');
+   assert.equal(response.status,401);
+   assert.deepEqual(await response.json(),{success:false,message:'Invalid username or password.'});
+   assert.equal(response.headers.get('set-cookie'),null);
+  }
+  assert.equal(issues,0);
+  for(const username of ['missing','broken']) {
+   const response=await post(username,'office-unassigned-account');assert.equal(response.status,401);
+   assert.equal(response.headers.get('set-cookie'),null);assert.equal(issues,0);
+  }
+  const pending=await post('pending','correct-password');assert.equal(pending.status,403);
+  assert.match((await pending.json()).message,/pending approval/);assert.equal(issues,0);
+  const inactive=await post('inactive','correct-password');assert.equal(inactive.status,403);
+  assert.match((await inactive.json()).message,/inactive/);assert.equal(issues,0);
+  assert.equal((await post('active','correct-password')).status,200);assert.equal(issues,1);
+  const before=queries;assert.equal((await post('missing','a'.repeat(73))).status,400);assert.equal(queries,before);
+  const failure=await post('db-error','wrong-password');assert.equal(failure.status,503);
+  assert.doesNotMatch(JSON.stringify(await failure.json()),/Private database detail/);
+ } finally {await new Promise(resolve=>server.close(resolve));}
+});

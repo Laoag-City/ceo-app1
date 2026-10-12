@@ -77,7 +77,14 @@ test('public monitor and ordinary sign-in pages do not poll authentication',asyn
 test('refreshing a revoked protected page preserves its replacement explanation on sign-in',async()=>{
  for(const [page,url] of [['permits-login','http://localhost:3000/login?session=replaced'],['queue-log-in','http://localhost:5000/log-in.html?session=replaced']]) {
   const f=await fixture(page,url,()=>valid());
-  try{assert.match(f.d.querySelector('.session-notice-dialog').textContent,/signed in somewhere else/);assert.equal(f.d.querySelector('.session-notice-dialog').open,true)}finally{f.dom.window.close()}
+  try{
+   await noticeOpened(f.d);
+   assert.match(f.d.querySelector('.session-notice-dialog').textContent,/signed in somewhere else/);
+   assert.equal(new URL(f.w.location.href).searchParams.has('session'),false,'A refresh must not replay the notice');
+   assert.equal(f.w.sessionStorage.getItem(page.startsWith('queue-')?'queueUser':'oboUser'),null);
+   const refreshed=await fixture(page,f.w.location.href,()=>valid());
+   try{assert.equal(refreshed.d.querySelector('.session-notice-dialog'),null);}finally{refreshed.dom.window.close();}
+  }finally{f.dom.window.close()}
  }
 });
 

@@ -1,7 +1,9 @@
 const {createHash} = require('node:crypto');
+const {clientAddress} = require('../http-security');
 
 // Single-server, bounded memory limits. A multi-instance deployment needs a shared store.
-// Use the actual peer address; never accept a client-supplied forwarding header here.
+// Express resolves the client through the configured proxy trust policy. Direct
+// localhost connections ignore forwarding headers. Counters remain per server.
 module.exports = function createAuthLimits({now = Date.now, maxEntries = 5000} = {}) {
     const attempts = new Map();
     const digest = value => createHash('sha256').update(value).digest('hex');
@@ -13,7 +15,7 @@ module.exports = function createAuthLimits({now = Date.now, maxEntries = 5000} =
         return (req, res, next) => {
             const time = now();
             for (const [key, entry] of attempts) if (entry.until <= time) attempts.delete(key);
-            const ip = req.socket?.remoteAddress || 'unknown';
+            const ip = clientAddress(req);
             const username = typeof req.body?.username === 'string' ? req.body.username.trim().toLowerCase() : '';
             const rules = kind === 'login'
                 ? [[digest(JSON.stringify(['login', ip])), 100, 900000],

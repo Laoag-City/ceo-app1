@@ -13,7 +13,7 @@ module.exports=function preview(app,root){
  const {permit,queue,rewrite}=settings();
  async function send(file,res,next){try{res.type(path.extname(file)).send(rewrite(await fs.readFile(file,'utf8')));}catch(e){next(e);}}
  app.use((req,res,next)=>{
-  res.set('Content-Security-Policy',`connect-src 'self' http://127.0.0.1:${permit} http://127.0.0.1:${queue} ws://127.0.0.1:${queue}; form-action 'self'`);
+  res.append('Content-Security-Policy',`connect-src 'self' http://127.0.0.1:${permit} http://127.0.0.1:${queue} ws://127.0.0.1:${queue}; form-action 'self'`);
   const original=res.sendFile.bind(res);
   const originalSend=res.send.bind(res);
   res.send=body=>originalSend(typeof body==='string'&&/html|javascript/.test(res.get('Content-Type')||'')?rewrite(body):body);

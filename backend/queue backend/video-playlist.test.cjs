@@ -10,6 +10,8 @@ const remote=name=>'https://res.cloudinary.com/fixture/video/upload/v1/'+name+'.
 function database(initial=[]) {
  let rows=initial.map(row=>({...row})), tail=Promise.resolve();
  async function run(sql,args=[]) {
+  if(sql.startsWith('SELECT COUNT(*) AS reference_count'))return [[{reference_count:rows.filter(row=>row.filepath===args[0]).length}]];
+  if(sql.startsWith('DELETE FROM videos')){rows=rows.filter(row=>row.id!==args[0]);return [{affectedRows:1}];}
   if(sql.startsWith('SELECT COALESCE(MAX'))return [[{last_order:Math.max(0,...rows.map(row=>Number(row.sort_order)||0))}]];
   if(sql.startsWith('SELECT')){
    let selected=rows.slice().sort((a,b)=>a.sort_order-b.sort_order||a.id-b.id);
@@ -101,7 +103,7 @@ test('all staff roles can manage videos, public clients cannot mutate, and logs 
 });
 
 function handlers(options) {
- const routes=new Map(),app={get(route,...chain){routes.set(route,chain.at(-1));},post(route,...chain){routes.set(route,chain.at(-1));}};
+ const routes=new Map(),app={get(route,...chain){routes.set(route,chain.at(-1));},post(route,...chain){routes.set(route,chain.at(-1));},delete(route,...chain){routes.set(route,chain.at(-1));}};
  registerVideoPlaylist(app,{sessions:{requireRoles:()=>()=>{}},protectWrite(){},receiveVideo(){},writeLog:async()=>{},io:{emit(){}},...options});
  return async(route,req)=>{
   let body,status=200;
@@ -133,6 +135,35 @@ test('delayed playlist checks cannot broadcast an older enabled clip after a lat
  assert.deepEqual((await Promise.all([first,second])).map(result=>result.status),[200,200]);
  assert.deepEqual(events,[[remote('one')],[]]);
  assert.deepEqual(events.at(-1),await storage.playlist());
+});
+
+test('deletion is protected for every staff role, rejects invalid IDs, audits and broadcasts the remaining playlist',async t=>{
+ const app=express();app.use(express.json());
+ app.use((req,res,next)=>{if(req.headers['x-role'])req.user={username:'staff',display_name:'Engineer Gabriel',role:req.headers['x-role']};next();});
+ const db=database(clips),storage=createStorage(db,'.',{}),logs=[],events=[];
+ const sessions={requireRoles(...roles){return(req,res,next)=>!req.user?res.sendStatus(401):!roles.includes(req.user.role)?res.sendStatus(403):next();}};
+ registerVideoPlaylist(app,{storage,sessions,protectWrite:(req,res,next)=>req.headers['x-queue-request']==='1'?next():res.sendStatus(403),receiveVideo(){},
+  writeLog:async(...args)=>logs.push(args),io:{emit:(...args)=>events.push(args)}});
+ const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>new Promise(resolve=>server.close(resolve)));
+ const remove=(id,role,header=true)=>fetch('http://127.0.0.1:'+server.address().port+'/api/videos/'+id,{method:'DELETE',headers:{...(role?{'x-role':role}:{}),...(header?{'x-queue-request':'1'}:{})}});
+ assert.equal((await remove(1)).status,401);assert.equal((await remove(1,'visitor')).status,403);assert.equal((await remove(1,'operator',false)).status,403);
+ assert.equal((await remove('0','operator')).status,400);assert.equal(db.rows.length,3);
+ for(const [id,role] of [[1,'operator'],[2,'admin'],[3,'superadmin']]){
+  const response=await remove(id,role);assert.equal(response.status,200);const data=await response.json();assert.equal(data.success,true);
+  assert.equal(logs.at(-1)[0],'Engineer Gabriel');assert.equal(logs.at(-1)[1],'VIDEO_DELETE');assert.deepEqual(events.at(-1),['playlistUpdate',{playlist:await storage.playlist()}]);
+ }
+ assert.equal(db.rows.length,0);assert.equal((await remove(1,'operator')).status,404);assert.equal(logs.length,3);
+});
+
+test('simultaneous deletion and reorder cannot resurrect a clip or reorder other windows of the playlist',async()=>{
+ const db=database(clips),storage=createStorage(db,'.',{});
+ await Promise.all([storage.remove(2),storage.move(3,'up')]);
+ assert.deepEqual((await storage.list()).map(row=>row.id),[3,1]);
+ assert.deepEqual(await storage.playlist(),[remote('three'),remote('one')]);
+ const results=await Promise.allSettled([storage.remove(3),storage.remove(3)]);
+ assert.equal(results.filter(result=>result.status==='fulfilled').length,1);
+ assert.equal(results.find(result=>result.status==='rejected').reason.status,404);
+ assert.deepEqual((await storage.list()).map(row=>row.id),[1]);
 });
 
 test('long profile names and maximum usernames fit the audit station field without losing actor identity',async()=>{

@@ -17,6 +17,7 @@ const os = require('node:os');
 
 const app = express();
 const PORT = Number(process.env.PORT || process.env.QUEUE_PORT || 5000);
+require('../http-security')(app);
 require('../office-services')(app, 'queue');
 app.get('/api/health', cors(), (req,res)=>res.json({success:true}));
 
@@ -179,14 +180,25 @@ io.on('connection', async (socket) => {
 
 // Workstation selection requires a verified queue session, even for direct URLs.
 // Public kiosk/monitor URLs remain available for unattended display devices.
+app.get('/log-in.html', sessions.resolve, (req,res,next) => {
+    res.set('Cache-Control','no-store');
+    if(!req.user)sessions.clearCookie(res);
+    next();
+});
 app.get('/workstations.html', sessions.resolve, (req,res,next) => {
     res.set('Cache-Control','no-store');
-    if(!req.user) return res.redirect(req.sessionReplaced ? '/log-in.html?session=replaced' : '/log-in.html');
+    if(!req.user) {
+        sessions.clearCookie(res);
+        return res.redirect(req.sessionReplaced ? '/log-in.html?session=replaced' : '/log-in.html');
+    }
     next();
 });
 app.get(['/client-history.html','/reports.html','/secret-management.html'], sessions.resolve, (req,res,next) => {
     res.set('Cache-Control','no-store');
-    if (!req.user) return res.redirect(req.sessionReplaced ? '/log-in.html?session=replaced' : '/log-in.html');
+    if (!req.user) {
+        sessions.clearCookie(res);
+        return res.redirect(req.sessionReplaced ? '/log-in.html?session=replaced' : '/log-in.html');
+    }
     sessions.requireRoles('operator','admin','superadmin')(req,res,next);
 });
 // Serve frontend static directory directly

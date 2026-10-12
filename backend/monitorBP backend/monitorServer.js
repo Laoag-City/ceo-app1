@@ -11,6 +11,7 @@ const cors = require('cors');
 
 const app = express();
 const PORT = Number(process.env.PORT || process.env.PERMIT_PORT || 3000);
+require('../http-security')(app);
 require('../office-services')(app, 'permits');
 
 app.use(express.json({limit:'256kb'}));
@@ -191,6 +192,11 @@ const permitTransfer = require('./permitTransfer')(() => mysql.createConnection(
     database:db.config.database,dateStrings:['DATE']
 }).promise(),sessions);
 app.use(sessions.resolve);
+app.get(['/login','/login.html','/admin_login.html','/occupancy_login.html'], (req,res,next) => {
+    res.set('Cache-Control','no-store');
+    if(!req.user)sessions.clearCookie(res);
+    next();
+});
 app.use('/api', sessions.protectWrites);
 const authRouter = require('./authServer')(db, sessions,()=>mysql.createConnection({database:db.config.database,host:db.config.host,port:db.config.port,user:db.config.user,password:db.config.password}).promise());
 app.use('/api/auth', authRouter);
@@ -208,7 +214,7 @@ app.use('/api', (req,res,next)=>{
     if (req.method==='DELETE' && /^\/matrix\/remove\/?$/i.test(req.path)) return sessions.requireRoles('operator','admin','superadmin')(req,res,next);
     next();
 });
-app.use(require('./permitPages')(frontendPath));
+app.use(require('./permitPages')(frontendPath, sessions));
 app.use(require('../database/preview').assets(frontendPath));
 app.use(express.static(frontendPath));
 const projectRecords = require('./projectRecords')(db);

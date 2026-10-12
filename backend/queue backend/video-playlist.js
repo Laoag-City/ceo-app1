@@ -103,6 +103,16 @@ function registerVideoPlaylist(app, {storage, sessions, protectWrite, receiveVid
             res.json({success:true, playlist:video.changed ? await announce() : null});
         } catch (error) { errorResponse(res, error, 'The video could not be moved. Refresh and try again.'); }
     });
+
+    app.delete('/api/videos/:id', noStore, protectWrite, staff, async (req,res) => {
+        try {
+            const name=await actor(req.user);
+            const video=await storage.remove(idFrom(req));
+            await audit(name,'VIDEO_DELETE',`Deleted video "${video.name}" from the monitor playlist.`+
+                (video.cleanupPending ? ' Stored-file cleanup still requires attention.' : ''));
+            res.json({success:true,cleanupPending:video.cleanupPending,playlist:await announce()});
+        } catch(error) {errorResponse(res,error,'The video could not be deleted. Refresh and try again.');}
+    });
 }
 
 module.exports = {registerVideoPlaylist, ensureVideoSchema};

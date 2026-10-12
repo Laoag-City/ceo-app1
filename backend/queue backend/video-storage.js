@@ -19,6 +19,24 @@ function localVideoPath(reference, directory) {
     return path.dirname(file) === path.resolve(directory) ? file : null;
 }
 
+// Only original, untransformed upload URLs from our configured cloud may be
+// destroyed. Other clouds and unusual legacy URLs remain read-only references.
+function cloudVideoId(reference, cloudName) {
+    const safe=cloudVideoURL(reference);
+    if(!safe || !cloudName)return null;
+    const parts=new URL(safe).pathname.split('/');
+    if(parts[1]!==cloudName)return null;
+    const suffix=parts.slice(4);
+    if(/^v\d+$/.test(suffix[0]))suffix.shift();
+    try {
+        const id=decodeURIComponent(suffix.join('/')).replace(/\.(mp4|webm|mov|m4v)$/i,'');
+        if(!/\.(mp4|webm|mov|m4v)$/i.test(suffix.join('/')) ||
+            !id || id.split('/').some(part=>!part || part==='.' || part==='..') ||
+            /[\\,:?#%\x00-\x1f\x7f]/.test(id))return null;
+        return id;
+    } catch {return null;}
+}
+
 module.exports = function createVideoStorage(db, directory, env = process.env, sdk, fallbackDirectories = []) {
     const mode = env.QUEUE_VIDEO_STORAGE || 'local';
     if (!['local', 'cloudinary'].includes(mode)) throw Error('QUEUE_VIDEO_STORAGE must be local or cloudinary.');
@@ -115,6 +133,42 @@ module.exports = function createVideoStorage(db, directory, env = process.env, s
         });
     }
 
+    async function remove(id) {
+        const video=await edit(async conn => {
+            const [[row]]=await conn.query('SELECT id, filename, filepath FROM videos WHERE id = ? FOR UPDATE',[id]);
+            if(!row)throw Object.assign(Error('That video no longer exists. Refresh the playlist.'),{status:404});
+            await conn.query('DELETE FROM videos WHERE id = ?',[id]);
+            const [[remaining]]=await conn.query('SELECT COUNT(*) AS reference_count FROM videos WHERE filepath = ?',[row.filepath]);
+            return {...row,shared:Number(remaining.reference_count)>0};
+        });
+        let cleanupPending=false;
+        // The playlist change has committed. A storage outage must not falsely
+        // report it as unsaved, or invite another destructive retry.
+        if(!video.shared) {
+            try {
+                if(cloudVideoURL(video.filepath)) {
+                    const publicId=cloudVideoId(video.filepath,env.CLOUDINARY_CLOUD_NAME);
+                    if(mode!=='cloudinary' || !publicId)cleanupPending=true;
+                    else {
+                        const result=await uploader.destroy(publicId,{...credentials,resource_type:'video',invalidate:true});
+                        if(!['ok','not found'].includes(result?.result))cleanupPending=true;
+                    }
+                } else {
+                    for(const folder of [directory,...fallbackDirectories]) {
+                        const file=localVideoPath(video.filepath,folder);
+                        if(!file) {cleanupPending=true;break;}
+                        try {
+                            const [actualFolder,actualFile]=await Promise.all([fs.realpath(folder),fs.realpath(file)]);
+                            if(path.dirname(actualFile)!==actualFolder || !(await fs.lstat(file)).isFile()) {cleanupPending=true;continue;}
+                            await fs.unlink(file);
+                        } catch(error) {if(error.code!=='ENOENT')throw error;}
+                    }
+                }
+            } catch {cleanupPending=true;}
+        }
+        return {name:video.filename,cleanupPending};
+    }
+
     async function save(file) {
         let remote, saved = false;
         try {
@@ -146,7 +200,8 @@ module.exports = function createVideoStorage(db, directory, env = process.env, s
             }
         }
     }
-    return {save, playlist, list, move, setActive, mode};
+    return {save, playlist, list, move, setActive, remove, mode};
 };
 module.exports.cloudVideoURL = cloudVideoURL;
 module.exports.localVideoPath = localVideoPath;
+module.exports.cloudVideoId = cloudVideoId;

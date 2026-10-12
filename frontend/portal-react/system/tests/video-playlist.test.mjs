@@ -144,3 +144,25 @@ test('empty and failed playlists explain the state and remain refreshable',async
   assert.equal(f.get('playlistFeedback').hidden,true)
  } finally {f.w.close()}
 })
+
+test('delete requires confirmation, cancellation makes no request, and double clicks send one deletion',async()=>{
+ let finish,deleted=false;
+ const f=fixture(url=>url==='/api/videos/2'?new Promise(resolve=>{finish=()=>{deleted=true;resolve({success:true})}}):managed(deleted?clips.filter(clip=>clip.id!==2):clips));
+ try{
+  await tick();f.action(2,'delete').click();assert.equal(f.get('playlistDelete').open,true);assert.equal(f.get('playlistDeleteName').textContent,'Missing.mp4');
+  f.get('playlistDeleteCancel').click();assert.equal(f.calls.some(call=>call.options.method==='DELETE'),false);
+  f.action(2,'delete').click();f.get('playlistDeleteConfirm').click();f.get('playlistDeleteConfirm').click();await tick();
+  const requests=f.calls.filter(call=>call.options.method==='DELETE');assert.equal(requests.length,1);assert.equal(requests[0].url,'/api/videos/2');assert.equal(requests[0].options.headers['x-queue-request'],'1');
+  assert.equal(f.action(1,'delete').disabled,true);finish();await tick();assert.equal(f.action(2,'delete'),null);assert.match(f.get('playlistFeedback').textContent,/Video deleted/);assert.equal(f.action(1,'delete').disabled,false);
+ }finally{f.w.close()}
+})
+
+test('failed deletion retains the row and a saved cleanup failure clearly reports its warning',async()=>{
+ let fail=true;
+ const name='UAT <b>O\'Brien</b>.mp4';const f=fixture(url=>url==='/api/videos/1'?fail?{success:false,message:'Deletion unavailable'}:{success:true,cleanupPending:true}:managed([{...clips[0],name}]));
+ try{
+  await tick();f.action(1,'delete').click();assert.equal(f.get('playlistDeleteName').textContent,name);assert.equal(f.get('playlistDeleteName').querySelector('b'),null);
+  f.get('playlistDeleteConfirm').click();await tick();assert.equal(f.get('playlistFeedback').textContent,'Deletion unavailable');assert.ok(f.action(1,'delete'));
+  fail=false;f.action(1,'delete').click();f.get('playlistDeleteConfirm').click();await tick();assert.equal(f.get('playlistFeedback').dataset.kind,'warning');assert.match(f.get('playlistFeedback').textContent,/stored file could not be removed/);
+ }finally{f.w.close()}
+})
