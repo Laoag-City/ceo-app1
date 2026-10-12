@@ -160,7 +160,7 @@
         if (action === 'delete') {
             deleteId = video.id; deleteOpener = button;
             byId('playlistDeleteName').textContent = video.name;
-            deleteDialog.showModal(); return;
+            deleteDialog.showModal(); byId('playlistDeleteCancel').focus(); return;
         }
         const toggle = action === 'toggle', payload = toggle ? {active:!video.active} : {direction:action};
         mutate('/api/videos/' + video.id + (toggle ? '/active' : '/move'), {method:'POST', headers:{'Content-Type':'application/json', 'x-queue-request':'1'}, body:JSON.stringify(payload)}, toggle ? 'Video ' + (video.active ? 'disabled.' : 'enabled.') : 'Video order updated.');

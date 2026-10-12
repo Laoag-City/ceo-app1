@@ -149,7 +149,7 @@ test('delete requires confirmation, cancellation makes no request, and double cl
  let finish,deleted=false;
  const f=fixture(url=>url==='/api/videos/2'?new Promise(resolve=>{finish=()=>{deleted=true;resolve({success:true})}}):managed(deleted?clips.filter(clip=>clip.id!==2):clips));
  try{
-  await tick();f.action(2,'delete').click();assert.equal(f.get('playlistDelete').open,true);assert.equal(f.get('playlistDeleteName').textContent,'Missing.mp4');
+  await tick();f.action(2,'delete').click();assert.equal(f.get('playlistDelete').open,true);assert.equal(f.get('playlistDeleteName').textContent,'Missing.mp4');assert.equal(f.w.document.activeElement,f.get('playlistDeleteCancel'));
   f.get('playlistDeleteCancel').click();assert.equal(f.calls.some(call=>call.options.method==='DELETE'),false);
   f.action(2,'delete').click();f.get('playlistDeleteConfirm').click();f.get('playlistDeleteConfirm').click();await tick();
   const requests=f.calls.filter(call=>call.options.method==='DELETE');assert.equal(requests.length,1);assert.equal(requests[0].url,'/api/videos/2');assert.equal(requests[0].options.headers['x-queue-request'],'1');
