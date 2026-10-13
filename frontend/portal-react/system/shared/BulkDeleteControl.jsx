@@ -29,7 +29,7 @@ export default function BulkDeleteControl({kind}) {
       if (latest.pending || !latest.count) return
       await window.DestructiveAction.run({
         title: 'Request deletion of all ' + label.toLowerCase() + ' permits?',
-        message: 'This requests deletion of all ' + latest.count + ' ' + label.toLowerCase() + ' permit records in this registry, including records outside your current search or filter. Records stay available until the admin approves. The other permit registry is unaffected.',
+        message: 'This will send a deletion request to the admin for review and confirmation. The request includes all ' + latest.count + ' ' + label.toLowerCase() + ' permit records in this registry, including records outside your current search or filter. No records will be deleted now. Records are deleted only after the admin approves the request. The other permit registry is unaffected.',
         requireText: 'DELETE ALL', confirmLabel: 'Send request to admin',
         action: async () => {
           const response = await window.RequestFeedback.fetch(url, {method: 'POST', headers, body: JSON.stringify({confirmation: 'DELETE ALL', version: latest.version})})
