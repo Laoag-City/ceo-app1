@@ -497,7 +497,7 @@ app.put('/api/occupancy/change-requests/:id/reject', inspectionWorkflow.review('
 // --- FRONTEND ROUTE VIEW BINDINGS ---
 // ==========================================
 
-app.get('/', (req, res) => res.sendFile(path.join(frontendPath, 'index.html')));
+// permitPages routes the main URL to the public portal before static files.
 app.get('/edit', (req, res) => res.sendFile(path.join(frontendPath, 'edit.html')));
 app.get('/register', (req, res) => res.redirect('/login'));
 app.get('/login', (req, res) => res.sendFile(path.join(frontendPath, 'login.html')));

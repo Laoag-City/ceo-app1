@@ -3,7 +3,7 @@ module.exports = function permitPages(frontendPath, sessions) {
 // Serve protected HTML only after session/role checks. Inject the verified UI
 // identity before legacy controllers run; sessionStorage is never authority.
 const pagePolicy = {
-    '/':['index.html','operator'], '/index.html':['index.html','operator'],
+    '/index.html':['index.html','operator'],
     '/edit':['edit.html','operator'], '/edit.html':['edit.html','operator'],
     '/occupancy':['occupancy.html','operator'], '/occupancy.html':['occupancy.html','operator'],
     '/occupancy/edit':['occupancy_edit.html','operator'], '/occupancy_edit.html':['occupancy_edit.html','operator'],
@@ -14,7 +14,10 @@ return (req,res,next)=>{
     let pagePath;
     try { pagePath=path.posix.normalize(decodeURIComponent(req.path).replace(/\\/g,'/')).toLowerCase().replace(/\/$/,'') || '/'; }
     catch { return res.status(400).send('Invalid page URL.'); }
-    const homes={operator:'/',admin:'/admin',superadmin:'/superadmin'};
+    // The public landing page must be handled before express.static can serve
+    // its default index.html, which is the protected Building registry.
+    if(pagePath==='/') return res.redirect('/portal.html');
+    const homes={operator:'/index.html',admin:'/admin',superadmin:'/superadmin'};
     // Retired chooser URL remains a role-aware redirect for saved bookmarks.
     if(pagePath==='/permit-access.html') {
         res.set('Cache-Control','no-store');

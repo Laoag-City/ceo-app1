@@ -6,7 +6,7 @@
  */
 /* Navigation is presentation; permitSessions enforces identity and permissions. */
 (function(root) {
-    const destinations = {operator:'/', admin:'/admin', superadmin:'/superadmin'};
+    const destinations = {operator:'/index.html', admin:'/admin', superadmin:'/superadmin'};
     function home(user) { return user && Number(user.id) > 0 ? destinations[user.role] || '/login' : '/login'; }
     function readUser() { try { return JSON.parse(root.sessionStorage.getItem('oboUser') || 'null'); } catch { return null; } }
     function redirectFor(page, path, user) {

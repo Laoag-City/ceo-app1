@@ -20,8 +20,9 @@ async function mount(page, mobile = false, role = 'operator') {
 for(const page of ['permits-index','permits-occupancy','permits-edit','permits-occupancy_edit']) {
   test(`${page}: navigation never resets controller-owned DOM`,async()=>{
     const {dom,d,logouts}=await mount(page);
-    const expected=page.includes('occupancy')?'/occupancy':'/';
+    const expected=page.includes('occupancy')?'/occupancy':'/index.html';
     assert.equal(d.querySelector('.permit-sidebar [aria-current="page"]').getAttribute('href'),expected);
+    if(page.endsWith('edit'))assert.equal(d.querySelector('.permit-details-actions .btn-back').getAttribute('href'),expected);
     const input=d.createElement('input');input.value='unsaved operator draft';
     d.querySelector('.page-wrapper').append(input);
     d.querySelector('.permit-nav-heading button').click();await settle();

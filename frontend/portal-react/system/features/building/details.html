@@ -84,7 +84,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        if (!permitId) { alert("Missing permit ID."); window.location.href = "/"; return; }
+        if (!permitId) { alert("Missing permit ID."); window.location.href = "/index.html"; return; }
         fetchPermitData();
         loadInspections();
         setupConfigFormListeners();
@@ -160,7 +160,7 @@
 
     async function fetchPermitData() {
         const response = await RequestFeedback.fetch(`/api/permits/${permitId}`);
-        if (response.status === 404) { window.location.href = "/"; return; }
+        if (response.status === 404) { window.location.href = "/index.html"; return; }
         const data = await response.json();
         completeDatasetCache = data;
         isEditingMode = false;

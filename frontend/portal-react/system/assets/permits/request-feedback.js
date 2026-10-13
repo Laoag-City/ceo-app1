@@ -16,7 +16,7 @@
   if(p.startsWith('/api/permit-deletions/'))return {url:u.origin+p.split('/').slice(0,4).join('/'),view:'/admin',label:'bulk deletion request status and administrator requests'};
   if(p.includes('/change-requests/'))return {url:u.origin+(p.startsWith('/api/occupancy')?'/api/occupancy':'/api/permits'),view:'/superadmin',label:'administrator request list'};
   if(p.startsWith('/api/occupancy'))return {url:u.origin+'/api/occupancy',view:'/occupancy.html',label:'occupancy registry and administrator requests'};
-  if(p.startsWith('/api/permits')||p.startsWith('/api/matrix'))return {url:u.origin+'/api/permits',view:'/',label:'building registry and administrator requests'};
+  if(p.startsWith('/api/permits')||p.startsWith('/api/matrix'))return {url:u.origin+'/api/permits',view:'/index.html',label:'building registry and administrator requests'};
   if(p.startsWith('/api/auth'))return {url:u.origin+'/api/permits',view:'/superadmin',label:'account directory'};
   if(p.startsWith('/api/videos'))return {url:u.origin+'/api/videos/playlist',view:'/monitor.html',label:'monitor playlist'};
   return {url:u.origin+'/api/logs',view:'/audit-logs.html',label:'queue activity log and current queue'};
