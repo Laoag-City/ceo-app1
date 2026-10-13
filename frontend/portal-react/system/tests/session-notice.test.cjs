@@ -17,7 +17,7 @@ async function fixture(page,url,handler,feedback=false) {
  w.sessionStorage.setItem(page.startsWith('queue-')?'queueUser':'oboUser',JSON.stringify(user));
  w.fetch=async(url,options)=>{
   calls.push({url,options});
-  if(url==='/api/auth/session' || url==='/api/replaced-operation')return handler(url);
+  if(url==='/api/auth/session' || url==='/api/auth/activity' || url==='/api/replaced-operation')return handler(url);
   return new Response(JSON.stringify({success:true}),{status:200});
  };
  const realInterval=w.setInterval.bind(w);w.setInterval=(callback,ms)=>{if(ms===10000){interval=callback;return 999999}return realInterval(callback,ms)};
@@ -27,6 +27,58 @@ async function fixture(page,url,handler,feedback=false) {
 }
 const valid=(id='original-session')=>new Response(JSON.stringify({success:true,user:{id:12,role:'operator',session_id:id}}));
 const replaced=()=>new Response(JSON.stringify({success:false,code:'SESSION_REPLACED',message:'Your account was signed in somewhere else.'}),{status:401});
+const idleSession=ms=>new Response(JSON.stringify({success:true,user:{id:12,role:'operator',session_id:'original-session',session_remaining_ms:ms}}));
+
+for(const [page,url] of [['permits-index','http://localhost:3000/index.html'],['queue-log-in','http://localhost:5000/workstations.html']]) {
+ test(`${page} warns before idle expiry and renews only with explicit activity`,async()=>{
+  let ms=119000;
+  const f=await fixture(page,url,path=>{if(path==='/api/auth/activity')ms=1800000;return idleSession(ms)});
+  try {
+   await noticeOpened(f.d);
+   assert.match(f.d.querySelector('.session-idle-warning').textContent,/Are you still there/);
+   await f.check();
+   assert.equal(f.calls.some(c=>c.url==='/api/auth/activity'),false,'Background checks must not renew');
+   f.w.dispatchEvent(new f.w.MouseEvent('pointermove'));
+   await f.check();
+   assert.equal(f.calls.some(c=>c.url==='/api/auth/activity'),false,'Synthetic movement must not renew');
+   f.d.querySelector('.session-idle-warning button').click();await wait();
+   const call=f.calls.find(c=>c.url==='/api/auth/activity');
+   assert.equal(call.options.method,'POST');
+   assert.equal(call.options.headers[page.startsWith('queue-')?'x-queue-request':'x-permit-request'],'1');
+   assert.equal(call.options.headers['x-session-id'],'original-session');
+   assert.equal(f.d.querySelector('.session-idle-warning'),null);
+   assert.ok(f.w.sessionStorage.getItem(page.startsWith('queue-')?'queueUser':'oboUser'));
+  }finally{f.dom.window.close()}
+ });
+ test(`${page} observes another tab's renewal and then locks an expired session`,async()=>{
+  let ms=90000,expired=false;
+  const f=await fixture(page,url,()=>expired?new Response('{}',{status:401}):idleSession(ms));
+  try {
+   await noticeOpened(f.d);ms=1800000;await f.check();
+   assert.equal(f.d.querySelector('.session-idle-warning'),null,'Server activity from another tab dismisses the warning');
+   expired=true;await f.check();
+   assert.match(f.d.querySelector('.session-notice-dialog').textContent,/30 minutes/);
+   assert.equal(f.d.querySelector('.session-idle-warning'),null);
+   assert.equal(f.w.sessionStorage.getItem(page.startsWith('queue-')?'queueUser':'oboUser'),null);
+  }finally{f.dom.window.close()}
+ });
+}
+
+test('failed stay-signed-in request retains the warning and allows a retry',async()=>{
+ let fail=true;
+ const f=await fixture('permits-index','http://localhost:3000/index.html',url=>{
+  if(url==='/api/auth/activity'){if(fail)throw Error('Offline');return idleSession(1800000)}
+  return idleSession(90000);
+ });
+ try {
+  await noticeOpened(f.d);
+  f.d.querySelector('.session-idle-warning button').click();await wait();
+  assert.match(f.d.querySelector('.session-idle-warning').textContent,/could not be extended/);
+  assert.equal(f.d.querySelector('.session-idle-warning button').disabled,false);
+  fail=false;f.d.querySelector('.session-idle-warning button').click();await wait();
+  assert.equal(f.d.querySelector('.session-idle-warning'),null);
+ }finally{f.dom.window.close()}
+});
 
 for(const [page,url] of [
  ['permits-index','http://localhost:3000/'],['permits-occupancy_edit','http://localhost:3000/occupancy_edit.html'],

@@ -111,12 +111,45 @@ test('one account has one active session across devices and both applications',a
    }
    const resumed=await login();assert.equal(await valid('permit',resumed),200);
   });
+  for(const system of ['permit','queue'])await t.test(system+': idle expiry, genuine activity, stale tabs and the absolute session limit',async()=>{
+   const cookie=await login(system);
+   const tokenHash=crypto.createHash('sha256').update(cookie.split('=')[1]).digest('hex');
+   const read=async()=>(await owner.query(`SELECT expires_at,created_at FROM ${schema}.permit_sessions WHERE token_hash=$1`,[tokenHash])).rows[0];
+   let row=await read();
+   assert.ok(row.expires_at.getTime()-Date.now()>29*60*1000);
+   assert.ok(row.expires_at.getTime()-Date.now()<=30*60*1000);
+   const originalExpiry=row.expires_at.getTime();
+   for(let i=0;i<3;i++)assert.equal(await valid(system,cookie),200);
+   assert.equal((await read()).expires_at.getTime(),originalExpiry,'Polling must not renew idle expiry');
+   await owner.query(`UPDATE ${schema}.permit_sessions SET expires_at=NOW()+INTERVAL '5 minutes' WHERE token_hash=$1`,[tokenHash]);
+   const active=await request(system,'/activity',cookie,{});assert.equal(active.status,200);
+   assert.ok((await active.json()).user.session_remaining_ms>29*60*1000);
+   const stale=await fetch(origin+'/'+system+'/activity',{method:'POST',headers:{cookie,'x-session-id':'old-session'}});
+   assert.equal(stale.status,409);
+   await owner.query(`UPDATE ${schema}.permit_sessions SET created_at=NOW()-INTERVAL '7 hours 59 minutes 45 seconds',expires_at=NOW()+INTERVAL '1 second' WHERE token_hash=$1`,[tokenHash]);
+   const capped=await request(system,'/activity',cookie,{});assert.equal(capped.status,200);
+   assert.ok((await capped.json()).user.session_remaining_ms<=15000,'Activity must preserve the eight-hour maximum');
+   await owner.query(`UPDATE ${schema}.permit_sessions SET expires_at=NOW()-INTERVAL '1 second' WHERE token_hash=$1`,[tokenHash]);
+   assert.equal((await request(system,'/activity',cookie,{})).status,401,'An expired session cannot be revived');
+   assert.equal(await sessions[system==='queue'?1:0].isActiveSession(tokenHash),false,'Expired workstation ownership must be invalid');
+   assert.ok((await read()).expires_at.getTime()<Date.now());
+   await owner.query(`UPDATE ${schema}.permit_sessions SET created_at=NOW()-INTERVAL '9 hours',expires_at=NOW()+INTERVAL '1 minute' WHERE token_hash=$1`,[tokenHash]);
+   assert.equal(await valid(system,cookie),401,'The absolute limit is enforced even if the idle expiry is later');
+  });
   await t.test('only one pre-existing legacy session is accepted before its next sign-in',async()=>{
    const older='a'.repeat(64),latest='b'.repeat(64);
    const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
    await owner.query(`INSERT INTO ${schema}.permit_sessions VALUES ($1,1,NOW()+INTERVAL '1 hour',NOW()-INTERVAL '1 minute'),($2,1,NOW()+INTERVAL '1 hour',NOW())`,[hash(older),hash(latest)]);
    assert.equal(await valid('permit','permit_session='+older),401);
    assert.equal(await valid('queue','queue_session='+latest),200);
+  });
+  await t.test('startup caps old eight-hour sessions without extending shorter deadlines',async()=>{
+   await owner.query(`UPDATE ${schema}.permit_sessions SET expires_at=NOW()+INTERVAL '2 minutes' WHERE user_id=2`);
+   const before=(await owner.query(`SELECT expires_at FROM ${schema}.permit_sessions WHERE user_id=2`)).rows[0].expires_at.getTime();
+   await sessions[0].initialize();
+   const rows=(await owner.query(`SELECT user_id,expires_at FROM ${schema}.permit_sessions`)).rows;
+   assert.equal(rows.find(row=>row.user_id===2).expires_at.getTime(),before);
+   assert.ok(rows.filter(row=>row.user_id===1).every(row=>row.expires_at.getTime()-Date.now()<=1800000));
   });
  } finally {
   if(server)await new Promise(resolve=>server.close(resolve));

@@ -56,7 +56,7 @@ const queueAuth=require('./queue-auth')(sessions,hash=>sessions.isActiveSession(
 app.use('/api',sessions.resolve);
 const authRouter=require('../monitorBP backend/authServer')(accountAdapter,sessions);
 app.use('/api/auth',(req,res,next)=>{
-    if(!['/login','/logout','/session'].includes(req.path))return res.status(404).json({success:false,message:'Not found.'});
+    if(!['/login','/logout','/session','/activity'].includes(req.path))return res.status(404).json({success:false,message:'Not found.'});
     if(req.method!=='GET')return queueAuth.protectWrite(req,res,next);next();
 },authRouter);
 const {createQueueService, ensureQueueSchema} = require('./queue-service');

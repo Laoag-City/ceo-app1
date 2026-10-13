@@ -3,7 +3,7 @@ const {createPermitSessions}=require('../monitorBP backend/permitSessions');
 const createQueueAuth=require('./queue-auth');
 const hash=t=>crypto.createHash('sha256').update(t).digest('hex');
 test('real HTTP session checks protect queue ownership, roles, expiry, logout and CSRF',async()=>{
- const tokens=['a','b','c','d'].map(c=>c.repeat(64)),users=new Map(tokens.map((token,i)=>[hash(token),{id:i+1,username:'fixture'+i,role:['operator','operator','admin','superadmin'][i]}]));
+ const tokens=['a','b','c','d'].map(c=>c.repeat(64)),users=new Map(tokens.map((token,i)=>[hash(token),{id:i+1,username:'fixture'+i,role:['operator','operator','admin','superadmin'][i],created_at:new Date(),expires_at:new Date(Date.now()+1800000)}]));
  const db={promise:()=>({query:async(sql,args)=>{if(sql.startsWith('DELETE')){users.delete(args[0]);return [{affectedRows:1}]}return [users.has(args[0])?[users.get(args[0])]:[]]}})};
  const sessions=createPermitSessions(db,{cookieName:'queue_session'}),auth=createQueueAuth(sessions,async h=>users.has(h));
  const app=express();app.use(express.json());app.use(sessions.resolve);

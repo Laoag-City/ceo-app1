@@ -18,6 +18,7 @@ function createPermitSessions(db, options = {}) {
     const token=req=>readToken(req,cookieName);
     const query = async (sql, params=[]) => (await db.promise().query(sql,params))[0];
     const ttl = options.ttlMs || 8*60*60*1000;
+    const idleMs = Math.min(options.idleMs || 30*60*1000, ttl);
     const secure = options.secure ?? process.env.PERMIT_COOKIE_SECURE === 'true';
     const cookieOptions = {httpOnly:true, sameSite:'strict', secure, path:'/'};
     async function initialize() {
@@ -34,6 +35,9 @@ function createPermitSessions(db, options = {}) {
         ) ENGINE=InnoDB`);
         await query('DELETE FROM permit_sessions WHERE expires_at <= NOW(3)');
         await query('DELETE FROM permit_session_replacements WHERE expires_at <= NOW(3)');
+        // Bring existing sessions under the idle limit without extending them.
+        const idleDeadline=new Date(Date.now()+idleMs);
+        await query('UPDATE permit_sessions SET expires_at=? WHERE expires_at>?',[idleDeadline,idleDeadline]);
     }
     async function issue(req,res,user) {
         const value=crypto.randomBytes(32).toString('hex');
@@ -55,7 +59,7 @@ function createPermitSessions(db, options = {}) {
                 SELECT token_hash,expires_at FROM permit_sessions WHERE user_id=? AND expires_at>NOW(3)`,[user.id]);
             await connection.query('DELETE FROM permit_sessions WHERE user_id=?',[user.id]);
             const [result]=await connection.query('INSERT INTO permit_sessions (token_hash,user_id,expires_at) VALUES (?,?,?)',
-                [hash(value),user.id,new Date(Date.now()+ttl)]);
+                [hash(value),user.id,new Date(Date.now()+idleMs)]);
             if(result.affectedRows!==1)throw new Error('Session could not be created.');
             await connection.commit();
         } catch(error) {
@@ -68,12 +72,16 @@ function createPermitSessions(db, options = {}) {
         return publicSessionId(hash(value));
     }
     async function activeUser(tokenHash) {
-        const rows=await query(`SELECT u.id,u.username,u.role FROM permit_sessions s JOIN users u ON u.id=s.user_id
+        const rows=await query(`SELECT u.id,u.username,u.role,s.expires_at,s.created_at FROM permit_sessions s JOIN users u ON u.id=s.user_id
             WHERE s.token_hash=? AND s.expires_at>NOW(3) AND u.is_active=1 AND u.is_verified=1
             AND s.token_hash=(SELECT latest.token_hash FROM permit_sessions latest
                 WHERE latest.user_id=s.user_id AND latest.expires_at>NOW(3)
                 ORDER BY latest.created_at DESC,latest.token_hash DESC LIMIT 1)`,[tokenHash]);
-        return rows[0] && roles.includes(rows[0].role) ? {...rows[0],session_id:publicSessionId(tokenHash)} : null;
+        const row=rows[0];
+        if(row && new Date(row.created_at).getTime()+ttl<=Date.now())return null;
+        return row && roles.includes(row.role) ? {id:row.id,username:row.username,role:row.role,
+            session_id:publicSessionId(tokenHash),session_remaining_ms:Math.max(0,new Date(row.expires_at).getTime()-Date.now()),
+            session_absolute_expires_at:new Date(new Date(row.created_at).getTime()+ttl).toISOString()} : null;
     }
     function clearCookie(res) { res.clearCookie(cookieName,cookieOptions); }
     async function logout(req,res) {
@@ -105,7 +113,21 @@ function createPermitSessions(db, options = {}) {
         // Identity headers never grant access. A mismatch only blocks stale tabs.
         const expected=req.get('x-user-id');
         if(expected && String(req.user.id)!==expected) return res.status(409).json({success:false,sessionChanged:true,message:'The signed-in account changed in another tab. Refresh before continuing.'});
+        const expectedSession=req.get('x-session-id');
+        if(expectedSession && req.user.session_id!==expectedSession)return res.status(409).json({success:false,sessionChanged:true,message:'The signed-in session changed in another tab.'});
         next();
+    }
+    async function activity(req,res) {
+        try {
+            const tokenHash=hash(token(req));
+            const deadline=new Date(Math.min(Date.now()+idleMs,new Date(req.user.session_absolute_expires_at).getTime()));
+            // Conditional update cannot revive an expired/replaced token, and
+            // out-of-order activity requests cannot shorten a newer deadline.
+            await query('UPDATE permit_sessions SET expires_at=? WHERE token_hash=? AND expires_at>NOW(3) AND expires_at<?',
+                [deadline,tokenHash,deadline]);
+            req.user=await activeUser(tokenHash);
+            requireUser(req,res,()=>res.json({success:true,user:req.user}));
+        }catch(error){res.status(503).json({success:false,message:'Could not keep your session active. Please try again.'});}
     }
     function requireRoles(...allowed) {
         return (req,res,next) => requireUser(req,res,()=>allowed.includes(req.user.role)?next():res.status(403).json({success:false,message:'Your account does not have permission for this action.'}));
@@ -119,7 +141,7 @@ function createPermitSessions(db, options = {}) {
         }
         next();
     }
-    return {initialize,issue,logout,clearCookie,resolve,requireUser,requireRoles,protectWrites,
+    return {initialize,issue,logout,activity,clearCookie,resolve,requireUser,requireRoles,protectWrites,
         isActiveSession:async tokenHash=>!!await activeUser(tokenHash)};
 }
 module.exports={createPermitSessions,sessionHash};

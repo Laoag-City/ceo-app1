@@ -114,6 +114,7 @@ module.exports = function(db, sessions, openConnection) {
     });
 
     router.get('/session', sessions.requireUser, (req,res)=>res.json({success:true,user:req.user}));
+    router.post('/activity', sessions.requireUser, (req,res)=>sessions.activity(req,res));
     router.post('/logout', async (req,res)=>{
         try { await sessions.logout(req,res); res.json({success:true}); }
         catch(error) { res.status(503).json({success:false,message:'Could not finish signing out. Please try again.'}); }
