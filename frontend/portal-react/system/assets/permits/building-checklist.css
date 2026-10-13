@@ -1,0 +1,2 @@
+/* Building tab labels fit beside the checklist count on narrow screens. */
+@media(max-width:480px){.building-workspace .ws-tab{font-size:11px;gap:4px}.building-workspace .tab-badge{font-size:10px;padding:2px 4px}}

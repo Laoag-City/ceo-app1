@@ -31,20 +31,22 @@ async function main(){
     }
    }
    if(kind==='permit') {
-    // Inspection rows are newer than the original MySQL schema inventory.
-    if(!s.tables.some(table=>table.TABLE_NAME==='permit_inspections')) {
-     const inspections=await from.query({text:'SELECT * FROM public.permit_inspections ORDER BY id',types:{getTypeParser:()=>v=>v}});
-     const columns=inspections.fields.map(field=>field.name);
-     for(const row of inspections.rows)await to.query('INSERT INTO public.permit_inspections ('+columns.join(',')+') VALUES ('+columns.map((_,i)=>'$'+(i+1)).join(',')+')',columns.map(name=>row[name]));
+    // Feature tables are newer than the original MySQL inventory.
+    for(const featureTable of ['permit_inspections','permit_checklists']) {
+     if(!s.tables.some(table=>table.TABLE_NAME===featureTable)) {
+      const featureRows=await from.query({text:'SELECT * FROM public.'+featureTable+' ORDER BY id',types:{getTypeParser:()=>v=>v}});
+      const columns=featureRows.fields.map(field=>field.name);
+      for(const row of featureRows.rows)await to.query('INSERT INTO public.'+featureTable+' ('+columns.join(',')+') VALUES ('+columns.map((_,i)=>'$'+(i+1)).join(',')+')',columns.map(name=>row[name]));
+     }
+     await to.query("SELECT setval(pg_get_serial_sequence('"+featureTable+"','id'),COALESCE(MAX(id),1),COUNT(*)>0) FROM "+featureTable);
     }
-    await to.query("SELECT setval(pg_get_serial_sequence('permit_inspections','id'),COALESCE(MAX(id),1),COUNT(*)>0) FROM permit_inspections");
    }
    await to.query('COMMIT');await from.query('ROLLBACK');
    if(kind==='queue') {
     await to.query(await fs.readFile(path.join(__dirname,'queue-runtime.sql'),'utf8'));
     await to.query(await fs.readFile(path.join(__dirname,'queue-playlist.sql'),'utf8'));
    } else {
-    await to.query('GRANT SELECT,INSERT,UPDATE,DELETE ON permit_inspections TO permit_app_migration; GRANT USAGE,SELECT ON SEQUENCE permit_inspections_id_seq TO permit_app_migration');
+    await to.query('GRANT SELECT,INSERT,UPDATE,DELETE ON permit_inspections,permit_checklists TO permit_app_migration; GRANT USAGE,SELECT ON SEQUENCE permit_inspections_id_seq,permit_checklists_id_seq TO permit_app_migration');
    }
    console.log('Created populated isolated test database: '+target);
   }finally{await from.end();await to.end();}

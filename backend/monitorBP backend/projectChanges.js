@@ -52,9 +52,14 @@ async function capture(query, kind, id, path, payload) {
         return compare(rows[0] || {},payload,['inspection_type','inspection_date','inspector_name','result','findings','next_inspection_date']);
     }
     if(payload.checklist_state && typeof payload.checklist_state==='object') {
-        const rows=await query('SELECT checklist_state FROM occupancy_checklists WHERE occupancy_id=?',[id]);
+        const rows=await query(occupancy?'SELECT checklist_state FROM occupancy_checklists WHERE occupancy_id=?':'SELECT checklist_state FROM permit_checklists WHERE permit_id=?',[id]);
         let old=rows[0]?.checklist_state || {};if(typeof old==='string')old=JSON.parse(old);
-        return Object.keys(payload.checklist_state).filter(key=>Boolean(old[key])!==Boolean(payload.checklist_state[key])).map(key=>({field:requirements[key] || 'Requirement '+key,before:old[key]?'Received':'Not received',after:payload.checklist_state[key]?'Received':'Not received'}));
+        const definition=occupancy?null:require('./buildingRequirements');
+        const names=occupancy?requirements:Object.fromEntries([...definition.sections.flatMap(section=>section.items),...definition.procedure].map(item=>[item.id,item.title]));
+        return [...new Set([...Object.keys(old),...Object.keys(payload.checklist_state)])].filter(key=>Boolean(old[key])!==Boolean(payload.checklist_state[key])).map(key=>{
+            const procedure=!occupancy&&key.startsWith('procedure_');
+            return {field:(procedure?'Procedure · ':'')+(names[key] || 'Requirement '+key),before:old[key]?(procedure?'Completed':'Received'):(procedure?'Not completed':'Not received'),after:payload.checklist_state[key]?(procedure?'Completed':'Received'):(procedure?'Not completed':'Not received')};
+        });
     }
     if(Object.keys(payload).some(key=>['project_title','location','owner_name','designer_name','permit_date','lot_numbers'].includes(key))) {
         const rows=await query(`SELECT * FROM ${occupancy?'occupancy_permits':'permits'} WHERE id=?`,[id]);

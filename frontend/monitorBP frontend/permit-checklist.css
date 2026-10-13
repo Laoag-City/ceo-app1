@@ -1,0 +1,55 @@
+/* Shared Building and Occupancy checklist / summary presentation. */
+.permit-checklist,.permit-checklist-summary{--checklist-accent:#008975;--checklist-track:#dce7ea;--checklist-tint:#f2faf8;--checklist-line:#bce4db}
+.checklist-panel-header p,.permit-checklist-summary .card-header p{margin:4px 0 0;font-size:13px;color:var(--text-secondary)}
+.checklist-heading-icon{background:#fff4d8;color:#af7500}
+.checklist-summary-icon{background:#e9f7f2;color:var(--checklist-accent)}
+.permit-checklist-progress{display:flex;align-items:center;gap:20px;padding:22px;border:1px solid var(--border);border-radius:13px;background:var(--surface);margin-bottom:18px}
+.checklist-ring{position:relative;width:64px;height:64px;flex:none;color:var(--checklist-accent)}
+.checklist-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.checklist-ring strong{position:absolute;inset:0;display:grid;place-items:center;font-size:15px;font-weight:800}
+.checklist-progress-copy{flex:1;min-width:0}
+.checklist-eyebrow{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:5px}
+.checklist-progress-copy>strong{display:block;font-size:17px;font-weight:700;color:var(--text-primary)}
+.checklist-progress-track,.checklist-mini-progress{height:7px;overflow:hidden;border-radius:20px;background:var(--checklist-track);margin-top:12px}
+#clProgressBar,#sideClBar{height:100%;background:var(--checklist-accent);border-radius:inherit;transition:width .2s}
+.checklist-guidance,.checklist-feedback{font-size:13px;color:var(--text-secondary);line-height:1.6;margin:0 0 8px}
+.checklist-feedback{margin-bottom:23px;min-height:21px}
+.permit-checklist .cl-section{margin-bottom:25px}
+.permit-checklist .cl-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:12px}
+.permit-checklist .cl-section-title h3{font-size:12px;font-weight:700;letter-spacing:.045em;text-transform:uppercase;color:var(--text-secondary);margin:0}
+.cl-section-count{font-size:11px;white-space:nowrap;font-weight:600;color:var(--text-secondary)}
+.permit-checklist .cl-item{display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:start;gap:13px;border:1px solid var(--border);border-radius:11px;padding:16px;margin-bottom:9px;background:var(--white);cursor:pointer;transition:border-color .15s,background .15s}
+.permit-checklist .cl-item:hover{border-color:var(--checklist-accent)}
+.permit-checklist .cl-item.checked{background:var(--checklist-tint);border-color:var(--checklist-line)}
+.permit-checklist .cl-checkbox{appearance:none;width:22px;height:22px;border:2px solid var(--border-strong);border-radius:5px;background:var(--white);margin:1px 0 0;cursor:pointer;position:relative}
+.permit-checklist .cl-checkbox:checked{background:var(--checklist-accent);border-color:var(--checklist-accent)}
+.permit-checklist .cl-checkbox:checked:after{content:'';position:absolute;left:6px;top:2px;width:5px;height:10px;transform:rotate(45deg);border-right:2px solid white;border-bottom:2px solid white}
+.permit-checklist .cl-checkbox:focus-visible{outline:3px solid var(--checklist-accent);outline-offset:3px}
+.permit-checklist .cl-item:has(input:disabled){cursor:default;opacity:.65}
+.permit-checklist .cl-content{min-width:0}
+.permit-checklist .cl-title{display:block;font-size:14px;font-weight:600;line-height:1.5;color:var(--text-primary);overflow-wrap:anywhere}
+.permit-checklist .cl-note{display:block;margin-top:4px;font-size:13px;line-height:1.55;color:var(--text-secondary)}
+.permit-checklist .cl-tag{font-size:10px;font-weight:600;letter-spacing:.025em;text-transform:uppercase;padding:3px 7px;border-radius:5px;margin-top:1px;white-space:nowrap}
+.permit-checklist .tag-req{background:var(--red-light);color:var(--red);border:1px solid var(--red-mid)}
+.permit-checklist .tag-opt{background:var(--surface);color:var(--text-secondary);border:1px solid var(--border)}
+.permit-checklist .tag-condition{background:var(--amber-light);color:var(--amber);border:1px solid var(--amber-mid)}
+.checklist-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:20px;border-top:1px solid var(--border)}
+.checklist-actions button{padding:11px 16px;border:1px solid var(--border-strong);border-radius:8px;font:inherit;font-weight:600;color:var(--text-primary);background:var(--white);cursor:pointer}
+.checklist-actions .checklist-save{background:var(--checklist-accent);color:#fff;border-color:var(--checklist-accent)}
+.checklist-actions button:disabled{opacity:.55;cursor:default}
+.permit-checklist-summary .card-body{padding:20px}
+.checklist-summary-metrics{display:flex;align-items:center;justify-content:space-between;gap:16px}
+#sideClPct{display:block;color:var(--checklist-accent);font-size:32px;line-height:1.2;letter-spacing:-.025em;font-weight:800}
+.checklist-summary-art{display:grid;place-items:center;width:48px;height:48px;border-radius:12px;background:var(--checklist-tint);color:var(--checklist-accent)}
+.checklist-summary-art svg{width:29px;height:29px}
+#sideClCount{color:var(--text-secondary);font-size:13px;margin:10px 0 0}
+.checklist-summary-status{font-size:11px;font-weight:600;color:var(--text-secondary);margin:8px 0 0}
+html[data-theme='dark'] :is(.permit-checklist,.permit-checklist-summary){--checklist-accent:#70d6bf;--checklist-track:#47515b;--checklist-tint:#263e3d;--checklist-line:#497a72}
+html[data-theme='dark'] .checklist-heading-icon{background:#544424;color:#f6d075}
+html[data-theme='dark'] .checklist-summary-icon{background:#263e3d;color:#70d6bf}
+html[data-theme='dark'] .checklist-actions .checklist-save{background:#138674;color:#fff;border-color:#138674}
+html[data-theme='dark'] .permit-checklist .tag-req{background:#462f37;color:#efa2ad;border-color:#78505a}
+html[data-theme='dark'] .permit-checklist .tag-condition{background:#463e2b;color:#edc779;border-color:#78653b}
+html[data-theme='dark'] .permit-checklist .cl-checkbox:checked:after{border-color:#163c34}
+@media(max-width:560px){body:has(.permit-checklist) .workspace-tabs .ws-tab{flex:1;min-width:0;font-size:11px;gap:4px;padding:12px 6px;white-space:nowrap}body:has(.permit-checklist) .workspace-tabs .tab-badge{font-size:10px;padding:2px 4px}.permit-checklist-progress{padding:16px;gap:14px}.checklist-ring{width:54px;height:54px}.checklist-progress-copy>strong{font-size:15px}.permit-checklist .cl-item{grid-template-columns:22px minmax(0,1fr);gap:10px;padding:13px}.permit-checklist .cl-tag{grid-column:2;justify-self:start;margin-top:0}.checklist-actions button{width:100%}}
+@media(prefers-reduced-motion:reduce){#clProgressBar,#sideClBar,.permit-checklist .cl-item{transition:none}}

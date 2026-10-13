@@ -1,14 +1,54 @@
 [
-  {"source":"assets/permits/permit-inspections.js","folder":"monitorBP frontend","file":"permit-inspections.js"},
-  {"source":"assets/permits/permit-inspections.css","folder":"monitorBP frontend","file":"permit-inspections.css"},
-  {"source":"assets/permits/remarks-viewer.js","folder":"monitorBP frontend","file":"remarks-viewer.js"},
-  {"source":"assets/permits/remarks-viewer.css","folder":"monitorBP frontend","file":"remarks-viewer.css"},
-  {"source":"assets/common/staff-login.css","folder":"monitorBP frontend","file":"staff-login.css"},
-  {"source":"assets/common/staff-login.css","folder":"queue frontend","file":"staff-login.css"},
-  {"source":"assets/queue/monitor-calls.css","folder":"queue frontend","file":"monitor-calls.css"},
-  {"source":"assets/permits/bulk-deletion.css","folder":"monitorBP frontend","file":"bulk-deletion.css"},
-  {"source":"assets/permits/project-approval.js","folder":"monitorBP frontend","file":"project-approval.js"},
-  {"source":"assets/permits/project-approval.css","folder":"monitorBP frontend","file":"project-approval.css"},
+  {
+    "source": "assets/permits/permit-inspections.js",
+    "folder": "monitorBP frontend",
+    "file": "permit-inspections.js"
+  },
+  {
+    "source": "assets/permits/permit-inspections.css",
+    "folder": "monitorBP frontend",
+    "file": "permit-inspections.css"
+  },
+  {
+    "source": "assets/permits/remarks-viewer.js",
+    "folder": "monitorBP frontend",
+    "file": "remarks-viewer.js"
+  },
+  {
+    "source": "assets/permits/remarks-viewer.css",
+    "folder": "monitorBP frontend",
+    "file": "remarks-viewer.css"
+  },
+  {
+    "source": "assets/common/staff-login.css",
+    "folder": "monitorBP frontend",
+    "file": "staff-login.css"
+  },
+  {
+    "source": "assets/common/staff-login.css",
+    "folder": "queue frontend",
+    "file": "staff-login.css"
+  },
+  {
+    "source": "assets/queue/monitor-calls.css",
+    "folder": "queue frontend",
+    "file": "monitor-calls.css"
+  },
+  {
+    "source": "assets/permits/bulk-deletion.css",
+    "folder": "monitorBP frontend",
+    "file": "bulk-deletion.css"
+  },
+  {
+    "source": "assets/permits/project-approval.js",
+    "folder": "monitorBP frontend",
+    "file": "project-approval.js"
+  },
+  {
+    "source": "assets/permits/project-approval.css",
+    "folder": "monitorBP frontend",
+    "file": "project-approval.css"
+  },
   {
     "source": "assets/common/celestial-backdrop.css",
     "folder": "monitorBP frontend",
@@ -229,8 +269,16 @@
     "folder": "queue frontend",
     "file": "queue-workspace.css"
   },
-  {"source":"assets/queue/queue-window.css","folder":"queue frontend","file":"queue-window.css"},
-  {"source":"assets/queue/queue-workstations.css","folder":"queue frontend","file":"queue-workstations.css"},
+  {
+    "source": "assets/queue/queue-window.css",
+    "folder": "queue frontend",
+    "file": "queue-window.css"
+  },
+  {
+    "source": "assets/queue/queue-workstations.css",
+    "folder": "queue frontend",
+    "file": "queue-workstations.css"
+  },
   {
     "source": "assets/queue/request-feedback.js",
     "folder": "queue frontend",
@@ -256,6 +304,34 @@
     "folder": "monitorBP frontend",
     "file": "account-tools.css"
   },
-  {"source":"assets/permits/permit-responsive.css","folder":"monitorBP frontend","file":"permit-responsive.css"},
-  {"source":"assets/permits/permit-responsive.js","folder":"monitorBP frontend","file":"permit-responsive.js"}
+  {
+    "source": "assets/permits/permit-responsive.css",
+    "folder": "monitorBP frontend",
+    "file": "permit-responsive.css"
+  },
+  {
+    "source": "assets/permits/permit-responsive.js",
+    "folder": "monitorBP frontend",
+    "file": "permit-responsive.js"
+  },
+  {
+    "source": "../../../backend/monitorBP backend/buildingRequirements.js",
+    "folder": "monitorBP frontend",
+    "file": "building-requirements.js"
+  },
+  {
+    "source": "assets/permits/building-checklist.js",
+    "folder": "monitorBP frontend",
+    "file": "building-checklist.js"
+  },
+  {
+    "source": "assets/permits/building-checklist.css",
+    "folder": "monitorBP frontend",
+    "file": "building-checklist.css"
+  },
+  {
+    "source": "assets/permits/permit-checklist.css",
+    "folder": "monitorBP frontend",
+    "file": "permit-checklist.css"
+  }
 ]

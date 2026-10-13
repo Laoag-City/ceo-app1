@@ -154,6 +154,13 @@ db.connect(async (err) => {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (occupancy_id) REFERENCES occupancy_permits(id) ON DELETE CASCADE
         );`,
+        `CREATE TABLE IF NOT EXISTS permit_checklists (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            permit_id INT NOT NULL UNIQUE,
+            checklist_state JSON NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (permit_id) REFERENCES permits(id) ON DELETE CASCADE
+        );`,
         `CREATE TABLE IF NOT EXISTS occupancy_checklists (
             id INT AUTO_INCREMENT PRIMARY KEY,
             occupancy_id INT NOT NULL UNIQUE,
@@ -373,6 +380,8 @@ app.put('/api/permits/change-requests/:id/approve', buildingInspections.review('
 app.put('/api/permits/change-requests/:id/reject', buildingInspections.review('reject'), deletionWorkflow.review('permits', 'reject'), editWorkflow.review('permits', 'reject'));
 
 app.use('/api/permits/:id/inspections', require('./inspectionRoutes')(buildingInspections,sessions));
+app.get('/api/permits/:id/checklist', buildingInspections.readChecklist);
+app.put('/api/permits/:id/checklist', sessions.requireRoles('operator'), buildingInspections.saveChecklist);
 
 app.delete('/api/permits/:id', deletionWorkflow.submit('permits'));
 

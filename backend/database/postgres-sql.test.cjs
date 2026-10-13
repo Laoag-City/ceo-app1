@@ -8,6 +8,7 @@ test('bindings preserve literal question marks, quotes, malicious text and neste
 });
 test('reviewed upserts target the correct unique keys',()=>{
  assert.match(convert('INSERT INTO occupancy_checklists (occupancy_id,checklist_state) VALUES (?,?) ON DUPLICATE KEY UPDATE checklist_state=VALUES(checklist_state)').sql,/ON CONFLICT \(occupancy_id\) DO UPDATE SET checklist_state=EXCLUDED.checklist_state/);
+ assert.match(convert('INSERT INTO permit_checklists (permit_id,checklist_state) VALUES (?,?) ON DUPLICATE KEY UPDATE checklist_state=VALUES(checklist_state),updated_at=CURRENT_TIMESTAMP').sql,/ON CONFLICT \(permit_id\) DO UPDATE SET checklist_state=EXCLUDED.checklist_state,updated_at=CURRENT_TIMESTAMP/);
  assert.match(convert('INSERT IGNORE INTO ticket_submission_keys (request_id,fingerprint) VALUES (?,?)').sql,/ON CONFLICT DO NOTHING$/);
 });
 test('session issue locks the verified account row',()=>{

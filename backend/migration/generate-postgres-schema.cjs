@@ -56,6 +56,7 @@ for (const source of ['permit_system', 'queue_system']) {
  if(source==='permit_system'){
   sql.push(fs.readFileSync(path.join(__dirname,'permit-session-notices.sql'),'utf8'));
   sql.push(fs.readFileSync(path.join(__dirname,'permit-inspections.sql'),'utf8'));
+  sql.push(fs.readFileSync(path.join(__dirname,'permit-checklists.sql'),'utf8'));
  }
  sql.push(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${q(role)};`, `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${q(role)};`, 'COMMIT;');
  fs.writeFileSync(path.join(__dirname,target+'.sql'),sql.join('\n\n')+'\n');

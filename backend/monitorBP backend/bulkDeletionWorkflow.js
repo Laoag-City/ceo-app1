@@ -71,6 +71,7 @@ module.exports = function bulkDeletionWorkflow(open) {
         const [reviews] = await db.query('SELECT * FROM permit_final_reviews WHERE kind=? AND project_id IN (?) ORDER BY id', [kind, selected]);
         let lots = [], subs = [], subMatrix = [], inspections = [], checklists = [];
         if (kind === 'permits') {
+            [checklists] = await db.query('SELECT * FROM permit_checklists WHERE permit_id IN (?) ORDER BY id FOR UPDATE', [selected]);
             [inspections] = await db.query('SELECT * FROM permit_inspections WHERE permit_id IN (?) ORDER BY id FOR UPDATE', [selected]);
             [lots] = await db.query('SELECT * FROM permit_lots WHERE permit_id IN (?) ORDER BY id FOR UPDATE', [selected]);
             [subs] = await db.query('SELECT * FROM sub_permits WHERE permit_id IN (?) ORDER BY id FOR UPDATE', [selected]);
@@ -86,7 +87,8 @@ module.exports = function bulkDeletionWorkflow(open) {
                 ...(kind === 'permits' ? { lots: own(lots), subs: ownSubs, subMatrix: subMatrix.filter(m => subIds.has(Number(m.sub_permit_id))),
                     // Preserve snapshots of requests submitted before this feature
                     // when their projects still have no building inspections.
-                    ...(own(inspections).length ? {inspections:own(inspections)} : {})
+                    ...(own(inspections).length ? {inspections:own(inspections)} : {}),
+                    ...(own(checklists).length ? {checklists:own(checklists)} : {})
                 } : { inspections: own(inspections), checklists: own(checklists) }) };
         });
     }

@@ -66,52 +66,7 @@
         /* ══════════════════════════════
            CHECKLIST PANEL
         ══════════════════════════════ */
-        .checklist-progress-bar {
-            background:#f8fafb; border:1px solid var(--border); border-radius:10px;
-            padding:14px 16px; margin-bottom:18px; display:flex; align-items:center; gap:14px;
-        }
-        .ring-wrap { position:relative; width:52px; height:52px; flex-shrink:0; }
-        .ring-wrap svg { transform:rotate(-90deg); }
-        .ring-text { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:var(--occ); }
-        .cp-details { flex:1; }
-        .cp-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:3px; }
-        .cp-value { font-size:14px; font-weight:700; color:var(--text-primary); }
-        .bar-thin { height:6px; background:var(--border); border-radius:99px; margin-top:8px; overflow:hidden; }
-        .bar-thin-fill { height:100%; background:var(--occ); border-radius:99px; transition:width .4s; }
-
-        .cl-section { margin-bottom:22px; }
-        .cl-section-title {
-            font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.07em;
-            color:var(--text-muted); margin-bottom:10px; padding-bottom:6px;
-            border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;
-        }
-        .cl-item {
-            display:flex; align-items:flex-start; gap:10px; padding:10px 12px;
-            background:var(--white); border:1px solid var(--border); border-radius:9px;
-            margin-bottom:6px; cursor:pointer; transition:all .15s;
-        }
-        .cl-item:hover { border-color:var(--occ); }
-        .cl-item.checked { background:var(--occ-light); border-color:var(--occ-mid); }
-        .cl-item.checked .cl-title { text-decoration:line-through; color:var(--occ-dark); opacity:.7; }
-        .cl-checkbox {
-            width:18px; height:18px; border-radius:4px; border:2px solid var(--border-strong);
-            display:flex; align-items:center; justify-content:center; flex-shrink:0;
-            font-size:11px; font-weight:900; margin-top:1px; transition:all .15s;
-        }
-        .cl-item.checked .cl-checkbox { background:var(--occ); border-color:var(--occ); color:white; }
-        .cl-content { flex:1; }
-        .cl-title { font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:2px; }
-        .cl-note  { font-size:11px; color:var(--text-muted); }
-        .cl-tag { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; padding:2px 6px; border-radius:3px; flex-shrink:0; margin-top:2px; }
-        .tag-req { background:var(--red-light); color:var(--red); border:1px solid var(--red-mid); }
-        .tag-opt { background:var(--surface); color:var(--text-muted); border:1px solid var(--border); }
-
-        .btn-save-checklist { width:100%; padding:12px; background:var(--occ); color:white; border:none; border-radius:8px; font-family:inherit;font-size:13px; font-weight:700; cursor:pointer; transition:background .15s; margin-top:8px; }
-        .btn-save-checklist:hover { background:var(--occ-dark); }
-        .btn-save-checklist:disabled { opacity:.6; cursor:not-allowed; }
-
-        .mini-progress { height:5px; background:var(--border); border-radius:99px; margin-top:8px; overflow:hidden; }
-        .mini-progress-fill { height:100%; background:var(--occ); border-radius:99px; transition:width .4s; }
+        /* Shared checklist visuals: /permit-checklist.css */
 
         /* ══════════════════════════════
            MODAL
@@ -141,9 +96,6 @@
         .standard-stations-setup .btn-add:disabled { opacity:.6; cursor:wait; }
         #standardStationsFeedback:empty { display:none; }
         #standardStationsFeedback { margin:8px 0 0; }
-        .checklist-summary-row { display:flex;align-items:center;justify-content:space-between; }
-        .checklist-summary-label { font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px; }
-        #sideClPct { font-family:'Libre Franklin',sans-serif; }
         @media(max-width:760px){.workspace-tabs{overflow-x:auto;justify-content:flex-start}.ws-tab{flex:0 0 auto;min-width:145px}.title-crumb{display:none}.form-row-2,.insp-meta-grid{grid-template-columns:1fr}.insp-card-head{align-items:flex-start;flex-direction:column;gap:10px}.insp-card-head>div{flex-wrap:wrap}.modal-overlay{padding:12px}.modal-body{padding:18px}}
     </style>
 <style>.workspace-record-icon{width:22px;height:22px;object-fit:contain;opacity:.7}.card-heading-icon .mdi-icon{width:20px;height:20px;fill:currentColor}</style>
@@ -166,6 +118,7 @@
 <script src="/permit-responsive.js" defer></script>
 <link rel="stylesheet" href="/permit-inspections.css">
 <script src="/permit-inspections.js" defer></script>
+<link rel="stylesheet" href="/permit-checklist.css">
 </head>
 <body>
 <div id="system-react-root" data-page="permits-occupancy_edit" style="display:contents"></div>
@@ -182,6 +135,7 @@ let initializingStations = false;
 window.addEventListener('permit-profile-updated', event => StationDates.updateEngineers(matrixState, event.detail));
 let signatureDatesSupported = false;
 let checklistState = {};
+let checklistReady=false,checklistLoading=false,checklistSaving=false;
 // Keep the version loaded with each editor; never replace it on a failed save.
 let permitVersion = "", checklistVersion = "";
 
@@ -531,65 +485,70 @@ function saveRemarksToRow() {
    REQUIREMENTS CHECKLIST
 ══════════════════════════ */
 async function loadChecklist() {
+    if(checklistLoading||checklistSaving)return;
+    if(!FormSafety.discard('checklistContainer'))return;
+    checklistLoading=true;checklistReady=false;
+    const container=document.getElementById('checklistContainer'),feedback=document.getElementById('checklistFeedback');
+    document.getElementById('saveClBtn').disabled=document.getElementById('reloadChecklist').disabled=true;
+    container.inert=true;feedback.textContent='Loading saved checklist…';
     try {
-        const r=await RequestFeedback.fetch(`/api/occupancy/${permitId}/checklist`);
-        if (!r.ok) { checklistState={}; renderChecklist(); return; }
+        const r=await RequestFeedback.fetch(`/api/occupancy/${permitId}/checklist`,{cache:'no-store',credentials:'same-origin'});
         const d=await r.json();
-        checklistState = d.checklist_state || {};
-        checklistVersion = d._version || "";
-        document.getElementById('saveClBtn').disabled=false;
-    } catch(e) { RequestFeedback.report(e); document.getElementById('saveClBtn').disabled=true; return; }
-    renderChecklist();
+        if(!d._version||!d.checklist_state||Array.isArray(d.checklist_state)||typeof d.checklist_state!=='object')throw new Error('The saved checklist could not be read. Please refresh it.');
+        checklistState=d.checklist_state;checklistVersion=d._version;checklistReady=true;
+        FormSafety.clean('checklistContainer');feedback.textContent='Saved checklist loaded.';
+    } catch(e) {RequestFeedback.report(e);feedback.textContent='Unable to load saved requirements. Refresh the checklist to try again.';}
+    finally {
+        checklistLoading=false;container.inert=false;renderChecklist();
+        document.getElementById('saveClBtn').disabled=!checklistReady;document.getElementById('reloadChecklist').disabled=false;
+    }
 }
 
 function renderChecklist() {
-    const container = document.getElementById('checklistContainer');
-    let total=0, checked=0;
-    container.innerHTML = CHECKLIST.map(sec => {
-        const sChecked = sec.items.filter(i=>checklistState[i.id]).length;
-        total += sec.items.length; checked += sChecked;
-        return `
-        <div class="cl-section">
-            <div class="cl-section-title">
-                <span>${esc(sec.section)}</span>
-                <span style="font-size:10px;font-weight:700;color:var(--text-muted);">${sChecked}/${sec.items.length}</span>
-            </div>
-            ${sec.items.map(item=>`
-            <div class="cl-item ${checklistState[item.id]?'checked':''}" onclick="toggleClItem('${item.id}')">
-                <div class="cl-checkbox">${checklistState[item.id]?'✓':''}</div>
-                <div class="cl-content">
-                    <div class="cl-title">${esc(item.title)}</div>
-                    <div class="cl-note">${esc(item.note)}</div>
-                </div>
-                <span class="cl-tag ${item.req?'tag-req':'tag-opt'}">${item.req?'Required':'Optional'}</span>
-            </div>`).join('')}
-        </div>`;
-    }).join('');
-
-    const pct = total ? Math.round(checked/total*100) : 0;
-    document.getElementById('clProgressLabel').textContent = `${checked} of ${total} items submitted`;
-    document.getElementById('clProgressBar').style.width   = pct+'%';
-    document.getElementById('ringPct').textContent         = pct+'%';
-    document.getElementById('ringFill').style.strokeDashoffset = 131.95 - (131.95*pct/100);
-    document.getElementById('tbChecklist').textContent     = `${checked}/${total}`;
-    document.getElementById('checklistSideCard').style.display = 'block';
-    document.getElementById('sideClPct').textContent       = pct+'%';
-    document.getElementById('sideClBar').style.width       = pct+'%';
-    document.getElementById('sideClCount').textContent     = `${checked} of ${total} items`;
-    document.getElementById('sideClEmoji').textContent     = pct===100?'🎉':pct>60?'📋':'📂';
+    document.getElementById('checklistContainer').innerHTML=CHECKLIST.map((sec,index)=>`
+        <section class="cl-section"><div class="cl-section-title"><h3>${esc(sec.section)}</h3><span class="cl-section-count" data-checklist-group="${index}"></span></div>
+        ${sec.items.map(item=>`<label class="cl-item ${checklistState[item.id]===true?'checked':''}">
+            <input class="cl-checkbox" type="checkbox" data-checklist-item="${esc(item.id)}" ${checklistState[item.id]===true?'checked':''} ${checklistReady?'':'disabled'}>
+            <span class="cl-content"><span class="cl-title">${esc(item.title)}</span><span class="cl-note">${esc(item.note)}</span></span>
+            <span class="cl-tag ${item.req?'tag-req':'tag-opt'}">${item.req?'Required':'Optional'}</span>
+        </label>`).join('')}</section>`).join('');
+    updateChecklistProgress();
 }
 
-function toggleClItem(id) { FormSafety.rememberValue('checklistContainer',()=>JSON.stringify(checklistState)); checklistState[id]=!checklistState[id]; renderChecklist(); }
+function updateChecklistProgress(){
+    const items=CHECKLIST.flatMap(group=>group.items),total=items.length,checked=items.filter(item=>checklistState[item.id]===true).length,pct=Math.round(checked/total*100);
+    document.getElementById('clProgressLabel').textContent=`${checked} of ${total} items completed`;
+    document.getElementById('clProgressBar').style.width=pct+'%';document.getElementById('ringPct').textContent=pct+'%';
+    document.getElementById('ringFill').style.strokeDashoffset=131.95-(131.95*pct/100);
+    document.querySelector('.permit-checklist-progress').setAttribute('aria-valuenow',pct);
+    document.getElementById('tbChecklist').textContent=`${checked}/${total}`;
+    const side=document.getElementById('checklistSideCard');side.style.display='block';
+    document.getElementById('sideClPct').textContent=pct+'%';document.getElementById('sideClBar').style.width=pct+'%';
+    document.getElementById('sideClCount').textContent=`${checked} of ${total} items`;
+    document.getElementById('sideClStatus').textContent=pct===100?'Checklist complete':checked?'In progress':'Not started';
+    side.querySelector('[role="progressbar"]').setAttribute('aria-valuenow',pct);
+    CHECKLIST.forEach((group,index)=>{const counter=document.querySelector('[data-checklist-group="'+index+'"]');if(counter)counter.textContent=group.items.filter(item=>checklistState[item.id]===true).length+'/'+group.items.length;});
+}
 
-const saveChecklist = FormSafety.guard('saveClBtn', async function() {
-    const btn=document.getElementById('saveClBtn'); btn.disabled=true; btn.textContent='Saving…';
+function toggleClItem(id){
+    if(!checklistReady||checklistLoading||checklistSaving||!CHECKLIST.some(group=>group.items.some(item=>item.id===id)))return;
+    FormSafety.rememberValue('checklistContainer',()=>JSON.stringify(checklistState));checklistState[id]=!checklistState[id];
+    const input=document.querySelector('[data-checklist-item="'+id+'"]');
+    if(input){input.checked=checklistState[id];input.closest('label').classList.toggle('checked',input.checked);}
+    updateChecklistProgress();document.getElementById('checklistFeedback').textContent='Unsaved checklist changes.';
+}
+document.getElementById('checklistContainer').addEventListener('change',event=>{if(event.target.matches('[data-checklist-item]'))toggleClItem(event.target.dataset.checklistItem);});
+
+const saveChecklist=FormSafety.guard('saveClBtn',async function(){
+    if(!checklistReady||checklistLoading||checklistSaving)return;
+    checklistSaving=true;document.getElementById('reloadChecklist').disabled=true;
+    const feedback=document.getElementById('checklistFeedback');
     try {
-        const r=await RequestFeedback.fetch(`/api/occupancy/${permitId}/checklist`,{method:'PUT',headers:getAuthHeaders(checklistVersion),body:JSON.stringify({checklist_state:checklistState})});
-        const d=await r.json();
-        if (!d.success) alert(d.message||'Save failed.');
-        else { checklistVersion=d._version || ''; FormSafety.clean('checklistContainer'); btn.textContent='✓ Saved!'; setTimeout(()=>{btn.textContent='Save Checklist State';},2000); }
-    } catch(e) { RequestFeedback.report(e); }
-    finally { btn.disabled=false; }
+        const r=await RequestFeedback.fetch(`/api/occupancy/${permitId}/checklist`,{method:'PUT',credentials:'same-origin',headers:{...getAuthHeaders(checklistVersion),'x-permit-request':'1'},body:JSON.stringify({checklist_state:checklistState})});
+        const d=await r.json();if(!d._version)throw new Error('Save could not be confirmed. Refresh saved data before trying again.');
+        checklistVersion=d._version;FormSafety.clean('checklistContainer');feedback.textContent='Checklist saved.';
+    } catch(e){RequestFeedback.report(e);feedback.textContent='Checklist was not confirmed saved. Your changes are kept; copy them before refreshing.';}
+    finally{checklistSaving=false;document.getElementById('reloadChecklist').disabled=false;}
 });
 
 /* ══ Helpers ══ */

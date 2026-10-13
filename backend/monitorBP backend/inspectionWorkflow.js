@@ -23,8 +23,8 @@ function validate(body) {
 module.exports = function createInspectionWorkflow(openConnection, kind='occupancy') {
     // Identifiers come only from this fixed configuration, never request data.
     const configs = {
-        occupancy: {parent:'occupancy_permits', inspections:'occupancy_inspections', requests:'occupancy_change_requests', key:'occupancy_id', label:'Occupancy'},
-        permits: {parent:'permits', inspections:'permit_inspections', requests:'permit_change_requests', key:'permit_id', label:'Building'}
+        occupancy: {parent:'occupancy_permits', inspections:'occupancy_inspections', checklists:'occupancy_checklists', requests:'occupancy_change_requests', key:'occupancy_id', label:'Occupancy'},
+        permits: {parent:'permits', inspections:'permit_inspections', checklists:'permit_checklists', requests:'permit_change_requests', key:'permit_id', label:'Building'}
     };
     const c=configs[kind];
     if(!c) throw new Error('Unknown inspection workspace.');
@@ -123,7 +123,7 @@ module.exports = function createInspectionWorkflow(openConnection, kind='occupan
         });
     }
     async function checklist(conn,id) {
-        const [rows]=await conn.query('SELECT checklist_state FROM occupancy_checklists WHERE occupancy_id=? FOR UPDATE',[id]);
+        const [rows]=await conn.query(`SELECT checklist_state FROM ${c.checklists} WHERE ${c.key}=? FOR UPDATE`,[id]);
         const raw=rows[0]?.checklist_state;
         const state=typeof raw==='string'?JSON.parse(raw):(raw||{});
         const normalized=Object.fromEntries(Object.entries(state).sort(([a],[b])=>a.localeCompare(b)));
@@ -138,9 +138,14 @@ module.exports = function createInspectionWorkflow(openConnection, kind='occupan
         await actor(conn,req,['operator','admin','superadmin']);
         const id=Number(req.params.id);await lockParent(conn,id);
         const current=await checklist(conn,id);requireVersion(req,current.version);
-        const state=req.body.checklist_state;
+        const state=req.body?.checklist_state;
         if(!state||Array.isArray(state)||typeof state!=='object'||Object.keys(state).length>1000||Object.values(state).some(value=>typeof value!=='boolean'))throw invalid('Checklist values must be true or false.');
-        await conn.query('INSERT INTO occupancy_checklists (occupancy_id,checklist_state) VALUES (?,?) ON DUPLICATE KEY UPDATE checklist_state=VALUES(checklist_state)',[id,JSON.stringify(state)]);
+        if(kind==='permits') {
+            const definition=require('./buildingRequirements');
+            const allowed=new Set([...definition.sections.flatMap(section=>section.items),...definition.procedure].map(item=>item.id));
+            if(Object.keys(state).some(key=>!allowed.has(key)))throw invalid('Unknown Building requirement.');
+        }
+        await conn.query(`INSERT INTO ${c.checklists} (${c.key},checklist_state) VALUES (?,?) ON DUPLICATE KEY UPDATE checklist_state=VALUES(checklist_state),updated_at=CURRENT_TIMESTAMP`,[id,JSON.stringify(state)]);
         return {body:{success:true,message:'Checklist saved.',_version:(await checklist(conn,id)).version}};
     });
     return {submit,review,readInspections,save,readChecklist,saveChecklist};

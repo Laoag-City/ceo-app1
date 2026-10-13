@@ -19,6 +19,7 @@ async function fixture(t) {
         occupancy_routing_matrix: 'id INT PRIMARY KEY,occupancy_id INT REFERENCES occupancy_permits(id) ON DELETE CASCADE,discipline_name VARCHAR(100),signature_status VARCHAR(30),feedback_remarks TEXT',
         permit_inspections: 'id INT PRIMARY KEY,permit_id INT REFERENCES permits(id) ON DELETE CASCADE,findings TEXT',
         occupancy_inspections: 'id INT PRIMARY KEY,occupancy_id INT REFERENCES occupancy_permits(id) ON DELETE CASCADE,findings TEXT',
+        permit_checklists: 'id INT PRIMARY KEY,permit_id INT REFERENCES permits(id) ON DELETE CASCADE,checklist_state JSON',
         occupancy_checklists: 'id INT PRIMARY KEY,occupancy_id INT REFERENCES occupancy_permits(id) ON DELETE CASCADE,checklist_state JSON',
         permit_change_requests: 'id INT PRIMARY KEY,permit_id INT REFERENCES permits(id) ON DELETE CASCADE,changes JSON,status VARCHAR(30)',
         occupancy_change_requests: 'id INT PRIMARY KEY,occupancy_id INT REFERENCES occupancy_permits(id) ON DELETE CASCADE,changes JSON,status VARCHAR(30)',
@@ -119,6 +120,20 @@ test('preview scope and explicit confirmation are required; both registries can 
     const building=await f.submit('permits'),occupancy=await f.submit('occupancy');
     assert.equal(building.body.count,3);assert.equal(occupancy.body.count,2);
     assert.equal((await f.rows('project_records')).length,2);
+});
+
+test('new or edited Building requirements invalidate pending bulk deletion and are archived on fresh approval',async t=>{
+    const f=await fixture(t),first=await f.submit('permits');
+    await f.db.query('INSERT INTO permit_checklists VALUES (1,10,?)',[JSON.stringify({land_title:true})]);
+    assert.equal((await f.review('permits',first.body.requestId)).code,409);
+    const second=await f.submit('permits');
+    await f.db.query('UPDATE permit_checklists SET checklist_state=? WHERE id=1',[JSON.stringify({land_title:true,plans:true})]);
+    assert.equal((await f.review('permits',second.body.requestId)).code,409);
+    const third=await f.submit('permits');assert.equal((await f.review('permits',third.body.requestId)).code,200);
+    const archived=JSON.parse((await f.rows('project_records')).find(row=>row.id===third.body.requestId).details);
+    assert.deepEqual(archived.projects[0].checklists[0].checklist_state,{land_title:true,plans:true});
+    assert.equal((await f.rows('permit_checklists')).length,0);
+    assert.equal((await f.rows('occupancy_checklists')).length,1);
 });
 
 test('new or edited Building inspections invalidate pending bulk deletion and are archived on fresh approval',async t=>{

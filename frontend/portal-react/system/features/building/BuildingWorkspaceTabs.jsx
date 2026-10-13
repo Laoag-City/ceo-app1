@@ -32,5 +32,8 @@ export default function BuildingWorkspaceTabs() {
     <button type="button" id="building-inspection-tab" role="tab" className="ws-tab" data-panel="inspection" aria-controls="panel-inspection" aria-selected="false" tabIndex={-1} onClick={()=>select('inspection')}>
       Inspections <span className="tab-badge" id="tbInspection">0</span>
     </button>
+    <button type="button" id="building-requirements-tab" role="tab" className="ws-tab" data-panel="checklist" aria-controls="panel-checklist" aria-selected="false" tabIndex={-1} onClick={()=>select('checklist')}>
+      Requirements <span className="tab-badge" id="tbChecklist">0/16</span>
+    </button>
   </div>
 }

@@ -2,7 +2,7 @@
  * MySQL parser. Advanced statements have explicit PostgreSQL equivalents below.
  * Add regression coverage when adding dialect-specific SQL. Values always bind.
  */
-const identityTables=new Set(['users','permits','permit_lots','permit_inspections','sub_permits','permit_routing_matrix','permit_change_requests','occupancy_permits','occupancy_routing_matrix','occupancy_inspections','occupancy_checklists','occupancy_change_requests','project_records','permit_final_reviews','system_disciplines','tickets','audit_logs','videos']);
+const identityTables=new Set(['users','permits','permit_lots','permit_inspections','permit_checklists','sub_permits','permit_routing_matrix','permit_change_requests','occupancy_permits','occupancy_routing_matrix','occupancy_inspections','occupancy_checklists','occupancy_change_requests','project_records','permit_final_reviews','system_disciplines','tickets','audit_logs','videos']);
 function bind(sql,args=[]){
  let index=0;const values=[];
  // Skip quoted SQL strings/identifiers; never substitute question marks in literals.
@@ -54,7 +54,7 @@ function convert(sql,args=[]) {
  sql=sql.replace(/\? IS NULL/g,'?::text IS NULL').replace(/ FROM DUAL\b/gi,'');
  sql=sql.replace(/^DELETE p FROM ([a-z_]+) p INNER JOIN ([a-z_]+) r ON (.+?) WHERE /i,'DELETE FROM $1 p USING $2 r WHERE $3 AND ');
  if(/^INSERT IGNORE /i.test(sql))sql=sql.replace(/^INSERT IGNORE /i,'INSERT ')+' ON CONFLICT DO NOTHING';
- const conflicts={permit_user_profiles:'user_id',occupancy_checklists:'occupancy_id'};
+ const conflicts={permit_user_profiles:'user_id',occupancy_checklists:'occupancy_id',permit_checklists:'permit_id'};
  for(const [table,key] of Object.entries(conflicts))if(sql.startsWith('INSERT INTO '+table)&&sql.includes('ON DUPLICATE KEY UPDATE'))sql=sql.replace('ON DUPLICATE KEY UPDATE',`ON CONFLICT (${key}) DO UPDATE SET`).replace(/VALUES\(([a-z_]+)\)/g,'EXCLUDED.$1');
  sql=sql.replace('ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)','ON CONFLICT (request_key) DO NOTHING');
  // Legacy INSERT...SELECT issuance needs a source-row lock in PostgreSQL.

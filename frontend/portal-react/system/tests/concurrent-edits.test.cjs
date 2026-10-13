@@ -53,7 +53,7 @@ test('Building tabs count main/sub-permit stations and inspections, preserve dra
         assert.equal(input.value,'Approved');assert.equal(w.FormSafety.dirty('matrixTableBody'),true);
         assert.equal(d.getElementById('panel-inspection').hidden,true);
         routing.dispatchEvent(new w.KeyboardEvent('keydown',{key:'End',bubbles:true}));
-        assert.equal(d.activeElement,inspection);assert.equal(d.getElementById('panel-inspection').hidden,false);
+        assert.equal(d.activeElement,d.getElementById('building-requirements-tab'));assert.equal(d.getElementById('panel-checklist').hidden,false);
         assert.equal(calls.length,requests,'Tab changes must not refetch or submit data');
     } finally {dom.window.close();}
 });
