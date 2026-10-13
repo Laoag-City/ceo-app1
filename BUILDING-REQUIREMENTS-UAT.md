@@ -21,4 +21,4 @@ The separate `permit_checklists` table has a unique `permit_id`, a foreign key t
 
 For a fresh or existing PostgreSQL environment, apply `backend/migration/permit-checklists.sql` as the schema owner, then grant the runtime role CRUD on `permit_checklists` and usage/select on `permit_checklists_id_seq` before starting the updated server. Fresh generated schema includes it. Locally, use `backend/migration/Apply-BuildingRequirements.ps1`.
 
-The current pilot deployment has not been changed by this local feature update.
+The pilot deployment includes this release as of 13 October 2026. The additive checklist migration retained existing records. Use the hosted Permit website for signed-in acceptance tests.

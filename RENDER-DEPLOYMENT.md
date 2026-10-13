@@ -5,7 +5,37 @@ Node web services, two separate Neon databases, and Cloudinary for videos.
 This is a team test; the IT department will handle the official deployment.
 Local records remain separate from these new cloud copies.
 
-## Current test deployment — 12 October 2026
+## Current test deployment — 13 October 2026
+
+Both Render services are live on application commit `ed6c365543db37738bcdf217efc2cbe8da09d047`.
+The private GitHub repository contains the current code and published frontend.
+This release adds the Building requirements checklist, six saved procedure steps,
+and matching checklist / summary cards in both permit workspaces. Building shows
+16 items; Occupancy retains its existing 15 documents. Items 8a and 8b show
+**If applicable**, and item 4 uses **Indicating specific purpose: Construction /
+Fence / Demolition**. Saved procedure completion also appears in print summaries.
+
+The additive `permit_checklists` migration was applied before deployment.
+Neon has **23 Permit tables** and **6 Queue tables**. The new table has a unique
+`permit_id`, a cascading foreign key to `permits.id`, JSON state and verified
+runtime permissions. All 358 rows in the 22 pre-existing Permit tables were
+unchanged by the migration. Queue video records match the new backup, and the
+enabled video still delivers successfully. No database restore or reset occurred.
+
+Fresh consistent backups captured 358 Permit rows and 1,005 Queue rows. Private
+backup directory: `C:\Users\Majin\PermitManagementPostgresBackups\pilot-pre-requirements-20261013014425357-42d19a84`.
+
+Verification passed: 252 frontend checks, 4 SQL adapter checks, 22 PostgreSQL
+inspection/checklist checks and 13 bulk-deletion checks. Hosted health, login,
+security headers, portal links and served file hashes passed. Checklist APIs
+require sign-in. The Permit deploy is `dep-db6osgl9fdbs73dona8g`; Queue is
+`dep-db6ot2vf3r2c73bug2h0`. Normal signed-in acceptance tests remain available
+in [Building requirements UAT](BUILDING-REQUIREMENTS-UAT.md).
+
+For a code rollback, `d0abe86` remains available. Retain the additive checklist
+table and any subsequently saved checklist records when reverting the code.
+
+## Previous pilot update — 12 October 2026
 
 | Resource | Address or name |
 | --- | --- |
@@ -137,7 +167,9 @@ Immediately after restoring the 11 October archives, expect 21 Permit tables and
 6 Queue tables. Before starting the latest code, run
 `backend/migration/permit-inspections.sql` as the owner in the Permit database's
 `public` schema. This adds the Building inspection table and brings Permit to 22
-tables. Grant the application's role table CRUD and identity-sequence USAGE/SELECT
+tables. Also apply `backend/migration/permit-checklists.sql` to add Building
+requirements storage and bring Permit to 23 tables. Grant the application's role
+table CRUD and identity-sequence USAGE/SELECT
 if it differs from the owner. The current pilot already has this migration.
 Inspect restore errors before retrying; do not delete existing records to force
 the counts to match.
