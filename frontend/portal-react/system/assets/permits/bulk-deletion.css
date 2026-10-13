@@ -9,3 +9,14 @@
 .registry-bulk-delete-copy p.registry-bulk-delete-error{color:var(--red)}
 .registry-bulk-delete-error button{margin-left:6px;border:0;background:transparent;text-decoration:underline;color:inherit;font:inherit;cursor:pointer}
 @media(max-width:600px){.registry-bulk-delete{align-items:stretch;flex-direction:column;padding:12px 14px 16px;gap:10px}.registry-bulk-delete .registry-delete-all{width:100%}}
+.bulk-delete-notice{box-sizing:border-box;width:min(480px,calc(100vw - 32px));max-height:85vh;overflow:auto;margin:auto;padding:28px;border:1px solid var(--border);border-radius:16px;background:var(--white);color:var(--text-primary);box-shadow:0 20px 70px #0004;font:14px/1.65 var(--staff-font-body,system-ui)}
+.bulk-delete-notice::backdrop{background:#10203080}
+.bulk-delete-notice-icon{display:grid;place-items:center;width:44px;height:44px;margin-bottom:16px;border-radius:12px;background:var(--green-light);color:var(--green);font-size:24px;font-weight:700}
+.bulk-delete-notice h2{margin:0 0 12px;color:var(--text-primary);font-size:22px;line-height:1.3}
+.bulk-delete-notice p{margin:0 0 14px;color:var(--text-secondary);overflow-wrap:anywhere}
+.bulk-delete-notice .bulk-delete-notice-reference{padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:12px;color:var(--text-secondary)}
+.bulk-delete-notice-actions{display:flex;justify-content:flex-end;margin-top:22px}
+.bulk-delete-notice-actions button{min-height:42px;padding:10px 22px;border:1px solid var(--blue);border-radius:8px;background:var(--blue);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+.bulk-delete-notice-actions button:hover{filter:brightness(.95)}
+.bulk-delete-notice :focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+@media(max-width:600px){.bulk-delete-notice{padding:22px}.bulk-delete-notice-actions button{width:100%}}

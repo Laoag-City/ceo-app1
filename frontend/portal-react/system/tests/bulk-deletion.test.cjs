@@ -11,7 +11,7 @@ function dialogs(w){
 async function registryFixture(kind,initial={success:true,count:3,version:'scope-v1',pending:null},role='operator'){
  const page=kind==='permits'?'permits-index':'permits-occupancy';
  const dom=new JSDOM('<div id="system-react-root" data-page="'+page+'"></div>',{url:'http://localhost/',runScripts:'outside-only',pretendToBeVisual:true});
- const w=dom.window,calls=[];let state=initial,fail=false,finish;
+ const w=dom.window,calls=[];let state=initial,fail=false,finish,postError='',failAfterSubmit=false;
  w.sessionStorage.setItem('oboUser',JSON.stringify({id:1,role}));
  w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});w.ResizeObserver=class{observe(){}disconnect(){}};
  w.fetch=async()=>({ok:true,json:async()=>({success:true})});
@@ -20,27 +20,55 @@ async function registryFixture(kind,initial={success:true,count:3,version:'scope
   if(fail)throw Error('Server unavailable. Retry.');
   if(options.method==='POST'){
    await new Promise(resolve=>finish=resolve);
+   if(postError)return {ok:false,json:async()=>({success:false,message:postError})};
    state={...state,pending:{id:42,record_count:3}};
+   if(failAfterSubmit)fail=true;
    return {ok:true,json:async()=>({success:true,pending:true,requestId:42,count:3,message:'Request sent to the admin.'})};
   }
   return {ok:true,json:async()=>state};
  }};
  dialogs(w);w.eval(bundle());await wait();await wait();
- return {dom,w,d:w.document,calls,fail:value=>fail=value,finish:()=>finish?.(),setState:value=>state=value};
+ return {dom,w,d:w.document,calls,fail:value=>fail=value,finish:()=>finish?.(),setState:value=>state=value,postError:value=>postError=value,failAfterSubmit:()=>failAfterSubmit=true};
 }
 for(const kind of ['permits','occupancy']){
  test(kind+': entire-registry deletion needs typed confirmation and submits once without deleting locally',async()=>{
   const f=await registryFixture(kind);try{
    const button=f.d.querySelector('.registry-delete-all');assert.equal(button.disabled,false);
    button.click();await wait();let dialog=f.d.querySelector('.danger-confirm');assert.ok(dialog);assert.match(dialog.textContent,/all 3/);assert.match(dialog.textContent,/outside your current search or filter/);
-   dialog.querySelector('.danger-confirm-actions button').click();await wait();assert.equal(f.calls.filter(c=>c.method==='POST').length,0);
+   dialog.querySelector('.danger-confirm-actions button').click();await wait();assert.equal(f.calls.filter(c=>c.method==='POST').length,0);assert.equal(f.d.querySelector('.bulk-delete-notice'),null);
    button.click();await wait();dialog=f.d.querySelector('.danger-confirm');const input=dialog.querySelector('input'),accept=dialog.querySelector('.danger-confirm-accept');
    assert.equal(accept.disabled,true);input.value='delete all';input.dispatchEvent(new f.w.Event('input'));assert.equal(accept.disabled,true);
    input.value='DELETE ALL';input.dispatchEvent(new f.w.Event('input'));accept.click();accept.click();await wait();
    const writes=f.calls.filter(c=>c.method==='POST');assert.equal(writes.length,1);assert.equal(writes[0].url,'/api/permit-deletions/'+kind);assert.deepEqual(JSON.parse(writes[0].body),{confirmation:'DELETE ALL',version:'scope-v1'});
-   assert.equal(writes[0].headers['x-permit-request'],'1');assert.equal(accept.disabled,true);
+   assert.equal(writes[0].headers['x-permit-request'],'1');assert.equal(accept.disabled,true);assert.equal(f.d.querySelector('.bulk-delete-notice'),null,'No success receipt before the server accepts the request');
    f.finish();await wait();await wait();assert.equal(f.d.querySelector('.danger-confirm'),null);assert.equal(button.disabled,true);assert.match(f.d.querySelector('.registry-bulk-delete [role=status]').textContent,/sent to the admin/);
+   const receipt=f.d.querySelector('.bulk-delete-notice');assert.ok(receipt.open);assert.match(receipt.textContent,/Deletion request sent/);assert.match(receipt.textContent,/sent to the admin for review and confirmation/);assert.match(receipt.textContent,/No records have been deleted/);assert.match(receipt.textContent,/Request #42/);assert.equal(f.d.activeElement,receipt.querySelector('button'));
+   receipt.querySelector('button').click();await wait();assert.equal(f.d.querySelector('.bulk-delete-notice'),null);assert.equal(f.d.activeElement,f.d.querySelector('.registry-bulk-delete [role=status]'));assert.equal(f.calls.filter(c=>c.method==='POST').length,1);
    assert.equal(f.calls.some(c=>c.method==='DELETE'),false);
+  }finally{f.dom.window.close()}
+ });
+ test(kind+': rejected submissions keep the error visible without a success popup',async()=>{
+  const f=await registryFixture(kind);try{
+   f.postError('The registry changed. Refresh and confirm again.');
+   f.d.querySelector('.registry-delete-all').click();await wait();
+   const dialog=f.d.querySelector('.danger-confirm'),input=dialog.querySelector('input');input.value='DELETE ALL';input.dispatchEvent(new f.w.Event('input'));dialog.querySelector('.danger-confirm-accept').click();await wait();
+   f.finish();await wait();await wait();assert.equal(f.d.querySelector('.bulk-delete-notice'),null);assert.ok(dialog.open);assert.match(dialog.textContent,/registry changed/);assert.equal(dialog.querySelector('.danger-confirm-accept').disabled,false);
+   dialog.querySelector('.danger-confirm-actions button').click();await wait();assert.equal(f.d.querySelector('.bulk-delete-notice'),null);
+  }finally{f.dom.window.close()}
+ });
+ test(kind+': a failed status refresh cannot hide the accepted request receipt',async()=>{
+  const f=await registryFixture(kind);try{
+   f.failAfterSubmit();f.d.querySelector('.registry-delete-all').click();await wait();
+   const input=f.d.querySelector('.danger-confirm input');input.value='DELETE ALL';input.dispatchEvent(new f.w.Event('input'));f.d.querySelector('.danger-confirm-accept').click();await wait();f.finish();await wait();await wait();
+   const receipt=f.d.querySelector('.bulk-delete-notice');assert.ok(receipt.open);assert.match(receipt.textContent,/Deletion request sent/);assert.match(f.d.querySelector('.registry-bulk-delete-error').textContent,/unavailable/);assert.equal(f.d.querySelector('.registry-delete-all').disabled,true);
+   receipt.dispatchEvent(new f.w.Event('cancel',{cancelable:true}));await wait();assert.equal(f.d.querySelector('.bulk-delete-notice'),null);assert.equal(f.calls.filter(c=>c.method==='POST').length,1);
+  }finally{f.dom.window.close()}
+ });
+ test(kind+': discovering an existing pending request explains it without submitting again',async()=>{
+  const f=await registryFixture(kind);try{
+   f.setState({success:true,count:3,version:'scope-v1',pending:{id:29,record_count:3}});
+   f.d.querySelector('.registry-delete-all').click();await wait();await wait();
+   const receipt=f.d.querySelector('.bulk-delete-notice');assert.ok(receipt.open);assert.match(receipt.textContent,/Request already awaiting approval/);assert.match(receipt.textContent,/Request #29/);assert.equal(f.calls.some(c=>c.method==='POST'),false);assert.equal(f.d.querySelector('.danger-confirm'),null);
   }finally{f.dom.window.close()}
  });
  test(kind+': pending, empty, and unavailable states prevent submission and can recover',async()=>{
