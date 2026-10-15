@@ -29,7 +29,8 @@ module.exports = function projectRecords(db) {
     async function actor(req) {
         const id = Number(req.user?.id);
         if (!Number.isSafeInteger(id) || id < 1) throw bad('Please sign in again.', 403);
-        const rows = await query('SELECT id, username, role FROM users WHERE id=? AND is_active=1 AND is_verified=1', [id]);
+        const rows = await query(`SELECT u.id,u.username,u.role,COALESCE(NULLIF(TRIM(p.display_name),''),u.username) AS display_name
+            FROM users u LEFT JOIN permit_user_profiles p ON p.user_id=u.id WHERE u.id=? AND u.is_active=1 AND u.is_verified=1`, [id]);
         const user = rows[0];
         if (!user || !['operator', 'admin', 'superadmin'].includes(user.role) || user.role !== req.user?.role) throw bad('Your account cannot access project records.', 403);
         return user;
@@ -53,9 +54,10 @@ module.exports = function projectRecords(db) {
                 if (!Number.isSafeInteger(before) || before < 1) throw bad('Invalid history cursor.');
                 const category = req.query.category || null;
                 if(category && !['activity','comment'].includes(category)) throw bad('Invalid record category.');
-                const rows = await query(`SELECT id, actor_name, actor_role, category, outcome, message, details,
+                const rows = await query(`SELECT r.id,COALESCE(NULLIF(TRIM(p.display_name),''),r.actor_name) AS actor_name,r.actor_role,r.category,r.outcome,r.message,r.details,
                     DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at
-                    FROM project_records WHERE kind=? AND project_id=? AND outcome <> 'failed' AND id < ? AND (? IS NULL OR category=?) ORDER BY id DESC LIMIT 11`, [kind, id, before, category, category]);
+                    FROM project_records r LEFT JOIN permit_user_profiles p ON p.user_id=r.actor_id
+                    WHERE r.kind=? AND r.project_id=? AND r.outcome <> 'failed' AND r.id < ? AND (? IS NULL OR r.category=?) ORDER BY r.id DESC LIMIT 11`, [kind, id, before, category, category]);
                 const more = rows.length > 10; if (more) rows.pop();
                 res.json({ success: true, records: rows, next: more ? rows[rows.length - 1].id : null });
             } catch (error) { fail(res, error); }
@@ -70,7 +72,7 @@ module.exports = function projectRecords(db) {
                 if (!/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(req.body.requestId || '')) throw bad('Invalid comment request. Refresh and try again.');
                 const key = `${user.id}:${req.body.requestId}`;
                 await query(`INSERT INTO project_records (kind,project_id,project_title,actor_id,actor_name,actor_role,category,outcome,message,request_key)
-                    VALUES (?,?,?,?,?,?,'comment','saved',?,?) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)`, [kind,id,title,user.id,user.username,user.role,message,key]);
+                    VALUES (?,?,?,?,?,?,'comment','saved',?,?) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)`, [kind,id,title,user.id,user.display_name,user.role,message,key]);
                 const rows = await query('SELECT kind,project_id,message FROM project_records WHERE request_key=?', [key]);
                 if (rows[0].kind !== kind || rows[0].project_id !== id || rows[0].message !== message) throw bad('This submission was already used for a different comment. Refresh before posting another.', 409);
                 res.json({ success: true });
@@ -123,7 +125,7 @@ module.exports = function projectRecords(db) {
                 if(!diff.length && /\/(signatures|station-dates)$/.test(path))return next();
                 if(diff.length) detail=JSON.stringify({version:1,changes:diff});
             }
-            const event = await query(`INSERT INTO project_records (kind,project_id,project_title,actor_id,actor_name,actor_role,category,outcome,message,details) VALUES (?,?,?,?,?,?,'activity','unconfirmed',?,?)`, [kind,id || null,title,user.id,user.username,user.role,action,detail]);
+            const event = await query(`INSERT INTO project_records (kind,project_id,project_title,actor_id,actor_name,actor_role,category,outcome,message,details) VALUES (?,?,?,?,?,?,'activity','unconfirmed',?,?)`, [kind,id || null,title,user.id,user.display_name,user.role,action,detail]);
             const original = res.json.bind(res);
             res.json = function (result) {
                 res.json = original;

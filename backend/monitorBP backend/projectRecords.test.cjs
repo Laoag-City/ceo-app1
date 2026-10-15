@@ -7,6 +7,7 @@ async function fixture(t) {
     const conn = await mysql.createConnection({host:'localhost',user:'root',password:'',database:'permit_system'});
     t.after(() => conn.end());
     await conn.query('CREATE TEMPORARY TABLE users (id INT PRIMARY KEY,username VARCHAR(50),role VARCHAR(20),is_active INT,is_verified INT)');
+    await conn.query('CREATE TEMPORARY TABLE permit_user_profiles (user_id INT PRIMARY KEY,display_name VARCHAR(80))');
     await conn.query("INSERT INTO users VALUES (1,'Operator A','operator',1,1),(2,'Admin B','admin',1,1),(3,'Inactive','operator',0,1)");
     for (const table of ['permits','occupancy_permits']) {
         await conn.query(`CREATE TEMPORARY TABLE ${table} (id INT PRIMARY KEY, project_title VARCHAR(100))`);

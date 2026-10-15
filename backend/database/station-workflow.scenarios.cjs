@@ -21,7 +21,7 @@ module.exports=function register(open,dialect){
   for(const [table,columns] of Object.entries(schemas))await db.query(`CREATE ${dialect==='postgres'?'TEMP':'TEMPORARY'} TABLE ${table} (${columns})${dialect==='mysql'?' ENGINE=InnoDB':''}`);
   for(const [table,key] of [['permit_change_requests','permit_id'],['occupancy_change_requests','occupancy_id']])await db.query(`CREATE ${dialect==='postgres'?'TEMP':'TEMPORARY'} TABLE ${table} (id ${identity},${key} INTEGER,requested_by INTEGER,change_type VARCHAR(50),changes JSON,status VARCHAR(20),remarks TEXT,reviewed_by VARCHAR(50),reviewed_at TIMESTAMP NULL)`);
   await db.query("INSERT INTO users VALUES (1,'electrical','hash','operator',1,1),(2,'boss','hash','admin',1,1),(3,'it','hash','superadmin',1,1),(4,'sanitary','hash','operator',1,1),(5,'unassigned','hash','operator',1,1)");
-  await db.query("INSERT INTO permit_user_profiles VALUES (1,'Reviewer'),(4,'Sanitary Reviewer')");
+  await db.query("INSERT INTO permit_user_profiles VALUES (1,'Reviewer'),(2,'Admin Display Name'),(4,'Sanitary Reviewer')");
   await db.query("INSERT INTO permit_station_assignments VALUES (1,'ELECTRICAL','Electrical'),(4,'SANITARY','Sanitary')");
   await db.query("INSERT INTO permits (id,project_title,rejection_history) VALUES (10,'Original','[]'),(20,'Other','[]')");
   await db.query("INSERT INTO occupancy_permits (id,project_title,rejection_history) VALUES (10,'Original','[]'),(20,'Other','[]')");
@@ -109,7 +109,7 @@ module.exports=function register(open,dialect){
   });
   test(kind+': only admin gives final approval; old station requests stay preserved without applying',async t=>{
    const {db,workflow,read,save,review,call}=await fixture(t),c=workflow.configs[kind];assert.equal((await review(kind,'approved')).code,409);await save(kind,[approved]);for(const user of [1,3])assert.equal((await review(kind,'approved','',{user})).code,403);
-   assert.equal((await review(kind,'approved')).body.success,true);assert.equal((await read(kind)).body.final_approval.status,'approved');assert.equal((await review(kind,'approved')).body.unchanged,true);
+   assert.equal((await review(kind,'approved')).body.success,true);assert.equal((await read(kind)).body.final_approval.status,'approved');assert.equal((await read(kind)).body.final_approval.history[0].reviewer_name,'Admin Display Name');assert.equal((await db.query('SELECT reviewer_name FROM permit_final_reviews ORDER BY id DESC'))[0][0].reviewer_name,'Admin Display Name');assert.equal((await review(kind,'approved')).body.unchanged,true);
    await db.query(`INSERT INTO ${c.requests} (${c.key},change_type,changes,status) VALUES (10,'matrix_update',?,'pending')`,[JSON.stringify({updatedMatrixRows:[{...approved,engineer_name:'Legacy'}]})]);assert.equal((await call(workflow.review(kind,'approve'),{id:1,user:2})).code,409);assert.equal((await read(kind)).body.matrix[0].engineer_name,'Reviewer');assert.equal((await db.query(`SELECT status FROM ${c.requests}`))[0][0].status,'pending');
   });
   test(kind+': post-approval edits and even reverting those edits require fresh final approval',async t=>{

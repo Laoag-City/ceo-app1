@@ -7,3 +7,4 @@ const open=async()=>{
 require('./station-workflow.scenarios.cjs')(open,'postgres');
 require('./people-directory.scenarios.cjs')(open,'postgres');
 require('./admin-history.scenarios.cjs')(open,'postgres');
+require('./audit-names.scenarios.cjs')(open);

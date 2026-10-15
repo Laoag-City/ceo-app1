@@ -17,13 +17,19 @@ function summary(state,reviews=[]) {
 }
 async function invalidate(conn,kind,id,user,state) {
     const [rows]=await conn.query('SELECT decision FROM permit_final_reviews WHERE kind=? AND project_id=? ORDER BY id DESC LIMIT 1',[kind,id]);
-    if(rows[0]?.decision==='approved')await conn.query("INSERT INTO permit_final_reviews (kind,project_id,decision,reviewer_id,reviewer_name,remarks,snapshot_hash,snapshot) VALUES (?,?,'invalidated',?,?,?, ?,?)",[kind,id,user.id,user.username || String(user.id),'Project details changed; a fresh final review is required.',fingerprint(state),JSON.stringify(state)]);
+    if(rows[0]?.decision==='approved')await conn.query("INSERT INTO permit_final_reviews (kind,project_id,decision,reviewer_id,reviewer_name,remarks,snapshot_hash,snapshot) VALUES (?,?,'invalidated',?,?,?, ?,?)",[kind,id,user.id,await require('./stationAccess').displayName(conn,user),'Project details changed; a fresh final review is required.',fingerprint(state),JSON.stringify(state)]);
+}
+async function reviewHistory(conn,kind,id){
+    const [rows]=await conn.query(`SELECT f.*,COALESCE(NULLIF(TRIM(p.display_name),''),f.reviewer_name) AS reviewer_name
+        FROM permit_final_reviews f LEFT JOIN permit_user_profiles p ON p.user_id=f.reviewer_id
+        WHERE f.kind=?${id===undefined?'':' AND f.project_id=?'} ORDER BY f.id DESC`,id===undefined?[kind]:[kind,id]);
+    return rows;
 }
 async function projectList(conn,kind) {
     const building=kind==='permits',table=building?'permits':'occupancy_permits',matrixTable=building?'permit_routing_matrix':'occupancy_routing_matrix',column=building?'permit_id':'occupancy_id';
     const [records]=await conn.query('SELECT * FROM '+table+' ORDER BY id DESC');
     const [matrix]=await conn.query('SELECT * FROM '+matrixTable+' ORDER BY id');
-    const [reviews]=await conn.query('SELECT * FROM permit_final_reviews WHERE kind=? ORDER BY id DESC',[kind]);
+    const reviews=await reviewHistory(conn,kind);
     let subs=[],lots=[];
     if(building){[subs]=await conn.query('SELECT * FROM sub_permits ORDER BY id');[lots]=await conn.query('SELECT * FROM permit_lots ORDER BY id');}
     return records.map(record=>{
@@ -32,4 +38,4 @@ async function projectList(conn,kind) {
         return {...record,kind,final_approval:summary(state,reviews.filter(r=>Number(r.project_id)===Number(record.id)))};
     });
 }
-module.exports={fingerprint,summary,invalidate,projectList};
+module.exports={fingerprint,summary,invalidate,projectList,reviewHistory};

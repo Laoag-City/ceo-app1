@@ -19,11 +19,12 @@ test('comments render as text, drafts survive remount, repeated clicks post once
     const window={};
     const context={window,crypto,document:{createElement:tag=>new Element(tag),addEventListener(){}},sessionStorage:{getItem:key=>key==='oboUser'?'{"id":1,"role":"operator"}':storage.get(key),setItem:(key,value)=>storage.set(key,value)},RequestFeedback:{fetch:async(url,options)=>{
         if(options.method==='POST'){posts++;await new Promise(resolve=>finish=resolve);return {json:async()=>({success:true})};}
-        return {json:async()=>({records:[{actor_name:'Other operator',actor_role:'operator',category:'comment',message:'<img src=x onerror=alert(1)>',created_at:'2026-09-15 12:00:00'}],next:null})};
+        return {json:async()=>({records:[{actor_name:"Edward O'Brien <Engineer>",actor_role:'operator',category:'comment',message:'<img src=x onerror=alert(1)>',created_at:'2026-09-15 12:00:00'}],next:null})};
     }}};
     vm.runInNewContext(fs.readFileSync(__dirname+'/../assets/permits/project-records.js','utf8'),context);
     let host=new Element('section');window.ProjectRecords.mount(host,'permits',10);await tick();
     assert.equal(host.children[3].children[0].children[1].textContent,'<img src=x onerror=alert(1)>');
+    assert.equal(host.children[3].children[0].children[0].children[0].textContent,"Edward O'Brien <Engineer>");
     let form=host.children[1],textarea=form.children[1];textarea.value='Check revised plans';textarea.events.input();
     host=new Element('section');window.ProjectRecords.mount(host,'permits',10);await tick();
     form=host.children[1];textarea=form.children[1];assert.equal(textarea.value,'Check revised plans');

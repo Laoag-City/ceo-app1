@@ -269,7 +269,7 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
             const state=current.state;
             const assigned=await stationAccess.assignments(conn,user.id),allowed=new Set(assigned.map(station=>station.station_key));
             const operators=await stationAccess.engineers(conn,[...state.matrix,...(state.subMatrix || [])]);
-            const [reviews]=await conn.query('SELECT * FROM permit_final_reviews WHERE kind=? AND project_id=? ORDER BY id DESC',[kind,Number(req.params.id)]);
+            const reviews=await finalApproval.reviewHistory(conn,kind,Number(req.params.id));
             const calendarRow=row=>{
                 const copy={...row};
                 for(const key of ['permit_date','date_applied','date_checked','date_approved'])if(copy[key]!=null)copy[key]=stationDates.calendar(copy[key]);
@@ -368,7 +368,7 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
             const operators=await stationAccess.engineers(conn,[...current.state.matrix,...(current.state.subMatrix || [])]);
             const reviewedEngineers=[...current.state.matrix,...(current.state.subMatrix || [])].map(row=>{const live=stationAccess.engineer(row,operators);return {station_id:Number(row.id),operator_id:live.reviewing_operator_id || live.assigned_operator_id,display_name:live.engineer_name};});
             const reviewSnapshot={...current.state,reviewed_engineers:reviewedEngineers};
-            await conn.query('INSERT INTO permit_final_reviews (kind,project_id,decision,reviewer_id,reviewer_name,remarks,snapshot_hash,snapshot) VALUES (?,?,?,?,?,?,?,?)',[kind,id,decision,user.id,user.username,remarks,finalApproval.fingerprint(current.state),JSON.stringify(reviewSnapshot)]);
+            await conn.query('INSERT INTO permit_final_reviews (kind,project_id,decision,reviewer_id,reviewer_name,remarks,snapshot_hash,snapshot) VALUES (?,?,?,?,?,?,?,?)',[kind,id,decision,user.id,await stationAccess.displayName(conn,user),remarks,finalApproval.fingerprint(current.state),JSON.stringify(reviewSnapshot)]);
             return {body:{success:true,message:decision==='approved'?'Project finally approved.':'Project returned for correction.'}};
         });
     }

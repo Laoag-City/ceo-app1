@@ -1,5 +1,6 @@
 // Read-only engineering history. Audit and final-review rows survive project deletion.
 const dates=require('./stationDates'),changes=require('./projectChanges');
+const auditNames=require('./auditNames');
 const kinds=['permits','occupancy'],sources=['request','activity','final_review'];
 const invalid=()=>Object.assign(Error('Invalid history filters or cursor.'),{status:400});
 const decode=value=>{try{return typeof value==='string'?JSON.parse(value):value}catch{return null}};
@@ -26,23 +27,23 @@ function detail(source,parsed,raw){
 const projection=`SELECT r.id,'request' source,'permits' kind,r.permit_id project_id,
  COALESCE(p.project_title,(SELECT a.project_title FROM project_records a WHERE a.kind='permits' AND a.project_id=r.permit_id ORDER BY a.id DESC LIMIT 1),CONCAT('Building permit #',r.permit_id)) project_title,
  r.status,r.change_type event_type,CONCAT('Request: ',r.change_type) message,
- COALESCE(u.username,CASE WHEN r.requested_by IS NULL THEN 'Unknown operator' ELSE CONCAT('Account #',r.requested_by) END) actor_name,r.created_at,COALESCE(r.remarks,'') remarks
- FROM permit_change_requests r LEFT JOIN permits p ON p.id=r.permit_id LEFT JOIN users u ON u.id=r.requested_by
+ COALESCE(NULLIF(TRIM(up.display_name),''),u.username,CASE WHEN r.requested_by IS NULL THEN 'Unknown operator' ELSE CONCAT('Account #',r.requested_by) END) actor_name,r.created_at,COALESCE(r.remarks,'') remarks
+ FROM permit_change_requests r LEFT JOIN permits p ON p.id=r.permit_id LEFT JOIN users u ON u.id=r.requested_by LEFT JOIN permit_user_profiles up ON up.user_id=r.requested_by
  UNION ALL
  SELECT r.id,'request','occupancy',r.occupancy_id,
  COALESCE(p.project_title,(SELECT a.project_title FROM project_records a WHERE a.kind='occupancy' AND a.project_id=r.occupancy_id ORDER BY a.id DESC LIMIT 1),CONCAT('Occupancy permit #',r.occupancy_id)),
- r.status,r.change_type,CONCAT('Request: ',r.change_type),COALESCE(u.username,CASE WHEN r.requested_by IS NULL THEN 'Unknown operator' ELSE CONCAT('Account #',r.requested_by) END),r.created_at,COALESCE(r.remarks,'')
- FROM occupancy_change_requests r LEFT JOIN occupancy_permits p ON p.id=r.occupancy_id LEFT JOIN users u ON u.id=r.requested_by
+ r.status,r.change_type,CONCAT('Request: ',r.change_type),COALESCE(NULLIF(TRIM(up.display_name),''),u.username,CASE WHEN r.requested_by IS NULL THEN 'Unknown operator' ELSE CONCAT('Account #',r.requested_by) END),r.created_at,COALESCE(r.remarks,'')
+ FROM occupancy_change_requests r LEFT JOIN occupancy_permits p ON p.id=r.occupancy_id LEFT JOIN users u ON u.id=r.requested_by LEFT JOIN permit_user_profiles up ON up.user_id=r.requested_by
  UNION ALL
- SELECT a.id,'activity',a.kind,a.project_id,a.project_title,a.outcome,a.category,a.message,a.actor_name,a.created_at,''
- FROM project_records a WHERE a.kind IN ('permits','occupancy') AND a.outcome<>'failed'
+ SELECT a.id,'activity',a.kind,a.project_id,a.project_title,a.outcome,a.category,a.message,COALESCE(NULLIF(TRIM(up.display_name),''),a.actor_name),a.created_at,''
+ FROM project_records a LEFT JOIN permit_user_profiles up ON up.user_id=a.actor_id WHERE a.kind IN ('permits','occupancy') AND a.outcome<>'failed'
  UNION ALL
  SELECT f.id,'final_review',f.kind,f.project_id,
  COALESCE(b.project_title,o.project_title,(SELECT a.project_title FROM project_records a WHERE a.kind=f.kind AND a.project_id=f.project_id ORDER BY a.id DESC LIMIT 1),CONCAT('Permit #',f.project_id)),
  f.decision,f.decision,CASE f.decision WHEN 'approved' THEN 'Final project approval' WHEN 'returned' THEN 'Returned for correction' ELSE 'Fresh final review required' END,
- f.reviewer_name,f.created_at,f.remarks
+ COALESCE(NULLIF(TRIM(up.display_name),''),f.reviewer_name),f.created_at,f.remarks
  FROM permit_final_reviews f LEFT JOIN permits b ON f.kind='permits' AND b.id=f.project_id
- LEFT JOIN occupancy_permits o ON f.kind='occupancy' AND o.id=f.project_id`;
+ LEFT JOIN occupancy_permits o ON f.kind='occupancy' AND o.id=f.project_id LEFT JOIN permit_user_profiles up ON up.user_id=f.reviewer_id`;
 // Preserve database timestamp precision and its local wall time. JS Date loses
 // PostgreSQL microseconds and could skip history at a page boundary.
 function cursor(row){return Buffer.from(JSON.stringify({at:row.history_time,source:row.source,kind:row.kind,id:Number(row.id)})).toString('base64url')}
@@ -69,11 +70,13 @@ module.exports=async function history(query,input={},limit=25,includeDetails=tru
   for(const [source,kind,table,field] of [['request','permits','permit_change_requests','changes'],['request','occupancy','occupancy_change_requests','changes'],['activity',null,'project_records','details'],['final_review',null,'permit_final_reviews','snapshot']]){
    const entries=records.filter(row=>row.source===source&&(!kind||row.kind===kind));if(!entries.length)continue;
    const details=await query(`SELECT id,${field}${source==='request'?',reviewed_by,reviewed_at':''} FROM ${table} WHERE id IN (?)`,[entries.map(row=>row.id)]),byId=new Map(details.map(row=>[Number(row.id),row]));
+   const names=await auditNames(query,details.flatMap(row=>{const parsed=decode(row[field]);return source==='request'?[row.reviewed_by]:parsed?.type==='bulk_delete'?[parsed.reviewed_by_id,parsed.reviewed_by]:[]}));
    for(const entry of entries){
     const raw=byId.get(Number(entry.id)),parsed=decode(raw?.[field]);
     if(source==='request'){
-     entry.reviewed_by=raw?.reviewed_by || '';entry.reviewed_at=raw?.reviewed_at || null;
+     entry.reviewed_by=names(raw?.reviewed_by);entry.reviewed_at=raw?.reviewed_at || null;
     }
+    if(parsed?.type==='bulk_delete')parsed.reviewed_by=names(parsed.reviewed_by,parsed.reviewed_by_id);
     entry.details=detail(source,parsed,raw?.[field]);
    }
   }

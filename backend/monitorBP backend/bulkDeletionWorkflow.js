@@ -3,6 +3,7 @@
  * A request covers only its recorded projects; changed projects require resubmission.
  */
 const crypto = require('node:crypto');
+const {displayName}=require('./stationAccess');
 const configs = {
     permits: { table: 'permits', key: 'permit_id', matrix: 'permit_routing_matrix', label: 'Building' },
     occupancy: { table: 'occupancy_permits', key: 'occupancy_id', matrix: 'occupancy_routing_matrix', label: 'Occupancy' }
@@ -49,7 +50,7 @@ module.exports = function bulkDeletionWorkflow(open) {
         };
     }
     async function pendingRows(db, kind) {
-        const [rows] = await db.query("SELECT * FROM project_records WHERE kind=? AND category='bulk_delete' AND outcome='pending' ORDER BY id DESC", [kind]);
+        const [rows] = await db.query("SELECT r.*,COALESCE(NULLIF(TRIM(p.display_name),''),r.actor_name) AS actor_name FROM project_records r LEFT JOIN permit_user_profiles p ON p.user_id=r.actor_id WHERE r.kind=? AND r.category='bulk_delete' AND r.outcome='pending' ORDER BY r.id DESC", [kind]);
         return rows;
     }
     function present(row) {
@@ -109,7 +110,7 @@ module.exports = function bulkDeletionWorkflow(open) {
             if (req.body.version !== hash(projects.map(p => Number(p.record.id)))) throw bad('The registry changed. Refresh the record count and confirm again.', 409);
             const details = { type: 'bulk_delete', projects, snapshot_hash: hash(projects) };
             const [result] = await db.query("INSERT INTO project_records (kind,project_id,project_title,actor_id,actor_name,actor_role,category,outcome,message,details,request_key) VALUES (?,NULL,?,?,?,?,'bulk_delete','pending',?,?,?)",
-                [kind, 'All ' + configs[kind].label + ' permit records', user.id, user.username, user.role,
+                [kind, 'All ' + configs[kind].label + ' permit records', user.id, await displayName(db,user), user.role,
                     'Requested deletion of all ' + projects.length + ' ' + configs[kind].label.toLowerCase() + ' permit records', JSON.stringify(details), pendingKey(kind)]);
             return { body: { success: true, pending: true, requestId: result.insertId, count: projects.length, message: 'Request sent to the admin. All ' + projects.length + ' permit records remain available until approved.' } };
         });
@@ -125,7 +126,8 @@ module.exports = function bulkDeletionWorkflow(open) {
             if (!['approve', 'reject'].includes(decision)) throw bad('Invalid review decision.');
             let details; try { details = decode(request.details); } catch (_) {}
             if (!details || typeof details !== 'object') details = { type: 'bulk_delete', projects: [], original_details: request.details };
-            const reviewed = { ...details, reviewed_by: user.username, reviewed_at: new Date().toISOString(), decision };
+            const reviewerName=await displayName(db,user);
+            const reviewed = { ...details, reviewed_by: reviewerName, reviewed_by_id:user.id, reviewed_at: new Date().toISOString(), decision };
             async function finish(outcome, message) {
                 await db.query('UPDATE project_records SET outcome=?,message=?,details=?,request_key=NULL WHERE id=?', [outcome, message, JSON.stringify(reviewed), id]);
             }
@@ -145,7 +147,7 @@ module.exports = function bulkDeletionWorkflow(open) {
             }
             for (const project of current) {
                 await db.query("INSERT INTO project_records (kind,project_id,project_title,actor_id,actor_name,actor_role,category,outcome,message,details) VALUES (?,?,?,?,?,?,'activity','saved',?,?)",
-                    [kind, project.record.id, project.record.project_title, user.id, user.username, user.role,
+                    [kind, project.record.id, project.record.project_title, user.id, reviewerName, user.role,
                         'Deleted permit through bulk deletion request #' + id, JSON.stringify({ version: 1, changes: [{ field: 'Permit record', before: project.record.project_title, after: 'Deleted with related records' }] })]);
             }
             const [deleted] = await db.query('DELETE FROM ' + configs[kind].table + ' WHERE id IN (?)', [ids]);

@@ -11,6 +11,7 @@ async function fixture(t) {
     t.after(async () => { await db.end(); await pool.end(); });
     const tables = {
         users: 'id INT PRIMARY KEY,username VARCHAR(50),role VARCHAR(20),is_active INT,is_verified INT',
+        permit_user_profiles:'user_id INT PRIMARY KEY,display_name VARCHAR(80)',
         permits: 'id INT PRIMARY KEY,project_title VARCHAR(255),permit_date DATE',
         occupancy_permits: 'id INT PRIMARY KEY,project_title VARCHAR(255),date_applied DATE',
         permit_lots: 'id INT PRIMARY KEY,permit_id INT REFERENCES permits(id) ON DELETE CASCADE,lot_number VARCHAR(100)',
@@ -29,6 +30,7 @@ async function fixture(t) {
     };
     for (const [table, columns] of Object.entries(tables)) await db.query('CREATE TEMP TABLE ' + table + ' (' + columns + ')');
     await db.query("INSERT INTO users VALUES (1,'operator','operator',1,1),(2,'boss','admin',1,1),(3,'it','superadmin',1,1),(4,'inactive','operator',0,1)");
+    await db.query("INSERT INTO permit_user_profiles VALUES (1,'Operator Display Name'),(2,'Admin Display Name')");
     await db.query("INSERT INTO permits VALUES (10,'Building A','2026-10-01'),(20,'Building B','2026-10-02')");
     await db.query("INSERT INTO occupancy_permits VALUES (10,'Occupancy A','2026-10-01'),(20,'Occupancy B','2026-10-02')");
     await db.query("INSERT INTO permit_lots VALUES (1,10,'Lot 1');");
@@ -66,7 +68,7 @@ for (const kind of ['permits','occupancy']) {
         assert.equal(submitted.body.pending,true);assert.equal(submitted.body.count,2);
         assert.equal((await f.rows(table)).length,2);
         const duplicate=await f.submit(kind);assert.equal(duplicate.body.duplicate,true);
-        assert.equal((await f.service.pending(kind)).length,1);
+        const pending=await f.service.pending(kind);assert.equal(pending.length,1);assert.equal(pending[0].requested_by_name,'Operator Display Name');
         for(const role of ['operator','superadmin'])assert.equal((await f.review(kind,submitted.body.requestId,'approve',{role})).code,403);
         assert.equal((await f.review(kind,submitted.body.requestId,'approve',{userId:1})).code,403);
         assert.equal((await f.call(f.service.submit(kind),{role:'admin',body:{confirmation:'DELETE ALL'}})).code,403);
@@ -81,8 +83,8 @@ for (const kind of ['permits','occupancy']) {
         assert.equal((await f.rows('users')).length,4);assert.equal((await f.rows('permit_final_reviews')).length,2);
         for(const child of kind==='permits'?['permit_lots','sub_permits','permit_routing_matrix','permit_change_requests']:['occupancy_routing_matrix','occupancy_inspections','occupancy_checklists','occupancy_change_requests'])assert.equal((await f.rows(child)).length,0,child);
         const audit=await f.rows('project_records'),request=audit.find(r=>r.id===id),archive=JSON.parse(request.details);
-        assert.equal(request.outcome,'approved');assert.equal(request.request_key,null);assert.equal(archive.reviewed_by,'boss');assert.equal(archive.projects.length,2);assert.equal(archive.projects[0].requests.length,1);assert.equal(archive.projects[0].matrix.length,1);assert.equal(archive.projects[0].final_reviews.length,1);
-        assert.equal(audit.filter(r=>r.category==='activity'&&r.actor_name==='boss').length,2);
+        assert.equal(request.outcome,'approved');assert.equal(request.request_key,null);assert.equal(archive.reviewed_by,'Admin Display Name');assert.equal(archive.reviewed_by_id,2);assert.equal(archive.projects.length,2);assert.equal(archive.projects[0].requests.length,1);assert.equal(archive.projects[0].matrix.length,1);assert.equal(archive.projects[0].final_reviews.length,1);
+        assert.equal(audit.filter(r=>r.category==='activity'&&r.actor_name==='Admin Display Name').length,2);
         assert.equal((await f.review(kind,id)).code,409);assert.equal((await f.read(kind)).pending,null);
         assert.equal((await f.submit(kind)).code,400);
     });

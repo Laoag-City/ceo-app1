@@ -361,10 +361,11 @@ app.get('/api/permits/change-requests/pending', (req, res) => {
 
     const sql = `
         SELECT c.id, c.permit_id, c.change_type, c.changes, c.status, c.remarks, c.created_at,
-               p.project_title, p.location, u.username AS requested_by_name
+               p.project_title, p.location, COALESCE(NULLIF(TRIM(up.display_name),''),u.username) AS requested_by_name
         FROM permit_change_requests c
         LEFT JOIN permits p ON p.id = c.permit_id
         LEFT JOIN users u ON u.id = c.requested_by
+        LEFT JOIN permit_user_profiles up ON up.user_id = c.requested_by
         WHERE c.status = 'pending' AND c.change_type NOT IN ('matrix_update','station_dates')
         ORDER BY c.created_at DESC`;
 
@@ -475,10 +476,11 @@ app.get('/api/occupancy/change-requests/pending', (req, res) => {
 
     const sql = `
         SELECT c.id, c.occupancy_id, c.change_type, c.changes, c.status, c.remarks, c.created_at,
-               o.project_title, o.location, u.username AS requested_by_name
+               o.project_title, o.location, COALESCE(NULLIF(TRIM(up.display_name),''),u.username) AS requested_by_name
         FROM occupancy_change_requests c
         LEFT JOIN occupancy_permits o ON o.id = c.occupancy_id
         LEFT JOIN users u ON u.id = c.requested_by
+        LEFT JOIN permit_user_profiles up ON up.user_id = c.requested_by
         WHERE c.status = 'pending' AND c.change_type NOT IN ('matrix_update','station_dates')
         ORDER BY c.created_at DESC`;
 
