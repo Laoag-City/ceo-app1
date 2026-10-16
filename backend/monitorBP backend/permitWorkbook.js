@@ -25,7 +25,7 @@ module.exports=async function permitWorkbook(kind,headers,rows) {
         row.eachCell(cell=>{
             cell.font={name:'Calibri',size:11,color:{argb:'FF173248'}};
             cell.alignment={vertical:'top',wrapText:true};
-            if(cell.value instanceof Date)cell.numFmt='mmm d, yyyy';
+            if(cell.value instanceof Date)cell.numFmt='mm/dd/yyyy';
             if(row.number%2===0)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F5F9'}};
         });
     }

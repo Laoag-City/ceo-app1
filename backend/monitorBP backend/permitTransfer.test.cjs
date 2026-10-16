@@ -26,15 +26,15 @@ test('CSV reports quote correctly and neutralize spreadsheet formulas',()=>{
     const output=transfer.csv([['=1+1',' \t@SUM(1)','Safe, "text"','ñ']]);
     assert.ok(output.startsWith('\uFEFF'));assert.match(output,/"'=1\+1"/);assert.match(output,/"' \t@SUM/);assert.match(output,/Safe, ""text""/);
 });
-test('Excel round trip preserves literal text, Unicode, dates and workbook formatting',async()=>{
-    const buffer=await permitWorkbook('permits',['project_id','project_title','permit_date','status'],[['BP-1','=1+1','2026-09-26','Approved'],['BP-2','Café, "Annex"',null,'In review']]);
+for(const [kind,dateHeader,sheetName] of [['permits','permit_date','Building Permits'],['occupancy','date_applied','Occupancy Permits']])test(kind+': Excel round trip preserves literal text, Unicode, numeric calendar dates and workbook formatting',async()=>{
+    const buffer=await permitWorkbook(kind,['project_id','project_title',dateHeader,'status'],[['BP-1','=1+1','2026-10-16','Approved'],['BP-2','Café, "Annex"',null,'In review']]);
     const book=new ExcelJS.Workbook();await book.xlsx.load(buffer);
-    const sheet=book.getWorksheet('Building Permits');
+    const sheet=book.getWorksheet(sheetName);
     assert.equal(sheet.getCell('A2').value,'BP-1');
     assert.equal(sheet.getCell('B2').value,'=1+1');assert.equal(sheet.getCell('B2').type,ExcelJS.ValueType.String);
     assert.equal(sheet.getCell('B3').value,'Café, "Annex"');
-    assert.equal(sheet.getCell('C2').value.toISOString(),'2026-09-26T00:00:00.000Z');
-    assert.equal(sheet.getCell('C2').numFmt,'mmm d, yyyy');assert.equal(sheet.getCell('C3').value,null);
+    assert.equal(sheet.getCell('C2').value.toISOString(),'2026-10-16T00:00:00.000Z');
+    assert.equal(sheet.getCell('C2').numFmt,'mm/dd/yyyy');assert.equal(sheet.getCell('C3').value,null);
     assert.equal(sheet.getRow(1).getCell(1).font.bold,true);assert.equal(sheet.views[0].ySplit,1);
     assert.equal(sheet.autoFilter,'A1:D3');assert.ok(sheet.getColumn(2).width>=30);
 });
