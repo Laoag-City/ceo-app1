@@ -4,7 +4,7 @@ const {JSDOM,VirtualConsole}=require('jsdom');
 const fs=require('node:fs'),path=require('node:path');
 const base=path.resolve(__dirname,'..');
 const wait=()=>new Promise(resolve=>setTimeout(resolve,60));
-async function fixture(kind,datesSupported=true){
+async function fixture(kind,datesSupported=true,role='operator'){
  const occupancy=kind==='occupancy',calls=[],alerts=[];
  const dom=new JSDOM('<div id="system-react-root" data-page="'+(occupancy?'permits-occupancy_edit':'permits-edit')+'"></div>',{url:'http://localhost/'+(occupancy?'occupancy_edit':'edit')+'?id=10',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:new VirtualConsole()});
  const w=dom.window,d=w.document;let fail=false;
@@ -12,7 +12,7 @@ async function fixture(kind,datesSupported=true){
  w.AbortController=AbortController;w.alert=message=>alerts.push(message);w.confirm=()=>true;
  w.HTMLDialogElement.prototype.showModal=function(){this.open=true;this.querySelector('[autofocus]')?.focus()};
  w.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new w.Event('close'))};
- w.sessionStorage.setItem('oboUser',JSON.stringify({id:1,username:'fixture',role:'operator'}));
+ w.sessionStorage.setItem('oboUser',JSON.stringify({id:1,username:'fixture',role}));
  const station={id:50,can_edit:true,assigned_operator_id:1,engineer_profile_bound:true,discipline_name:'Electrical',engineer_name:'Original',signature_status:'Pending',feedback_remarks:'',date_checked:'2026-01-01',date_approved:''};
  const record={id:10,project_title:'Fixture',location:'Location',owner_name:'Owner',permit_date:'2026-01-01',date_applied:'2026-01-01',lot_numbers:[],sub_permits:occupancy?[]:[{id:7,sub_project_title:'Annex',matrix:[{...station,id:51}]}],rejection_history:'[]',_version:'loaded-permit',_signatureDatesSupported:datesSupported,_stationAccessSupported:true,_assignedEngineerProfileSupported:true,matrix:[station]};
  w.fetch=async(url,options={})=>{
@@ -46,6 +46,40 @@ function edit(w,d,id=50){
  return row;
 }
 for(const kind of ['building','occupancy']){
+ test(kind+': assigned admin edits only permitted station rows and cannot alter workflow structure',async()=>{
+  const {dom,w,d,calls,record}=await fixture(kind,true,'admin');try{
+   record.matrix.unshift({...record.matrix[0],id:49,discipline_name:'Sanitary',can_edit:false});
+   for(const sub of record.sub_permits)sub.matrix.forEach(row=>row.can_edit=false);
+   await w.fetchPermitData();w.enableEditingMode();
+   assert.equal(d.querySelectorAll('#matrixTableBody select').length,1);
+   assert.equal(d.querySelectorAll('#matrixTableBody .remarks-edit').length,1);
+   assert.equal(d.querySelectorAll('#matrixTableBody .btn-icon-danger,.station-delete-btn').length,0);
+   assert.equal(d.querySelector('.station-configuration-card').hidden,true);
+   edit(w,d);d.getElementById('saveMatrixBtn').click();await wait();
+   const payload=JSON.parse(calls.find(call=>call.options.method==='PUT').options.body);
+   assert.deepEqual(payload.updatedMatrixRows.map(row=>row.id),['50']);
+   calls.length=0;record.matrix=[];record.sub_permits=[];
+   record[kind==='building'?'_standardBuildingStationsSupported':'_standardOccupancyStationsSupported']=true;
+   await w.fetchPermitData();
+   assert.equal(d.getElementById(kind==='building'?'standardBuildingStations':'standardOccupancyStations').hidden,true);
+   await w.initializeStandardStations();
+   if(kind==='building'){await w.postStationToMatrix('Electrical');await w.deleteStation('Electrical','permit_id=10');}
+   else {await w.appendStation();await w.removeStation('Electrical');}
+   assert.equal(calls.filter(call=>['POST','PUT','DELETE'].includes(call.options.method)&&call.url!=='/api/presence').length,0);
+  }finally{dom.window.close()}
+ });
+ test(kind+': admin without assignments sees every station but has no routing edit controls',async()=>{
+  const {dom,w,d,calls,record}=await fixture(kind,true,'admin');try{
+   record.matrix.forEach(row=>row.can_edit=false);for(const sub of record.sub_permits)sub.matrix.forEach(row=>row.can_edit=false);
+   await w.fetchPermitData();w.enableEditingMode();
+   assert.equal(d.getElementById('editTriggerBtn').style.display,'none');
+   assert.equal(d.getElementById('saveMatrixBtn').style.display,'none');
+   assert.equal(d.querySelectorAll('#matrixTableBody select,.station-date-input,.remarks-edit,.station-delete-btn,.btn-icon-danger').length,0);
+   assert.equal(d.querySelectorAll('#matrixTableBody .station-engineer-name').length,kind==='building'?2:1);
+   assert.match(d.getElementById('projectFinalApproval').textContent,/no station assignment/);
+   assert.equal(calls.filter(call=>['POST','PUT','DELETE'].includes(call.options.method)&&call.url!=='/api/presence').length,0);
+  }finally{dom.window.close()}
+ });
  test(kind+': compact remarks preserve drafts and permissions until routing updates are saved',async()=>{
   const {dom,w,d,calls,record}=await fixture(kind);try{
    const original='Saved station remark',draft="Owner's signature\n"+'LONGWORD'.repeat(200)+'\n<img src=x onerror=alert(1)>';

@@ -1,6 +1,6 @@
 /**
  * MAINTAINER GUIDE
- * Shared permit navigation: operator registry, admin dashboard, superadmin dashboard.
+ * Shared permit navigation: staff registries, admin dashboard, superadmin dashboard.
  * Old login URLs converge on /login. History restoration rechecks the stored login state.
  * Server-protected pages seed the verified user before these UI guards run. Cookies authenticate API requests.
  */
@@ -15,7 +15,7 @@
         if(page === 'login') return null;
         if(target === '/login') return '/login';
         if(page === 'dashboard') return path === target ? null : target;
-        if(page === 'operator' && user.role !== 'operator') return target;
+        if(page === 'operator' && !['operator','admin'].includes(user.role)) return target;
         return null;
     }
     const api = {home, readUser, redirectFor};

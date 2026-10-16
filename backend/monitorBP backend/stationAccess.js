@@ -5,7 +5,7 @@ async function assignments(conn,userId,lock=false) {
     return rows;
 }
 async function authorize(conn,user,rows) {
-    if(user.role!=='operator')throw denied('Only the designated station operator can edit station details.');
+    if(!['operator','admin'].includes(user.role))throw denied('Only assigned operators or admins can edit station details.');
     const assigned=await assignments(conn,user.id,true),allowed=new Set(assigned.map(row=>row.station_key));
     if(!assigned.length || rows.some(row=>!allowed.has(key(row.discipline_name))))throw denied('You can edit only your assigned stations. Ask the IT team to check your station assignments.');
     return assigned;
@@ -18,7 +18,7 @@ async function engineers(conn,stationRows=[]) {
     const [rows]=await conn.query(`SELECT a.station_key,a.user_id,
         COALESCE(NULLIF(TRIM(p.display_name),''),u.username) AS display_name
         FROM permit_station_assignments a INNER JOIN users u ON u.id=a.user_id
-        LEFT JOIN permit_user_profiles p ON p.user_id=u.id WHERE u.role='operator' ORDER BY a.station_key,u.id`);
+        LEFT JOIN permit_user_profiles p ON p.user_id=u.id WHERE u.role IN ('operator','admin') ORDER BY a.station_key,u.id`);
     const byStation=new Map();
     for(const row of rows){if(!byStation.has(row.station_key))byStation.set(row.station_key,[]);byStation.get(row.station_key).push({id:Number(row.user_id),display_name:row.display_name});}
     const ids=[...new Set(stationRows.map(row=>Number(row.last_updated_by)).filter(id=>Number.isSafeInteger(id)&&id>0))];

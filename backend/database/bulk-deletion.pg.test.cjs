@@ -71,7 +71,7 @@ for (const kind of ['permits','occupancy']) {
         const pending=await f.service.pending(kind);assert.equal(pending.length,1);assert.equal(pending[0].requested_by_name,'Operator Display Name');
         for(const role of ['operator','superadmin'])assert.equal((await f.review(kind,submitted.body.requestId,'approve',{role})).code,403);
         assert.equal((await f.review(kind,submitted.body.requestId,'approve',{userId:1})).code,403);
-        assert.equal((await f.call(f.service.submit(kind),{role:'admin',body:{confirmation:'DELETE ALL'}})).code,403);
+        assert.equal((await f.call(f.service.submit(kind),{role:'admin',body:{confirmation:'DELETE ALL'}})).code,409);
         assert.equal((await f.call(f.service.submit(kind),{userId:4})).code,403);
         assert.equal((await f.rows(table)).length,2);assert.equal((await f.rows(other)).length,2);
     });
@@ -112,6 +112,64 @@ for (const kind of ['permits','occupancy']) {
         assert.equal((await f.rows(table)).length,2);assert.equal((await f.rows('project_records')).length,1);assert.equal((await f.read(kind)).pending.id,submitted.body.requestId);
         await f.db.query('DELETE FROM deletion_blocker');
         assert.equal((await f.review(kind,submitted.body.requestId)).body.success,true);
+    });
+    test(kind+': admin deletes one permit directly, archives its dependencies and preserves the other registry',async t=>{
+        const f=await fixture(t),handler=f.service.remove(kind);
+        assert.equal((await f.call(handler,{role:'admin',id:10})).code,400);
+        const result=await f.call(handler,{role:'admin',id:10,body:{confirmation:'DELETE'}});
+        assert.equal(result.code,200);assert.equal(result.body.pending,false);assert.equal(result.body.deletedCount,1);
+        assert.deepEqual((await f.rows(table)).map(row=>row.id),[20]);assert.equal((await f.rows(other)).length,2);
+        const audits=await f.rows('project_records');assert.equal(audits.length,1);assert.equal(audits[0].category,'activity');assert.equal(audits[0].outcome,'saved');assert.equal(audits[0].actor_name,'Admin Display Name');
+        const archived=JSON.parse(audits[0].details).deletion;assert.equal(archived.mode,'direct');assert.equal(archived.scope,'single');assert.equal(archived.project.record.id,10);assert.equal(archived.project.matrix.length,1);assert.equal(archived.project.requests.length,1);assert.equal(archived.project.final_reviews.length,1);
+        if(kind==='permits'){assert.equal(archived.project.subs.length,1);assert.equal(archived.project.subMatrix.length,1);assert.equal(archived.project.lots.length,1);}
+        else{assert.equal(archived.project.inspections.length,1);assert.equal(archived.project.checklists.length,1);}
+        assert.equal((await f.rows('permit_final_reviews')).length,2);assert.equal((await f.read(kind)).pending,null);
+        assert.equal((await f.call(handler,{role:'admin',id:10,body:{confirmation:'DELETE'}})).code,404);assert.equal((await f.rows('project_records')).length,1);
+    });
+    test(kind+': admin Delete All deletes immediately even with an operator request pending',async t=>{
+        const f=await fixture(t),request=await f.submit(kind),preview=await f.read(kind);
+        const result=await f.call(f.service.submit(kind),{role:'admin',body:{confirmation:'DELETE ALL',version:preview.version}});
+        assert.equal(result.code,200);assert.equal(result.body.pending,false);assert.equal(result.body.deletedCount,2);assert.equal(result.body.requestId,undefined);
+        assert.equal((await f.rows(table)).length,0);assert.equal((await f.rows(other)).length,2);assert.equal((await f.read(kind)).pending,null);
+        const audit=await f.rows('project_records'),old=audit.find(row=>row.id===request.body.requestId);
+        assert.equal(old.outcome,'conflict');assert.equal(old.request_key,null);assert.equal(JSON.parse(old.details).decision,'superseded');
+        const saved=audit.filter(row=>row.category==='activity');assert.equal(saved.length,2);
+        assert.ok(saved.every(row=>row.actor_role==='admin'&&JSON.parse(row.details).deletion.scope==='registry'));
+        assert.equal((await f.review(kind,request.body.requestId)).code,409);
+        assert.equal((await f.call(f.service.submit(kind),{role:'admin',body:{confirmation:'DELETE ALL',version:preview.version}})).code,400);
+    });
+    test(kind+': direct deletion rechecks role, activation, confirmation and registry scope',async t=>{
+        const f=await fixture(t),handler=f.service.remove(kind);
+        for(const options of [{role:'operator'},{role:'superadmin'},{role:'admin',userId:1},{role:'admin',userId:4}]) {
+            assert.equal((await f.call(handler,{id:10,body:{confirmation:'DELETE'},...options})).code,403);
+            assert.equal((await f.call(f.service.submit(kind),{body:{confirmation:'DELETE ALL',version:(await f.read(kind)).version},...options})).code,options.role==='operator'?200:403);
+        }
+        // Operator submission above may create a request, but never deletes.
+        assert.equal((await f.rows(table)).length,2);assert.equal((await f.rows(other)).length,2);
+        assert.equal((await f.call(handler,{role:'admin',id:'invalid',body:{confirmation:'DELETE'}})).code,400);
+        assert.equal((await f.call(handler,{role:'admin',id:10,body:{confirmation:'delete'}})).code,400);
+        assert.equal((await f.call(f.service.submit(kind),{role:'admin',body:{confirmation:'DELETE ALL',version:'old-scope'}})).code,409);
+        await f.db.query('UPDATE users SET is_active=0 WHERE id=2');
+        assert.equal((await f.call(handler,{role:'admin',id:10,body:{confirmation:'DELETE'}})).code,403);
+        assert.equal((await f.rows(table)).length,2);
+    });
+    test(kind+': failed direct single and bulk deletions roll back records, archives and pending-request status',async t=>{
+        const f=await fixture(t),request=await f.submit(kind),preview=await f.read(kind);
+        await f.db.query('INSERT INTO deletion_blocker ('+(kind==='permits'?'permit_id':'occupancy_id')+') VALUES (10)');
+        for(const [handler,options] of [[f.service.remove(kind),{id:10,body:{confirmation:'DELETE'}}],[f.service.submit(kind),{body:{confirmation:'DELETE ALL',version:preview.version}}]]) {
+            const result=await f.call(handler,{role:'admin',...options});assert.equal(result.code,503);
+            assert.equal((await f.rows(table)).length,2);assert.equal((await f.rows('project_records')).length,1);assert.equal((await f.read(kind)).pending.id,request.body.requestId);
+        }
+        await f.db.query('DELETE FROM deletion_blocker');
+        assert.equal((await f.call(f.service.remove(kind),{role:'admin',id:10,body:{confirmation:'DELETE'}})).code,200);
+        assert.equal((await f.read(kind)).pending,null);
+        assert.equal((await f.submit(kind)).body.count,1);
+    });
+    test(kind+': deleting a new permit outside a pending operator request keeps that request valid',async t=>{
+        const f=await fixture(t),request=await f.submit(kind);
+        await f.db.query('INSERT INTO '+table+' VALUES (30,?,?)',['Created later','2026-10-03']);
+        assert.equal((await f.call(f.service.remove(kind),{role:'admin',id:30,body:{confirmation:'DELETE'}})).code,200);
+        assert.equal((await f.read(kind)).pending.id,request.body.requestId);assert.equal((await f.review(kind,request.body.requestId)).code,200);
     });
 }
 test('preview scope and explicit confirmation are required; both registries can have separate pending requests',async t=>{

@@ -472,11 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = getStoredUser();
     if (!user) { window.location.href = '/login'; return; }
 
-    if (user.role === 'admin' || user.role === 'superadmin') {
-        window.location.replace(PermitRouting.home(user));
-        return;
-    }
-    if (user.role !== 'operator') { window.location.replace('/login'); return; }
+    if (!['operator','admin'].includes(user.role)) { window.location.replace(PermitRouting.home(user)); return; }
 
     loadData();
 });
@@ -523,7 +519,6 @@ function applyFilters() {
 
 function renderTable() {
     const user = getStoredUser();
-    const isAdminOrAbove = user && (user.role === 'admin' || user.role === 'superadmin');
 
     const tbody = document.getElementById('permitTableBody');
     tbody.innerHTML = '';
@@ -557,7 +552,7 @@ function renderTable() {
         const approved=tracks.filter(t=>t.signature_status==='Approved').length;
         const pct=tracks.length?Math.round(approved/tracks.length*100):0;
 
-        const deleteBtn = '<button type="button" class="btn-delete-record">Delete</button>';
+        const deleteBtn = ['operator','admin'].includes(user?.role) ? '<button type="button" class="btn-delete-record">Delete</button>' : '';
 
         const mr=document.createElement('tr'); mr.className='main-data-row';
         mr.innerHTML=`
@@ -574,7 +569,7 @@ function renderTable() {
                     ${deleteBtn}
                 </div>
             </td>`;
-        mr.querySelector('.btn-delete-record').addEventListener('click', () => deletePermit(p.id, p.project_title));
+        mr.querySelector('.btn-delete-record')?.addEventListener('click', () => deletePermit(p.id, p.project_title));
         tbody.appendChild(mr);
 
 
@@ -588,11 +583,12 @@ function renderTable() {
 }
 
 function changePage(d) { currentPage+=d; renderTable(); }
-function openModal()  { document.getElementById('createModal').style.display='flex'; }
+function openModal()  { if (getStoredUser()?.role !== 'operator') return; document.getElementById('createModal').style.display='flex'; }
 function closeModal() { if (!FormSafety.discard('createPermitForm')) return; document.getElementById('createModal').style.display='none'; document.getElementById('createPermitForm').reset(); }
 
 document.getElementById('createPermitForm').addEventListener('submit', FormSafety.guard('createPermitForm', async e => {
     e.preventDefault();
+    if (getStoredUser()?.role !== 'operator') return;
     const btn=document.getElementById('submitBtn'); btn.disabled=true; btn.textContent='Saving…';
     try {
         const r=await RequestFeedback.fetch('/api/occupancy',{method:'POST',headers:getAuthHeaders(),body:JSON.stringify({
@@ -609,16 +605,19 @@ document.getElementById('createPermitForm').addEventListener('submit', FormSafet
 }));
 
 async function deletePermit(id,title) {
+    if (!['operator','admin'].includes(getStoredUser()?.role)) return;
+    const direct = getStoredUser()?.role === 'admin';
     return DestructiveAction.run({
-        title:'Request permit deletion?',
-        message:'Request deletion of “'+title+'” (Permit #'+id+')? The permit stays available until an administrator approves its deletion.',
-        confirmLabel:'Request deletion',
+        title:direct?'Permanently delete permit?':'Request permit deletion?',
+        message:direct?'Permanently delete “'+title+'” (Permit #'+id+') and its related records now? No admin approval request will be created.':'Request deletion of “'+title+'” (Permit #'+id+')? The permit stays available until an administrator approves its deletion.',
+        confirmLabel:direct?'Delete permanently':'Request deletion',
         action:async()=>{
-            const response=await RequestFeedback.fetch('/api/occupancy/'+id,{method:'DELETE',headers:getAuthHeaders()});
+            const response=await RequestFeedback.fetch('/api/occupancy/'+id,{method:'DELETE',headers:getAuthHeaders(),...(direct?{body:JSON.stringify({confirmation:'DELETE'})}:{})});
             const data=await response.json();
-            if(!data.success)throw new Error(data.message||'Deletion request was not accepted.');
-            alert(data.message||'Deletion request submitted. The permit remains until approval.');
+            if(!data.success)throw new Error(data.message||'Deletion was not accepted.');
+            alert(data.message||(direct?'Permit deleted.':'Deletion request submitted. The permit remains until approval.'));
             await loadData();
+            window.dispatchEvent(new Event('permit-registry-changed'));
         }
     });
 }

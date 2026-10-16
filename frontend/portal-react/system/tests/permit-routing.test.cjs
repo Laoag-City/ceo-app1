@@ -8,9 +8,12 @@ test('each supported role has its own landing page',()=>{
  assert.equal(home(user('superadmin')),'/superadmin');
  for(const invalid of [null,{},user('unknown'),{id:0,role:'admin'}])assert.equal(home(invalid),'/login');
 });
-test('operator pages require operator and protected pages require login',()=>{
+test('registry pages allow admins and operators but retain the IT dashboard boundary',()=>{
  assert.equal(redirectFor('operator','/index.html',user('operator')),null);
- assert.equal(redirectFor('operator','/occupancy',user('admin')),'/admin');
+ for(const route of ['/index.html','/edit','/occupancy','/occupancy/edit']) {
+  assert.equal(redirectFor('operator',route,user('admin')),null);
+  assert.equal(redirectFor('operator',route,user('superadmin')),'/superadmin');
+ }
  assert.equal(redirectFor('operator','/edit',null),'/login');
  assert.equal(redirectFor('dashboard','/admin',null),'/login');
 });

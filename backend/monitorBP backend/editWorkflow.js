@@ -78,7 +78,7 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
         const c = configs[kind];
         return (req, res) => run(res, async conn => {
             let payload=input;
-            const user = await actor(conn, req, type==='permit_update'?['operator','admin']:['operator']);
+            const user = await actor(conn, req, ['operator','admin']);
             const id = Number(req.params.id);
             if (!Number.isSafeInteger(id) || id < 1) throw invalid('Invalid permit ID.');
             const current = await snapshot(conn, c, id);
@@ -273,7 +273,7 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
             const calendarRow=row=>{
                 const copy={...row};
                 for(const key of ['permit_date','date_applied','date_checked','date_approved'])if(copy[key]!=null)copy[key]=stationDates.calendar(copy[key]);
-                if(copy.discipline_name!==undefined){copy.can_edit=user.role==='operator' && allowed.has(stationAccess.key(copy.discipline_name));return stationAccess.engineer(copy,operators);}
+                if(copy.discipline_name!==undefined){copy.can_edit=allowed.has(stationAccess.key(copy.discipline_name));return stationAccess.engineer(copy,operators);}
                 return copy;
             };
             const body={...calendarRow(state.record),matrix:state.matrix.map(calendarRow),_version:current.hash,_signatureDatesSupported:true,_stationAccessSupported:true,_assignedEngineerProfileSupported:true,assigned_stations:assigned.map(station=>station.station_name),assigned_station:assigned[0]?.station_name || null,final_approval:finalApproval.summary(state,reviews)};
@@ -289,8 +289,8 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
     function routing(kind,remove=false) {
         const c=configs[kind];
         return (req,res)=>run(res,async conn=>{
-            // Operators manage routing stations in both permit workspaces.
-            // Session validation and snapshot checks still guard every change.
+            // Admin station management follows assignments too; registry access
+            // must not expose unrestricted station creation or removal.
             const user=await actor(conn,req,remove?['admin']:['operator','admin']);
             const input=remove?req.query:req.body;
             const subId=kind==='permits' && input.sub_permit_id?Number(input.sub_permit_id):null;
@@ -304,6 +304,7 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
             const current=await snapshot(conn,c,id);requireVersion(req,current.hash);
             if(subId && !current.state.subs.some(row=>Number(row.id)===subId))throw invalid('Sub-permit no longer exists.',404);
             const name=sanitize(input.discipline_name);if(!name)throw invalid('Station name is required.');
+            if(user.role==='admin')await stationAccess.authorize(conn,user,[{discipline_name:name}]);
             const column=subId?'sub_permit_id':c.key, target=subId||id;
             const [existing]=await conn.query('SELECT id FROM '+c.matrix+' WHERE '+column+'=? AND discipline_name=?',[target,name]);
             const targetRows=subId?current.state.subMatrix.filter(row=>Number(row.sub_permit_id)===subId):current.state.matrix;

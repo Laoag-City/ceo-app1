@@ -247,6 +247,10 @@ for (const kind of ['permits', 'occupancy']) {
     app.post('/api/permit-deletions/' + kind, bulkDeletionWorkflow.submit(kind));
     app.put('/api/permit-deletions/' + kind + '/:id/approve', bulkDeletionWorkflow.review(kind, 'approve'));
     app.put('/api/permit-deletions/' + kind + '/:id/reject', bulkDeletionWorkflow.review(kind, 'reject'));
+    // Direct admin deletions write their audit snapshot inside the deletion
+    // transaction. Operators continue through the existing approval/audit path.
+    const directDelete=bulkDeletionWorkflow.remove(kind);
+    app.delete('/api/'+kind+'/:id',(req,res,next)=>req.user.role==='admin'?directDelete(req,res):next());
 }
 app.use(projectRecords.audit);
 for(const kind of ['permits','occupancy']) {
@@ -390,18 +394,7 @@ app.delete('/api/permits/:id', deletionWorkflow.submit('permits'));
 // --- OCCUPANCY PERMIT API ENDPOINTS ---
 // ==========================================
 
-// Operators work on records; administrators review requests in the console.
-// Existing endpoint-specific restrictions (including deletion) still apply.
-function enforceOccupancyWorkspaceRole(req, res, next) {
-    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
-    if (req.path.startsWith('/change-requests/') || /\/final-review$/.test(req.path)) return next();
-    const role = (req.user?.role || '').toLowerCase();
-    if (role !== 'operator') {
-        return res.status(403).json({ success: false, message: 'Only operators can perform occupancy operations. Administrators must review changes in the admin console.' });
-    }
-    next();
-}
-app.use('/api/occupancy', enforceOccupancyWorkspaceRole);
+app.use('/api/occupancy', require('./occupancyWorkspaceAccess'));
 
 app.get('/api/occupancy', (req, res) => {
     db.query("SELECT * FROM occupancy_permits ORDER BY id DESC", (err, permits) => {

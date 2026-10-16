@@ -2,12 +2,12 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {JSDOM,VirtualConsole}=require('jsdom');
 const base=path.resolve(__dirname,'..'),wait=()=>new Promise(resolve=>setTimeout(resolve,50));
-async function fixture(kind,{initial=[]}={}) {
+async function fixture(kind,{initial=[],role='operator'}={}) {
     const dom=new JSDOM(`<div id="system-react-root" data-page="${kind==='permits'?'permits-edit':'permits-occupancy_edit'}"></div>`,{url:'http://localhost/edit?id=10',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:new VirtualConsole()});
     const w=dom.window,d=w.document,calls=[],errors=[],alerts=[];
     let records=structuredClone(initial),failure=false,gate=null,release;
     w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});w.ResizeObserver=class{observe(){}disconnect(){}};
-    w.sessionStorage.setItem('oboUser',JSON.stringify({id:1,role:'operator'}));
+    w.sessionStorage.setItem('oboUser',JSON.stringify({id:1,role}));
     w.AbortController=AbortController;w.confirm=()=>true;w.alert=message=>alerts.push(message);
     w.fetch=async(url,options={})=>{
         if(!url.includes('/inspections'))return new Response(JSON.stringify({success:true}));
@@ -26,6 +26,16 @@ async function fixture(kind,{initial=[]}={}) {
 }
 const existing={id:1,inspection_type:'Preliminary',inspection_date:'2026-10-12',inspector_name:'Inspector',result:'Scheduled',findings:'Original findings',next_inspection_date:'2026-10-19',_version:'loaded-version'};
 for(const kind of ['permits','occupancy']) {
+    test(kind+': admin reads and refreshes inspections without operator CRUD controls',async()=>{
+        const f=await fixture(kind,{initial:[existing],role:'admin'});try{
+            assert.match(f.d.getElementById('inspectionList').textContent,/Original findings/);
+            assert.equal(f.d.querySelector('.btn-add-insp,.insp-card-footer'),null);
+            f.w.openInspModal(1);assert.notEqual(f.d.getElementById('inspModal').style.display,'flex');
+            await f.w.saveInspection();await f.w.deleteInspection(1);await f.w.loadInspections();
+            assert.equal(f.calls.filter(call=>call.options.method).length,0);
+            assert.equal(f.d.querySelectorAll('.insp-card').length,1);
+        }finally{f.dom.window.close()}
+    });
     test(kind+': shared layout, new-inspection validation, one submission and saved refresh',async()=>{
         const f=await fixture(kind);try {
             assert.equal(f.d.querySelector('[data-inspections-kind]').dataset.inspectionsKind,kind);

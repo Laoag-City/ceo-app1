@@ -361,6 +361,7 @@ html[data-theme='dark'] .bp-page .registry-card .main-data-row .lot-badge-inline
     }
 
     function openCreatePermitModal() {
+        if (getStoredUser()?.role !== 'operator') return;
         document.getElementById('createPermitModal').style.display = 'flex';
     }
 
@@ -376,6 +377,7 @@ html[data-theme='dark'] .bp-page .registry-card .main-data-row .lot-badge-inline
 
     document.getElementById('permitForm').addEventListener('submit', FormSafety.guard('permitForm', async (e) => {
         e.preventDefault();
+        if (getStoredUser()?.role !== 'operator') return;
         const lotVal = document.getElementById('lot_input_field').value.trim();
         const dataPayload = {
             project_title: document.getElementById('project_title').value,
@@ -569,11 +571,11 @@ window.permitExportIds = () => filteredPermitsList.map(p => p.id);
                     <div class="action-group">
                         <button type="button" class="btn-progress" onclick="openPermitProgress(${rowItem.id})" aria-haspopup="dialog">Progress</button>
                         <a class="btn-details" href="/edit?id=${rowItem.id}">Details</a>
-                        <button type="button" class="btn-delete-record">Delete</button>
+                        ${['operator','admin'].includes(currentUser?.role) ? '<button type="button" class="btn-delete-record">Delete</button>' : ''}
                     </div>
                 </td>
             `;
-            dataRow.querySelector('.btn-delete-record').addEventListener('click', () => executePermitRemoval(rowItem.id, rowItem.project_title));
+            dataRow.querySelector('.btn-delete-record')?.addEventListener('click', () => executePermitRemoval(rowItem.id, rowItem.project_title));
             tableBody.appendChild(dataRow);
 
             let htmlStreams = `<div class="wrapper-stream-box">`;
@@ -608,16 +610,19 @@ window.permitExportIds = () => filteredPermitsList.map(p => p.id);
     }
 
     async function executePermitRemoval(id,title) {
+    if (!['operator','admin'].includes(getStoredUser()?.role)) return;
+    const direct = getStoredUser()?.role === 'admin';
     return DestructiveAction.run({
-        title:'Request permit deletion?',
-        message:'Request deletion of “'+title+'” (Permit #'+id+')? The permit stays available until an administrator approves its deletion.',
-        confirmLabel:'Request deletion',
+        title:direct?'Permanently delete permit?':'Request permit deletion?',
+        message:direct?'Permanently delete “'+title+'” (Permit #'+id+') and its related records now? No admin approval request will be created.':'Request deletion of “'+title+'” (Permit #'+id+')? The permit stays available until an administrator approves its deletion.',
+        confirmLabel:direct?'Delete permanently':'Request deletion',
         action:async()=>{
-            const response=await RequestFeedback.fetch('/api/permits/'+id,{method:'DELETE',headers:getAuthHeaders()});
+            const response=await RequestFeedback.fetch('/api/permits/'+id,{method:'DELETE',headers:getAuthHeaders(),...(direct?{body:JSON.stringify({confirmation:'DELETE'})}:{})});
             const data=await response.json();
-            if(!data.success)throw new Error(data.message||'Deletion request was not accepted.');
-            alert(data.message||'Deletion request submitted. The permit remains until approval.');
+            if(!data.success)throw new Error(data.message||'Deletion was not accepted.');
+            alert(data.message||(direct?'Permit deleted.':'Deletion request submitted. The permit remains until approval.'));
             await getPermitLogs();
+            window.dispatchEvent(new Event('permit-registry-changed'));
         }
     });
 }

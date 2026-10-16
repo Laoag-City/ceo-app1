@@ -20,8 +20,9 @@ function Icon({ name }) {
 
 export default function PermitSidebar({ page }) {
   const occupancy = page.includes('occupancy')
-  const admin = page === 'permits-superadmin'
-  let superadmin=false;try {superadmin=JSON.parse(sessionStorage.getItem('oboUser') || 'null')?.role==='superadmin'}catch {}
+  const dashboard = page === 'permits-superadmin'
+  let role='';try {role=JSON.parse(sessionStorage.getItem('oboUser') || 'null')?.role || ''}catch {}
+  const admin = role === 'admin', superadmin = role === 'superadmin'
   const title = {
     'permits-index': 'Building Permit Registry',
     'permits-edit': 'Building Permit Routing Workspace',
@@ -77,7 +78,7 @@ export default function PermitSidebar({ page }) {
       <div className="permit-nav-heading"><div className="permit-nav-identity"><img src="/assets/laoag-city-official-seal.png" alt="Laoag City official seal"/><div className="permit-nav-identity-copy"><strong>{title}</strong><span>Office of the City Engineer<br/>Laoag City</span></div></div><button type="button" aria-label={mobile ? 'Close navigation' : collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={mobile ? open : !collapsed} aria-controls="permit-navigation-links" title={mobile ? 'Close navigation' : collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => mobile ? close() : setCollapsed(!collapsed)}><Icon name={mobile ? 'close' : 'collapse'}/></button></div>
       <nav id="permit-navigation-links" aria-label={superadmin ? 'Account management' : 'Permit workspaces'} onClick={event => { if (mobile && event.target.closest('a')) close() }}>
         <p className="permit-nav-label">{superadmin ? 'USER MANAGEMENT' : 'WORKSPACES'}</p>
-        {admin ? <><a className="permit-nav-link" href="#adminOverview"><Icon name="home"/><span>Overview</span></a>{!superadmin && <>{link('#finalReviews', 'Final Project Review', 'building')}{link('#buildingReview', 'Building Requests', 'building')}{link('#occupancyReview', 'Occupancy Requests', 'home')}</>}{superadmin && <>{link('#accountSection', 'Account Requests', 'people')}{link('#accountListSection', 'Manage Accounts', 'people')}</>}</> : <>{link('/index.html', 'Building Permits', 'building', !occupancy)}{link('/occupancy', 'Occupancy Permits', 'home', occupancy)}</>}
+        {dashboard || admin ? <>{link(dashboard ? '#adminOverview' : '/admin#adminOverview', 'Overview', 'home')}{admin && <>{link(dashboard ? '#finalReviews' : '/admin#finalReviews', 'Final Project Review', 'building')}{link(dashboard ? '#buildingReview' : '/admin#buildingReview', 'Building Requests', 'building')}{link(dashboard ? '#occupancyReview' : '/admin#occupancyReview', 'Occupancy Requests', 'home')}{link('/index.html', 'Building Permits', 'building', !dashboard && !occupancy)}{link('/occupancy', 'Occupancy Permits', 'home', !dashboard && occupancy)}</>}{superadmin && <>{link('#accountSection', 'Account Requests', 'people')}{link('#accountListSection', 'Manage Accounts', 'people')}</>}</> : <>{link('/index.html', 'Building Permits', 'building', !occupancy)}{link('/occupancy', 'Occupancy Permits', 'home', occupancy)}</>}
         <p className="permit-nav-label" style={{marginTop:24}}>ACCOUNT</p>
         {['People', 'My Profile'].map(label => <button key={label} type="button" className="permit-nav-link" title={label} aria-label={label} onClick={() => { if(mobile) close(); window.dispatchEvent(new CustomEvent('permit-account-panel', {detail:label === 'People' ? 'people' : 'profile'})) }}><Icon name={label === 'People' ? 'people' : 'profile'}/><span>{label}</span></button>)}
         <button type="button" className="permit-nav-link context-help-guide" title="Walkthrough" aria-label="Walkthrough" aria-haspopup="dialog" onClick={event => { const opener=mobile?trigger.current:event.currentTarget; if(mobile) close(); window.dispatchEvent(new CustomEvent('system-walkthrough',{detail:{opener}})) }}><Icon name="help"/><span>Walkthrough</span></button>

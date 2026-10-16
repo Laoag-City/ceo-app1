@@ -1,11 +1,11 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {JSDOM,VirtualConsole}=require('jsdom');const fs=require('node:fs'),path=require('node:path');
 const base=path.resolve(__dirname,'..'),wait=()=>new Promise(resolve=>setTimeout(resolve,45));
-async function fixture(){
+async function fixture(role='operator'){
     const dom=new JSDOM('<div id="system-react-root" data-page="permits-occupancy_edit"></div>',{url:'http://localhost/occupancy/edit?id=10',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:new VirtualConsole()});
     const w=dom.window,d=w.document,calls=[];let state={cl01:true},version='occupancy-checklist-v1',failLoad=false,failSave=false;
     w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});w.ResizeObserver=class{observe(){}disconnect(){}};w.AbortController=AbortController;w.confirm=()=>true;w.alert=()=>{};
-    w.sessionStorage.setItem('oboUser',JSON.stringify({id:1,role:'operator'}));
+    w.sessionStorage.setItem('oboUser',JSON.stringify({id:1,role}));
     w.fetch=async(url,options={})=>{
         if(!url.endsWith('/checklist'))return new Response(JSON.stringify({success:true}));calls.push({url,options});
         if(options.method==='PUT'){
@@ -23,6 +23,16 @@ async function fixture(){
     w.eval(source+'\nwindow.testSaveChecklist=saveChecklist;');await w.loadChecklist();
     return {dom,w,d,calls,state:()=>state,failLoads(value){failLoad=value;},failWrites(value){failSave=value;}};
 }
+test('admin can view and refresh Occupancy checklist completion without changing it',async()=>{
+ const {dom,w,d,calls}=await fixture('admin');try{
+  assert.equal(d.getElementById('tbChecklist').textContent,'1/15');
+  assert.equal(d.getElementById('saveClBtn').hidden,true);assert.equal(d.getElementById('saveClBtn').disabled,true);
+  assert.ok([...d.querySelectorAll('[data-checklist-item]')].every(input=>input.disabled));
+  d.querySelector('[data-checklist-item="cl02"]').click();w.toggleClItem('cl02');await w.testSaveChecklist();
+  await w.loadChecklist();assert.equal(d.getElementById('tbChecklist').textContent,'1/15');
+  assert.equal(calls.filter(call=>call.options.method==='PUT').length,0);
+ }finally{dom.window.close()}
+});
 test('Occupancy uses the matching summary and native checkboxes while retaining saved document keys',async()=>{
     const f=await fixture(),{dom,w,d,calls}=f;
     try{

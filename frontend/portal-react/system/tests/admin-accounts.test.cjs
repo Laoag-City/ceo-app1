@@ -44,7 +44,7 @@ test('own account is protected by ID, including renamed accounts and string IDs'
   const [own,other,admin]=d.querySelectorAll('#allAccounts tbody tr');
   assert.equal(own.cells[0].textContent,'renamed-it (You)');assert.equal(own.querySelector('select').disabled,true);
   assert.equal(own.cells[5].textContent,'Your account');assert.equal(own.querySelectorAll('button').length,0);
-  for(const row of [other,admin]){assert.equal(row.querySelector('select').disabled,false);assert.deepEqual([...row.querySelectorAll('button')].map(button=>button.textContent),['Deactivate','Delete']);}
+  for(const row of [other,admin]){assert.equal(row.querySelector('select').disabled,false);assert.deepEqual([...row.cells[5].querySelectorAll('button')].map(button=>button.textContent),['Deactivate','Delete']);}
   await w.deleteAccount('99','renamed-it');
   assert.match(alerts.at(-1),/cannot delete your own account/);assert.ok(!calls.some(call=>call.method==='DELETE'));
  }finally{dom.window.close()}

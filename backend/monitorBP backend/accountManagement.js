@@ -26,7 +26,7 @@ module.exports=function(openConnection,sessions){
     }));
     async function saveStations(conn,req,names){
         const user=await target(conn,req);
-        if(user.role!=='operator')throw bad('Only operator accounts can have a station assignment.');
+        if(!['operator','admin'].includes(user.role))throw bad('Only operator and admin accounts can have station assignments.');
         if(!Array.isArray(names)||names.length>100)throw bad('Choose a list of up to 100 stations.');
         const selected=new Map();
         for(const value of names){
@@ -70,7 +70,7 @@ module.exports=function(openConnection,sessions){
         if(!username || username.length>50 || typeof password!=='string' || !['operator','admin','superadmin'].includes(role))throw bad('Enter a username, password, and valid role.');
         const error=passwordPolicy(password);if(error)throw bad(error);
         await conn.query('INSERT INTO users (username,password,role,is_verified,is_active) VALUES (?,?,?,1,1)',[username,await bcrypt.hash(password,10),role]);
-        return {success:true,message:'Account created. Assign a station before an operator edits routing details.'};
+        return {success:true,message:'Account created. Assign stations before an operator or admin edits routing details.'};
     }));
     return router;
 };

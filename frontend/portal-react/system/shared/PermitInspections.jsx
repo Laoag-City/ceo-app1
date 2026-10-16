@@ -3,6 +3,7 @@ import {legacyAttributes} from './legacy-attributes'
 
 // Both permit workspaces use the same controls and guarded controller.
 export function InspectionPanel({kind, tab=false, labelledBy}) {
+  let operator=false;try {operator=JSON.parse(sessionStorage.getItem('oboUser') || 'null')?.role==='operator'}catch {}
   return <section id="panel-inspection" data-inspections-kind={kind} className={`permit-inspections card${tab ? ' tab-panel panel-card' : ''}`} role={labelledBy ? 'tabpanel' : undefined} aria-labelledby={labelledBy} hidden={Boolean(labelledBy)}>
     <div className="card-header inspection-panel-header">
       <div className="card-heading-group">
@@ -11,7 +12,7 @@ export function InspectionPanel({kind, tab=false, labelledBy}) {
       </div>
       <div className="inspection-panel-actions">
         <button type="button" className="insp-action" ref={legacyAttributes({onclick:'loadInspections()'})}>Refresh</button>
-        <button type="button" className="btn-add-insp" ref={legacyAttributes({onclick:'openInspModal()'})}>＋ Log inspection</button>
+        {operator && <button type="button" className="btn-add-insp" ref={legacyAttributes({onclick:'openInspModal()'})}>＋ Log inspection</button>}
       </div>
     </div>
     <div className="card-body">

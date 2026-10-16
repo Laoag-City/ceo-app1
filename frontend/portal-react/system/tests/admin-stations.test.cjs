@@ -80,19 +80,23 @@ test('stations remain selectable for several operators and spelling variants are
  }finally{await settle();dom.window.close();}
 });
 
-test('admin and IT accounts have no operator station assignment control',async()=>{
+test('admin accounts can receive station assignments while IT accounts remain ineligible',async()=>{
  const fixture=await accountFixture([
   {id:1,username:'Alice',role:'operator',is_active:1,is_verified:1},
   {id:2,username:'Boss',role:'admin',is_active:1,is_verified:1},
   {id:3,username:'IT',role:'superadmin',is_active:1,is_verified:1}
  ],['Sanitary']);
- const {dom,d,errors}=fixture;
+ const {dom,d,calls,errors}=fixture;
  try{
   assert.ok(d.querySelector('[aria-label="Assigned stations for Alice"]'));
-  assert.ok(!d.querySelector('[aria-label="Assigned stations for Boss"]'));
+  const admin=d.querySelector('[aria-label="Assigned stations for Boss"]');assert.ok(admin);
+  admin.click();const menu=admin.closest('.station-assignment-control');
+  menu.querySelector('input[value="Sanitary"]').checked=true;menu.querySelector('.approve').click();await settle();
+  assert.deepEqual(JSON.parse(calls.find(call=>call.url==='/api/auth/accounts/2/stations').body),{stations:['Sanitary']});
+  assert.equal(admin.textContent,'Stations (1)');
   assert.ok(!d.querySelector('[aria-label="Assigned stations for IT"]'));
   const rows=[...d.querySelectorAll('#allAccounts tbody tr')];
-  for(const name of ['Boss','IT']){
+  for(const name of ['IT']){
    const row=rows.find(item=>item.cells[0].textContent===name);
    assert.ok(row);assert.match(row.cells[4].textContent,/Not applicable/);
   }

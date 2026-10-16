@@ -49,6 +49,18 @@ for(const role of ['admin','superadmin'])test(role+': dashboard sidebar has reac
  const {dom,d}=await mount('permits-superadmin',false,role);
  try {for(const link of d.querySelectorAll('.permit-sidebar a[href^="#"]'))assert.ok(d.querySelector(link.getAttribute('href')),link.getAttribute('href'));
  assert.equal(!!d.querySelector('.permit-sidebar a[href="#accountListSection"]'),role==='superadmin');
- assert.equal(d.querySelector('.permit-sidebar a[href="/occupancy"]'),null);
+ assert.equal(!!d.querySelector('.permit-sidebar a[href="/occupancy"]'),role==='admin');
+ assert.equal(!!d.querySelector('.permit-sidebar a[href="/index.html"]'),role==='admin');
+ }finally{dom.window.close()}
+});
+
+for(const page of ['permits-index','permits-occupancy','permits-edit','permits-occupancy_edit'])test(page+': admin can navigate registries and return to existing review functions',async()=>{
+ const {dom,d}=await mount(page,false,'admin');try{
+  const sidebar=d.querySelector('.permit-sidebar');
+  assert.equal(sidebar.querySelector('[aria-current="page"]').getAttribute('href'),page.includes('occupancy')?'/occupancy':'/index.html');
+  for(const section of ['adminOverview','finalReviews','buildingReview','occupancyReview'])assert.ok(sidebar.querySelector('a[href="/admin#'+section+'"]'));
+  assert.equal(sidebar.querySelector('a[href="#accountListSection"]'),null);
+  assert.equal(d.querySelector('.top-bar-controls .btn-new-permit:not(.btn-logout)'),null);
+  assert.equal(!!d.querySelector('.registry-bulk-delete'),!page.endsWith('edit'));
  }finally{dom.window.close()}
 });

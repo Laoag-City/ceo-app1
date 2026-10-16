@@ -101,18 +101,54 @@ module.exports = function bulkDeletionWorkflow(open) {
         });
     }
     function submit(kind) {
-        return run(kind, ['operator'], async (db, user, req) => {
+        return run(kind, ['operator','admin'], async (db, user, req) => {
             if (req.body?.confirmation !== 'DELETE ALL') throw bad('Confirm the deletion request first.');
-            const previous = (await pendingRows(db, kind))[0];
+            const previous = user.role==='operator' ? (await pendingRows(db, kind))[0] : null;
             if (previous) return { body: { success: true, pending: true, duplicate: true, request: present(previous), message: 'A request to delete all ' + configs[kind].label.toLowerCase() + ' permit records is already awaiting admin review.' } };
             const projects = await snapshot(db, kind);
             if (!projects.length) throw bad('There are no permit records to delete.');
             if (req.body.version !== hash(projects.map(p => Number(p.record.id)))) throw bad('The registry changed. Refresh the record count and confirm again.', 409);
+            if(user.role==='admin')return deleteProjects(db,user,kind,projects,'registry');
             const details = { type: 'bulk_delete', projects, snapshot_hash: hash(projects) };
             const [result] = await db.query("INSERT INTO project_records (kind,project_id,project_title,actor_id,actor_name,actor_role,category,outcome,message,details,request_key) VALUES (?,NULL,?,?,?,?,'bulk_delete','pending',?,?,?)",
                 [kind, 'All ' + configs[kind].label + ' permit records', user.id, await displayName(db,user), user.role,
                     'Requested deletion of all ' + projects.length + ' ' + configs[kind].label.toLowerCase() + ' permit records', JSON.stringify(details), pendingKey(kind)]);
             return { body: { success: true, pending: true, requestId: result.insertId, count: projects.length, message: 'Request sent to the admin. All ' + projects.length + ' permit records remain available until approved.' } };
+        });
+    }
+    // Direct admin deletion shares the same locks, dependency snapshot and
+    // transaction as bulk review, without manufacturing an approval request.
+    async function deleteProjects(db,user,kind,projects,scope) {
+        const ids=projects.map(project=>Number(project.record.id)),name=await displayName(db,user);
+        for(const project of projects) {
+            const details={version:1,changes:[{field:'Permit record',before:project.record.project_title,after:'Deleted with related records'}],
+                deletion:{mode:'direct',scope,snapshot_hash:hash(project),project}};
+            await db.query("INSERT INTO project_records (kind,project_id,project_title,actor_id,actor_name,actor_role,category,outcome,message,details) VALUES (?,?,?,?,?,?,'activity','saved',?,?)",
+                [kind,project.record.id,project.record.project_title,user.id,name,user.role,
+                    scope==='registry'?'Deleted permit directly through Delete All':'Deleted permit directly',JSON.stringify(details)]);
+        }
+        const [deleted]=await db.query('DELETE FROM '+configs[kind].table+' WHERE id IN (?)',[ids]);
+        if(deleted.affectedRows!==ids.length)throw bad('The registry changed during deletion. No records were deleted.',409);
+        // An earlier operator bulk request cannot still be approved after some
+        // of its recorded scope has been removed. Keep it as explicit history.
+        const removed=new Set(ids);
+        for(const request of await pendingRows(db,kind)) {
+            let details;try{details=decode(request.details);}catch{continue;}
+            if(!Array.isArray(details?.projects)||!details.projects.some(project=>removed.has(Number(project.record?.id))))continue;
+            const closed={...details,reviewed_by:name,reviewed_by_id:user.id,reviewed_at:new Date().toISOString(),decision:'superseded',superseded_by_admin_deletion:true};
+            await db.query('UPDATE project_records SET outcome=?,message=?,details=?,request_key=NULL WHERE id=?',
+                ['conflict','Deletion request superseded: an admin directly deleted records in its scope',JSON.stringify(closed),request.id]);
+        }
+        return {body:{success:true,pending:false,deletedCount:ids.length,message:ids.length+' '+configs[kind].label+' permit record'+(ids.length===1?' was':'s were')+' permanently deleted with related records.'}};
+    }
+    function remove(kind) {
+        return run(kind,['admin'],async(db,user,req)=>{
+            const id=Number(req.params.id);
+            if(!Number.isSafeInteger(id)||id<1)throw bad('Invalid permit ID.');
+            if(req.body?.confirmation!=='DELETE')throw bad('Confirm permanent deletion first.');
+            const projects=await snapshot(db,kind,[id]);
+            if(!projects.length)throw bad('Permit record not found.',404);
+            return deleteProjects(db,user,kind,projects,'single');
         });
     }
     function review(kind, decision) {
@@ -161,5 +197,5 @@ module.exports = function bulkDeletionWorkflow(open) {
         try { return (await pendingRows(db, kind)).map(present); }
         finally { await close(db); }
     }
-    return { status, submit, review, pending };
+    return { status, submit, remove, review, pending };
 };

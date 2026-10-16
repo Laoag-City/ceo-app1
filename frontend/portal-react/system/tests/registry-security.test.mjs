@@ -5,12 +5,12 @@ import {JSDOM, VirtualConsole} from 'jsdom'
 
 const bundle=readFileSync(new URL('../../system-dist/app.js',import.meta.url),'utf8')
 const titles=[`O'Brien residence`,`House "Annex" \\ Extension`,`House" onpointerenter="window.uatInjected=true" data-padding="`,`');window.uatInjected=true;//`]
-for(const kind of ['building','occupancy'])test(kind+': deletion treats quoted titles as text and preserves the requested record',async()=>{
+for(const kind of ['building','occupancy'])for(const role of ['operator','admin'])test(kind+' '+role+': deletion treats quoted titles as text and preserves the confirmed record',async()=>{
  const page=kind==='building'?'permits-index':'permits-occupancy'
  const dom=new JSDOM(`<div id="system-react-root" data-page="${page}"></div>`,{url:'http://localhost/',runScripts:'outside-only',virtualConsole:new VirtualConsole()})
  const w=dom.window,confirmations=[]
  try {
-  w.sessionStorage.setItem('oboUser',JSON.stringify({id:1,role:'operator'}))
+  w.sessionStorage.setItem('oboUser',JSON.stringify({id:1,role}))
   w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}})
   w.ResizeObserver=class{observe(){}disconnect(){}}
   w.fetch=async()=>({ok:true,json:async()=>({success:true})})

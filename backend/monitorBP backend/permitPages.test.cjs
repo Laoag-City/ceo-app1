@@ -66,3 +66,26 @@ test('the Express static-file boundary keeps the portal public and the registry 
   assert.equal(registry.status,302);assert.equal(registry.headers.get('location'),'/login');
  }finally{await new Promise(resolve=>server.close(resolve));}
 });
+
+test('admins and operators can open both registries/details while IT remains in its own workspace',async()=>{
+ const path=require('node:path');
+ const gate=require('./permitPages')(path.resolve(__dirname,'../../frontend/monitorBP frontend'));
+ for(const url of ['/index.html','/edit','/edit.html','/occupancy','/occupancy.html','/occupancy/edit','/occupancy_edit.html']) {
+  for(const role of ['operator','admin']) {
+   const result=await new Promise((resolve,reject)=>{
+    const res={set(){},type(){return this;},send(html){resolve({html});},redirect(location){resolve({location});}};
+    gate({path:url,user:{id:2,username:'Example',role}},res,error=>reject(error || Error('Protected page fell through')));
+   });
+   assert.ok(result.html?.includes('sessionStorage.setItem("oboUser"'),role+' '+url);
+   assert.ok(result.html.includes('Example'));
+  }
+  let redirect;
+  gate({path:url,user:{id:3,role:'superadmin'}},{set(){},redirect(location){redirect=location;}},()=>assert.fail('IT must not gain registry access'));
+  assert.equal(redirect,'/superadmin');
+ }
+ for(const [url,role,destination] of [['/admin','superadmin','/superadmin'],['/superadmin','admin','/admin'],['/superadmin','operator','/index.html']]) {
+  let redirect;
+  gate({path:url,user:{id:2,role}},{set(){},redirect(location){redirect=location;}},()=>assert.fail('Role-specific workspace fell through'));
+  assert.equal(redirect,destination);
+ }
+});

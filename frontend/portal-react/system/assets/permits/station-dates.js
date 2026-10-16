@@ -37,7 +37,7 @@
             if(current())notice.textContent='Station remarks could not be loaded. Reopen progress to try again.';
         }
     }
-    const engineer=row=>'<span class="station-engineer-name" data-station-engineer="'+Number(row.id)+'" title="Last operator to save a station change; name follows their profile">'+escape(row.engineer_name || (row.assigned_operators?.length?'Not yet reviewed':'Unassigned'))+'</span>';
+    const engineer=row=>'<span class="station-engineer-name" data-station-engineer="'+Number(row.id)+'" title="Last reviewer to save a station change; name follows their profile">'+escape(row.engineer_name || (row.assigned_operators?.length?'Not yet reviewed':'Unassigned'))+'</span>';
     function updateEngineers(rows,profile) {
         if(!profile || !Number.isInteger(Number(profile.userId)) || Number(profile.userId)<=0 || typeof profile.displayName!=='string' || !profile.displayName.trim())return;
         for(const row of rows)if(Number(row.assigned_operator_id)===Number(profile.userId)) {

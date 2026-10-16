@@ -32,9 +32,9 @@ export const helpTopics = {
  },
  'permit-deletion': {
   title:'Delete all permit records', system:'Permit Management', roles:['operator','admin'],
-  summary:'The registry button sends a deletion request to the admin. It does not immediately delete permits.',
-  steps:['Review the registry and its record count. This request covers the entire Building or Occupancy registry, including records outside the current search or filter.','Choose Delete all permit records, type DELETE ALL in the confirmation, and send the request to the admin.','Records remain available while the request is pending. The admin reviews the request and decides whether to approve or reject it.'],
-  note:'Admin approval deletes the permits included in that request. The other permit registry is unaffected, and the deletion request stays in the admin history.'
+  summary:'Admins delete records immediately after confirmation. Operators send deletion requests for admin approval.',
+  steps:['Review the registry and its record count. Delete All covers the entire Building or Occupancy registry, including records outside the current search or filter.','Choose Delete all permit records and type DELETE ALL. For admins, confirming permanently deletes those permits and their related records immediately.','For operators, confirming sends a request. Records remain available until an admin approves it.'],
+  note:'The other permit registry is unaffected. Admin deletions and operator deletion requests are recorded in admin history.'
  },
  'permit-final-review': {
   title:'Give final approval or request corrections', system:'Permit Management', roles:['admin'],

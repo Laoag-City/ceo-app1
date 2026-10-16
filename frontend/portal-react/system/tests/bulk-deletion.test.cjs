@@ -11,7 +11,8 @@ function dialogs(w){
 async function registryFixture(kind,initial={success:true,count:3,version:'scope-v1',pending:null},role='operator'){
  const page=kind==='permits'?'permits-index':'permits-occupancy';
  const dom=new JSDOM('<div id="system-react-root" data-page="'+page+'"></div>',{url:'http://localhost/',runScripts:'outside-only',pretendToBeVisual:true});
- const w=dom.window,calls=[];let state=initial,fail=false,finish,postError='',failAfterSubmit=false;
+ const w=dom.window,calls=[];let state=initial,fail=false,finish,postError='',failAfterSubmit=false,reloads=0;
+ w.getPermitLogs=w.loadData=async()=>{reloads++};
  w.sessionStorage.setItem('oboUser',JSON.stringify({id:1,role}));
  w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});w.ResizeObserver=class{observe(){}disconnect(){}};
  w.fetch=async()=>({ok:true,json:async()=>({success:true})});
@@ -21,6 +22,11 @@ async function registryFixture(kind,initial={success:true,count:3,version:'scope
   if(options.method==='POST'){
    await new Promise(resolve=>finish=resolve);
    if(postError)return {ok:false,json:async()=>({success:false,message:postError})};
+   if(role==='admin'){
+    const count=state.count;state={...state,count:0,pending:null};
+    if(failAfterSubmit)fail=true;
+    return {ok:true,json:async()=>({success:true,pending:false,deletedCount:count,message:count+' permit records permanently deleted.'})};
+   }
    state={...state,pending:{id:42,record_count:3}};
    if(failAfterSubmit)fail=true;
    return {ok:true,json:async()=>({success:true,pending:true,requestId:42,count:3,message:'Request sent to the admin.'})};
@@ -28,7 +34,7 @@ async function registryFixture(kind,initial={success:true,count:3,version:'scope
   return {ok:true,json:async()=>state};
  }};
  dialogs(w);w.eval(bundle());await wait();await wait();
- return {dom,w,d:w.document,calls,fail:value=>fail=value,finish:()=>finish?.(),setState:value=>state=value,postError:value=>postError=value,failAfterSubmit:()=>failAfterSubmit=true};
+ return {dom,w,d:w.document,calls,reloads:()=>reloads,fail:value=>fail=value,finish:()=>finish?.(),setState:value=>state=value,postError:value=>postError=value,failAfterSubmit:()=>failAfterSubmit=true};
 }
 for(const kind of ['permits','occupancy']){
  test(kind+': entire-registry deletion needs typed confirmation and submits once without deleting locally',async()=>{
@@ -81,9 +87,41 @@ for(const kind of ['permits','occupancy']){
   }finally{f.dom.window.close()}
  });
 }
-test('IT and admin accounts do not receive the registry deletion request control',async()=>{
- for(const role of ['superadmin','admin']){const f=await registryFixture('permits',undefined,role);try{assert.equal(f.d.querySelector('.registry-delete-all'),null);assert.equal(f.calls.length,0)}finally{f.dom.window.close()}}
+test('IT accounts do not receive registry deletion controls',async()=>{
+ const f=await registryFixture('permits',undefined,'superadmin');try{assert.equal(f.d.querySelector('.registry-delete-all'),null);assert.equal(f.calls.length,0)}finally{f.dom.window.close()}
 });
+
+for(const kind of ['permits','occupancy']){
+ test(kind+': admin Delete All confirms permanent deletion and reloads without approval, even with an operator request pending',async()=>{
+  const f=await registryFixture(kind,{success:true,count:3,version:'scope-v1',pending:{id:18,record_count:3}},'admin');try{
+   const button=f.d.querySelector('.registry-delete-all');assert.equal(button.disabled,false);assert.match(f.d.querySelector('.registry-bulk-delete-copy').textContent,/Deletes immediately/);
+   button.click();await wait();let dialog=f.d.querySelector('.danger-confirm');assert.match(dialog.textContent,/permanently delete all 3/);assert.match(dialog.textContent,/outside your current search or filter/);assert.match(dialog.textContent,/No admin approval request will be created/);
+   dialog.querySelector('.danger-confirm-actions button').click();await wait();assert.equal(f.calls.filter(call=>call.method==='POST').length,0);
+   button.click();await wait();dialog=f.d.querySelector('.danger-confirm');const input=dialog.querySelector('input'),accept=dialog.querySelector('.danger-confirm-accept');
+   assert.equal(accept.textContent,'Delete all permanently');assert.equal(accept.disabled,true);
+   input.value='DELETE ALL';input.dispatchEvent(new f.w.Event('input'));accept.click();accept.click();await wait();
+   assert.equal(f.d.querySelector('.bulk-delete-notice'),null);assert.equal(f.calls.filter(call=>call.method==='POST').length,1);
+   assert.deepEqual(JSON.parse(f.calls.find(call=>call.method==='POST').body),{confirmation:'DELETE ALL',version:'scope-v1'});
+   f.finish();await wait();await wait();
+   const receipt=f.d.querySelector('.bulk-delete-notice');assert.ok(receipt.open);assert.match(receipt.textContent,/Permit records deleted/);assert.match(receipt.textContent,/All 3/);assert.doesNotMatch(receipt.textContent,/sent to the admin|Awaiting admin approval|No records have been deleted/);
+   assert.equal(button.disabled,true);assert.equal(f.reloads(),1);
+  }finally{f.dom.window.close()}
+ });
+ test(kind+': failed admin deletion never claims success and can be retried',async()=>{
+  const f=await registryFixture(kind,undefined,'admin');try{
+   f.postError('The registry changed. Refresh and confirm again.');f.d.querySelector('.registry-delete-all').click();await wait();
+   const dialog=f.d.querySelector('.danger-confirm'),input=dialog.querySelector('input');input.value='DELETE ALL';input.dispatchEvent(new f.w.Event('input'));dialog.querySelector('.danger-confirm-accept').click();await wait();f.finish();await wait();await wait();
+   assert.equal(f.d.querySelector('.bulk-delete-notice'),null);assert.match(dialog.textContent,/registry changed/);assert.equal(dialog.querySelector('.danger-confirm-accept').disabled,false);assert.equal(f.reloads(),0);
+  }finally{f.dom.window.close()}
+ });
+ test(kind+': committed admin deletion remains visible if its status refresh fails',async()=>{
+  const f=await registryFixture(kind,undefined,'admin');try{
+   f.failAfterSubmit();f.d.querySelector('.registry-delete-all').click();await wait();
+   const input=f.d.querySelector('.danger-confirm input');input.value='DELETE ALL';input.dispatchEvent(new f.w.Event('input'));f.d.querySelector('.danger-confirm-accept').click();await wait();f.finish();await wait();await wait();
+   assert.match(f.d.querySelector('.bulk-delete-notice').textContent,/Permit records deleted/);assert.equal(f.reloads(),1);assert.equal(f.d.querySelector('.registry-delete-all').disabled,true);
+  }finally{f.dom.window.close()}
+ });
+}
 
 test('admin bulk requests show the full scope safely and use distinct review routes from individual deletions',async()=>{
  const dom=new JSDOM('<div class="topbar"><h1></h1><p></p></div><div id="permitApprovals"></div><div id="occupancyApprovals"></div>',{url:'http://localhost/admin',runScripts:'dangerously'});

@@ -127,7 +127,7 @@ module.exports = function(db, sessions, openConnection) {
             const [users]=await db.promise().query('SELECT id,username,role,is_verified,is_active,created_at FROM users ORDER BY created_at DESC,id');
             const [assignments]=await db.promise().query('SELECT user_id,station_name FROM permit_station_assignments ORDER BY station_key');
             const byUser=new Map();for(const assignment of assignments){if(!byUser.has(Number(assignment.user_id)))byUser.set(Number(assignment.user_id),[]);byUser.get(Number(assignment.user_id)).push(assignment.station_name);}
-            res.json({success:true,users:users.map(user=>{const assigned=user.role==='operator'?(byUser.get(Number(user.id)) || []):[];return {...user,assigned_stations:assigned,assigned_station:assigned[0] || null};})});
+            res.json({success:true,users:users.map(user=>{const assigned=['operator','admin'].includes(user.role)?(byUser.get(Number(user.id)) || []):[];return {...user,assigned_stations:assigned,assigned_station:assigned[0] || null};})});
         }catch(error){res.status(503).json({success:false,message:'Accounts could not be loaded. Please retry.'});}
     });
 

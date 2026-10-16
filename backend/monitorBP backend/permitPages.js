@@ -3,10 +3,10 @@ module.exports = function permitPages(frontendPath, sessions) {
 // Serve protected HTML only after session/role checks. Inject the verified UI
 // identity before legacy controllers run; sessionStorage is never authority.
 const pagePolicy = {
-    '/index.html':['index.html','operator'],
-    '/edit':['edit.html','operator'], '/edit.html':['edit.html','operator'],
-    '/occupancy':['occupancy.html','operator'], '/occupancy.html':['occupancy.html','operator'],
-    '/occupancy/edit':['occupancy_edit.html','operator'], '/occupancy_edit.html':['occupancy_edit.html','operator'],
+    '/index.html':['index.html','operator','admin'],
+    '/edit':['edit.html','operator','admin'], '/edit.html':['edit.html','operator','admin'],
+    '/occupancy':['occupancy.html','operator','admin'], '/occupancy.html':['occupancy.html','operator','admin'],
+    '/occupancy/edit':['occupancy_edit.html','operator','admin'], '/occupancy_edit.html':['occupancy_edit.html','operator','admin'],
     '/admin':['superadmin.html','admin'], '/admin.html':['superadmin.html','admin'],
     '/superadmin':['superadmin.html','superadmin'], '/superadmin.html':['superadmin.html','superadmin']
 };
@@ -33,7 +33,7 @@ return (req,res,next)=>{
         return res.redirect(req.sessionReplaced ? '/login?session=replaced' : '/login');
     }
 
-    if(req.user.role!==policy[1]) return res.redirect(homes[req.user.role]);
+    if(!policy.slice(1).includes(req.user.role)) return res.redirect(homes[req.user.role]);
     const identity=JSON.stringify(JSON.stringify(req.user)).replace(/</g,'\\u003c');
     require('fs').readFile(path.join(frontendPath,policy[0]),'utf8',(error,html)=>{
         if(error) return next(error);

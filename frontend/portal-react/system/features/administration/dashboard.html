@@ -171,7 +171,7 @@
         const menu=document.createElement('div');menu.className='station-assignment-menu';menu.hidden=true;menu.setAttribute('role','dialog');menu.setAttribute('aria-label','Station assignments for '+user.username);
         if(typeof menu.showPopover==='function')menu.setAttribute('popover','auto');
         const title=document.createElement('strong');title.textContent='Stations for '+user.username;
-        const help=document.createElement('p');help.textContent='Select all stations this operator may edit.';
+        const help=document.createElement('p');help.textContent='Select all stations this account may edit.';
         const list=document.createElement('div');list.className='station-assignment-options';
         const available=new Map();for(const name of [...saved,...catalog])if(typeof name==='string'&&key(name)&&!available.has(key(name)))available.set(key(name),name);
         const checks=[];
@@ -229,7 +229,7 @@
             }
             select.addEventListener('change',()=>accountAction(()=>changeRole(id,select.value)));
             accountCell(row,'').append(select);
-            if(u.role==='operator'){
+            if(['operator','admin'].includes(u.role)){
                 accountCell(row,'').append(stationAssignmentControl(u,id,stationData.stations || []));
             }else{accountCell(row,'Not applicable');}
             const actions=document.createElement('div');actions.className='request-actions';

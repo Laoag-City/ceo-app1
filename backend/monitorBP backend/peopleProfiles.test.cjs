@@ -75,11 +75,12 @@ test('People and profiles: real HTTP/session rules against temporary tables only
             assert.deepEqual(stored,{role:'admin',is_active:1,is_verified:1});
         });
         await t.test('account listing returns one account row with all assignments, including shared stations',async()=>{
-            await conn.query("INSERT INTO permit_station_assignments VALUES (1,'ELECTRICAL','Electrical'),(1,'SANITARY','Sanitary'),(2,'ELECTRICAL','Electrical')");
+            await conn.query("INSERT INTO permit_station_assignments VALUES (1,'ELECTRICAL','Electrical'),(1,'SANITARY','Sanitary'),(2,'ELECTRICAL','Electrical'),(3,'ELECTRICAL','Electrical')");
             const res=await request('/auth/accounts',superCookie);assert.equal(res.status,200);
             const {users}=await res.json();assert.equal(new Set(users.map(user=>user.id)).size,users.length);
             assert.deepEqual(users.find(user=>user.id===1).assigned_stations,['Electrical','Sanitary']);
             assert.deepEqual(users.find(user=>user.id===2).assigned_stations,['Electrical']);
+            assert.deepEqual(users.find(user=>user.id===3).assigned_stations,['Electrical']);
             assert.deepEqual(users.find(user=>user.id===4).assigned_stations,[]);assert.ok(users.some(user=>user.username==='admin'));
             assert.ok(users.every(user=>!Object.hasOwn(user,'password')));
             assert.equal((await request('/auth/accounts',cookie)).status,403);

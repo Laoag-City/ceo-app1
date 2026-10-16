@@ -7,6 +7,7 @@
     const permitId=new URLSearchParams(location.search).get('id');
     if(!['permits','occupancy'].includes(kind)||! /^[1-9]\d*$/.test(permitId||''))return;
     const base=`/api/${kind}/${permitId}/inspections`;
+    const canManage=()=>{try{return JSON.parse(sessionStorage.getItem('oboUser')||'null')?.role==='operator';}catch{return false;}};
     const el=id=>document.getElementById(id);
     const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
     const date=value=>value?new Date(String(value).slice(0,10)+'T00:00:00Z').toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric',timeZone:'UTC'}):'—';
@@ -30,6 +31,7 @@
         }
     }
     function openInspModal(id) {
+        if(!canManage())return;
         if(el('inspModal').style.display==='flex'&&!FormSafety.discard('inspModal'))return;
         const row=id?inspections.find(item=>Number(item.id)===Number(id)):null;
         if(id&&!row){feedback('That inspection is no longer loaded. Refresh before editing.');return;}
@@ -54,6 +56,7 @@
         el('inspModal').style.display='none';previousFocus?.focus();
     }
     const saveInspection=FormSafety.guard('inspSaveBtn',async()=>{
+        if(!canManage())return;
         const editId=el('editInspId').value,dateValue=el('inspDate').value,next=el('inspNextDate');
         if(next.value&&next.value<dateValue){next.setCustomValidity('The next inspection must be on or after this inspection.');next.reportValidity();return;}
         const payload={inspection_type:el('inspType').value,inspection_date:dateValue,inspector_name:el('inspInspector').value,
@@ -66,6 +69,7 @@
         } catch(error){RequestFeedback.report(error);}
     });
     function deleteInspection(id) {
+        if(!canManage())return;
         return FormSafety.guard('inspection-delete-'+id,async()=>{
             const row=inspections.find(item=>Number(item.id)===Number(id));
             if(!row)return;
@@ -86,7 +90,7 @@
                 const total=inspections.filter(row=>row.result===result).length;
                 return total?`<span class="sbadge sb-${result.toLowerCase()}">${total} ${result}</span>`:'';
             }).join('');
-        if(!inspections.length){el('inspectionList').innerHTML='<div class="insp-empty"><p>No inspections logged yet. Use Log inspection to add one.</p></div>';return;}
+        if(!inspections.length){el('inspectionList').innerHTML='<div class="insp-empty"><p>No inspections logged yet.'+(canManage()?' Use Log inspection to add one.':'')+'</p></div>';return;}
         const types={'Preliminary':'preliminary','Final':'final','Follow-up':'followup','Special':'special'};
         const results={'Passed':'passed','Failed':'failed','Scheduled':'scheduled','Conditional':'conditional'};
         el('inspectionList').innerHTML=inspections.map(row=>`
@@ -97,7 +101,7 @@
                     <div class="insp-meta-item"><div class="iml">Type</div><div class="imv">${escape(row.inspection_type)}</div></div>
                     ${row.next_inspection_date?`<div class="insp-meta-item"><div class="iml">Next Inspection</div><div class="imv">${escape(date(row.next_inspection_date))}</div></div>`:''}
                 </div>${row.findings?`<div class="insp-findings-section"><p class="insp-findings-label">Findings / remarks</p><div class="insp-findings">${escape(row.findings)}</div></div>`:''}</div>
-                <div class="insp-card-footer"><button type="button" class="insp-action" onclick="openInspModal(${Number(row.id)})">Edit</button><button type="button" class="insp-action insp-action-danger" onclick="deleteInspection(${Number(row.id)})" title="Request inspection deletion">Delete</button></div>
+                ${canManage()?`<div class="insp-card-footer"><button type="button" class="insp-action" onclick="openInspModal(${Number(row.id)})">Edit</button><button type="button" class="insp-action insp-action-danger" onclick="deleteInspection(${Number(row.id)})" title="Request inspection deletion">Delete</button></div>`:''}
             </article>`).join('');
     }
     document.addEventListener('keydown',event=>{

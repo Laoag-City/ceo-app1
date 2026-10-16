@@ -2,11 +2,12 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const {JSDOM,VirtualConsole}=require('jsdom');
 const fs=require('node:fs'),path=require('node:path');
 const base=path.resolve(__dirname,'..'),wait=()=>new Promise(resolve=>setTimeout(resolve,40));
-async function fixture({failLoad=false,failSave=false}={}){
+async function fixture({failLoad=false,failSave=false,role='operator'}={}){
     const dom=new JSDOM('<div id="system-react-root" data-page="permits-edit"></div>',{url:'http://localhost/edit?id=10',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:new VirtualConsole()});
     const w=dom.window,d=w.document,calls=[];let stored={land_title:true},version='checklist-v1',fail=failLoad;
     w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});w.ResizeObserver=class{observe(){}disconnect(){}};
     w.AbortController=AbortController;w.alert=()=>{};w.confirm=()=>true;
+    w.sessionStorage.setItem('oboUser',JSON.stringify({id:1,role}));
     w.fetch=async(url,options={})=>{
         calls.push({url,options});
         if(options.method==='PUT'){
@@ -26,6 +27,17 @@ async function fixture({failLoad=false,failSave=false}={}){
     const choose=key=>{const input=d.querySelector('[data-requirement="'+key+'"]');input.click();return input;};
     return {dom,w,d,calls,choose,recover(){fail=false;},stored:()=>stored};
 }
+test('admin can view and refresh Building checklist completion without changing it',async()=>{
+ const {dom,w,d,calls,choose}=await fixture({role:'admin'});try{
+  assert.equal(d.getElementById('tbChecklist').textContent,'1/16');
+  assert.equal(d.getElementById('saveClBtn').hidden,true);assert.equal(d.getElementById('saveClBtn').disabled,true);
+  assert.ok([...d.querySelectorAll('[data-requirement]')].every(input=>input.disabled));
+  choose('plans');assert.equal(d.querySelector('[data-requirement="plans"]').checked,false);
+  d.getElementById('saveClBtn').dispatchEvent(new w.Event('click'));await wait();
+  d.getElementById('reloadBuildingChecklist').click();await wait();
+  assert.equal(d.getElementById('tbChecklist').textContent,'1/16');assert.equal(calls.filter(call=>call.options.method==='PUT').length,0);
+ }finally{dom.window.close()}
+});
 test('Building requirements preserve photo conditions, procedure, independent saved progress and tab drafts',async()=>{
     const f=await fixture(),{dom,w,d,calls,choose}=f;
     try{

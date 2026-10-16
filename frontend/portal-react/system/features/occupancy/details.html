@@ -144,7 +144,6 @@ function getAuthHeaders(version = permitVersion) {
     const user = getStoredUser();
     return { 'Content-Type': 'application/json', 'x-record-version': version || '', 'x-user-role': user?.role || '', 'x-user-id': user?.id ? String(user.id) : '' };
 }
-function isAdminOrAbove() { const u = getStoredUser(); return u && (u.role === 'admin' || u.role === 'superadmin'); }
 function currentUserRole() { const u = getStoredUser(); return u ? u.role : ''; }
 
 const CHECKLIST = window.OccupancyChecklist;
@@ -156,39 +155,7 @@ document.getElementById('initializeStandardStations')?.addEventListener('click',
 document.addEventListener('DOMContentLoaded', () => {
     const user = getStoredUser();
     if (!user) { window.location.href = '/login'; return; }
-    if (user.role === 'admin' || user.role === 'superadmin') {
-        window.location.replace(PermitRouting.home(user));
-        return;
-    }
-    if (user.role !== 'operator') { window.location.replace('/login'); return; }
-
-    // Set default mode badge label based on role
-    if (isAdminOrAbove()) {
-        // Admins see "Admin Mode" and a different colored edit button
-        ['modeBadgeTable'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) { el.textContent = 'Admin Mode'; el.style.background='#ecfdf5'; el.style.color='#065f46'; el.style.borderColor='#a7f3d0'; }
-        });
-        document.getElementById('editTriggerBtn').textContent = 'Edit';
-        // Admin can also see a "Return to Registry" note
-        const addDiscForm = document.getElementById('addDisciplineForm');
-        if (addDiscForm) addDiscForm.style.display = 'block';
-    } else {
-        // Operators begin in view mode and submit edits for approval.
-        ['modeBadgeTable'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) { el.textContent = 'View Only'; }
-        });
-        document.getElementById('editTriggerBtn').textContent = 'Edit';
-        // Hide the discipline select form label note for operators
-        const addDiscForm = document.getElementById('addDisciplineForm');
-        if (addDiscForm) {
-            const note = document.createElement('p');
-            note.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:6px;font-style:italic;';
-            note.textContent = 'Only your assigned station details can be edited. Station removal requires the admin.';
-            addDiscForm.after(note);
-        }
-    }
+    if (!['operator','admin'].includes(user.role)) { window.location.replace(PermitRouting.home(user)); return; }
 
     fetchPermitData();
     loadInspections();
@@ -237,26 +204,19 @@ async function fetchPermitData() {
 function renderStationChips() {
     const w = document.getElementById('disciplineConfigList');
     const setup = document.getElementById('standardOccupancyStations');
-    if (setup) setup.hidden = matrixState.length > 0 || projectData?._standardOccupancyStationsSupported !== true;
+    if (setup) setup.hidden = currentUserRole() !== 'operator' || matrixState.length > 0 || projectData?._standardOccupancyStationsSupported !== true;
     if (!matrixState.length) { w.innerHTML='<em style="color:var(--text-muted);font-size:11px;">No stations assigned.</em>'; return; }
     w.replaceChildren();
     matrixState.forEach(d => {
         const chip = document.createElement('span');
         chip.className = 'station-badge-chip';
         chip.textContent = d.discipline_name;
-        if (currentUserRole() === 'admin') {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'station-delete-btn';
-            button.textContent = '×';
-            button.addEventListener('click', () => removeStation(d.discipline_name));
-            chip.append(button);
-        }
         w.append(chip);
     });
 }
 
 async function initializeStandardStations() {
+    if (currentUserRole() !== 'operator') return;
     if (initializingStations || matrixState.length || projectData?._standardOccupancyStationsSupported !== true) return;
     const button = document.getElementById('initializeStandardStations');
     const feedback = document.getElementById('standardStationsFeedback');
@@ -280,6 +240,7 @@ async function initializeStandardStations() {
 }
 
 async function appendStation() {
+    if (currentUserRole() !== 'operator') return;
     const val = document.getElementById('disciplineSelect').value;
     if (!val) return;
     if (!confirm(`Add "${val}" to this workflow?`)) return;
@@ -293,6 +254,7 @@ async function appendStation() {
 }
 
 async function removeStation(name) {
+    if (currentUserRole() !== 'operator') return;
     if (!confirm(`Remove ${name} from this workflow?`)) return;
     if (isEditing && !FormSafety.discard('matrixTableBody')) return;
     try {
@@ -319,7 +281,7 @@ function renderMatrixTable() {
         const eng = StationDates.engineer(row);
         let status = `<span class="badge status-${statusClass}">${esc(statusValue)}</span>`;
         let feed   = StationDates.remarks(row, 'View remarks') || '—';
-        let cmd = currentUserRole() === 'admin' ? `<button type="button" class="btn-icon-danger" onclick="removeStation(decodeURIComponent('${encodeURIComponent(row.discipline_name).replace(/'/g,'%27')}'))">Remove</button>` : '—';
+        const cmd = '—';
         if (isEditing && row.can_edit === true) {
             status = `<select class="input-status" aria-label="Status for station ${Number(row.id)}" data-original="${row.signature_status}">
                 <option value="Pending"  ${row.signature_status==='Pending'  ?'selected':''}>Pending</option>
@@ -500,7 +462,7 @@ async function loadChecklist() {
     } catch(e) {RequestFeedback.report(e);feedback.textContent='Unable to load saved requirements. Refresh the checklist to try again.';}
     finally {
         checklistLoading=false;container.inert=false;renderChecklist();
-        document.getElementById('saveClBtn').disabled=!checklistReady;document.getElementById('reloadChecklist').disabled=false;
+        document.getElementById('saveClBtn').hidden=currentUserRole() !== 'operator';document.getElementById('saveClBtn').disabled=currentUserRole() !== 'operator' || !checklistReady;document.getElementById('reloadChecklist').disabled=false;
     }
 }
 
@@ -508,7 +470,7 @@ function renderChecklist() {
     document.getElementById('checklistContainer').innerHTML=CHECKLIST.map((sec,index)=>`
         <section class="cl-section"><div class="cl-section-title"><h3>${esc(sec.section)}</h3><span class="cl-section-count" data-checklist-group="${index}"></span></div>
         ${sec.items.map(item=>`<label class="cl-item ${checklistState[item.id]===true?'checked':''}">
-            <input class="cl-checkbox" type="checkbox" data-checklist-item="${esc(item.id)}" ${checklistState[item.id]===true?'checked':''} ${checklistReady?'':'disabled'}>
+            <input class="cl-checkbox" type="checkbox" data-checklist-item="${esc(item.id)}" ${checklistState[item.id]===true?'checked':''} ${checklistReady && currentUserRole() === 'operator'?'':'disabled'}>
             <span class="cl-content"><span class="cl-title">${esc(item.title)}</span><span class="cl-note">${esc(item.note)}</span></span>
             <span class="cl-tag ${item.req?'tag-req':'tag-opt'}">${item.req?'Required':'Optional'}</span>
         </label>`).join('')}</section>`).join('');
@@ -531,7 +493,7 @@ function updateChecklistProgress(){
 }
 
 function toggleClItem(id){
-    if(!checklistReady||checklistLoading||checklistSaving||!CHECKLIST.some(group=>group.items.some(item=>item.id===id)))return;
+    if(currentUserRole() !== 'operator'||!checklistReady||checklistLoading||checklistSaving||!CHECKLIST.some(group=>group.items.some(item=>item.id===id)))return;
     FormSafety.rememberValue('checklistContainer',()=>JSON.stringify(checklistState));checklistState[id]=!checklistState[id];
     const input=document.querySelector('[data-checklist-item="'+id+'"]');
     if(input){input.checked=checklistState[id];input.closest('label').classList.toggle('checked',input.checked);}
@@ -540,7 +502,7 @@ function toggleClItem(id){
 document.getElementById('checklistContainer').addEventListener('change',event=>{if(event.target.matches('[data-checklist-item]'))toggleClItem(event.target.dataset.checklistItem);});
 
 const saveChecklist=FormSafety.guard('saveClBtn',async function(){
-    if(!checklistReady||checklistLoading||checklistSaving)return;
+    if(currentUserRole() !== 'operator'||!checklistReady||checklistLoading||checklistSaving)return;
     checklistSaving=true;document.getElementById('reloadChecklist').disabled=true;
     const feedback=document.getElementById('checklistFeedback');
     try {

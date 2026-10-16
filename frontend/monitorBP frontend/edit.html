@@ -121,15 +121,14 @@
         }
 
         wrapper.innerHTML = activeStations.map(d => {
-            const paramsString = selectedValue === 'parent-0' ? `permit_id=${permitId}` : `sub_permit_id=${selectedValue.split('-')[1]}`;
             return `<span class="station-badge-chip">
                 ${escapeHTML(d.discipline_name)}
-                ${currentUser?.role === 'admin' ? `<button type="button" class="station-delete-btn" onclick="deleteStation('${encodeURIComponent(d.discipline_name).replace(/'/g,'%27')}', '${paramsString}')" aria-label="Remove ${escapeHTML(d.discipline_name)}" title="Remove station"><svg class="mdi-icon" aria-hidden="true" focusable="false"><use href="/assets/mdi-interface-icons.svg#mdi-close"></use></svg></button>` : ''}
             </span>`;
         }).join(' ');
     }
 
     async function postStationToMatrix(stationName) {
+        if (getStoredUser()?.role !== 'operator') return;
         if (!stationName.trim()) return;
         if (!confirm(`Add "${stationName.trim()}" to the selected workflow?`)) return;
         if (isEditingMode && !FormSafety.discard('matrixTableBody')) return;
@@ -150,6 +149,7 @@
     }
 
     async function deleteStation(name, params) {
+        if (getStoredUser()?.role !== 'operator') return;
         if (!confirm(`Remove "${decodeURIComponent(name)}" from this workflow?`)) return;
         if (isEditingMode && !FormSafety.discard('matrixTableBody')) return;
         try {
@@ -191,7 +191,7 @@
 
         renderStationChips();
         const setup = document.getElementById('standardBuildingStations');
-        setup.hidden = data._standardBuildingStationsSupported !== true || (data.matrix.length > 0 && (data.sub_permits || []).every(sub => sub.matrix?.length > 0));
+        setup.hidden = currentUser?.role !== 'operator' || data._standardBuildingStationsSupported !== true || (data.matrix.length > 0 && (data.sub_permits || []).every(sub => sub.matrix?.length > 0));
         renderMatrixRows();
         renderRejectionTimeline(data.rejection_history);
         updateEditingControls(false);
@@ -199,6 +199,7 @@
     }
 
     async function initializeStandardStations() {
+        if (getStoredUser()?.role !== 'operator') return;
         if (initializingStations || completeDatasetCache?._standardBuildingStationsSupported !== true || document.getElementById('standardBuildingStations').hidden) return;
         if (isEditingMode && !FormSafety.discard('matrixTableBody')) return;
         const button = document.getElementById('initializeStandardStations'), feedback = document.getElementById('standardStationsFeedback');
@@ -262,7 +263,7 @@
                     <td>${cellStatus}</td>
                     ${StationDates.cells('permits',permitId,row,isEditingMode && row.can_edit === true)}
                     <td style="color:var(--text-secondary);">${cellRemarks}</td>
-                    <td>${currentUser?.role === 'admin' ? `<button type="button" class="btn-icon-danger" onclick="deleteStation('${encodeURIComponent(row.discipline_name).replace(/'/g,'%27')}', '${subId ? 'sub_permit_id='+Number(subId) : 'permit_id='+Number(permitId)}')">Remove</button>` : '—'}</td>
+                    <td>—</td>
                 `;
                 body.appendChild(tr);
                 tr.querySelector('[data-remarks-index]')?.addEventListener('click',event=>{const index=Number(event.currentTarget.dataset.remarksIndex);openRemarksModal(index,row.discipline_name,document.getElementById('rem_'+index).value);});

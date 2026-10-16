@@ -48,8 +48,8 @@ module.exports=function register(open,dialect){
   }
   const connection={dialect:db.dialect || dialect,query:(...args)=>db.query(...args),beginTransaction:()=>db.beginTransaction(),commit:()=>db.commit(),rollback:()=>db.rollback(),end:async()=>{}};
   const workflow=require('../monitorBP backend/editWorkflow')(async()=>connection,sanitize);
-  async function call(handler,{id=10,user=1,role=user===2?'admin':user===3?'superadmin':'operator',version='',body={}}={}){
-   const req={params:{id:String(id)},body,user:{id:user,role},get:key=>key==='x-record-version'?version:undefined};
+  async function call(handler,{id=10,user=1,role=user===2?'admin':user===3?'superadmin':'operator',version='',body={},query={}}={}){
+   const req={params:{id:String(id)},body,query,user:{id:user,role},get:key=>key==='x-record-version'?version:undefined};
    const res={code:200,locals:{},status(n){this.code=n;return this},json(body){this.body=body;return this}};await handler(req,res);return res;
   }
   const read=async(kind,options={})=>call(workflow.read(kind),options);
@@ -91,7 +91,7 @@ module.exports=function register(open,dialect){
    assert.equal((await save(kind,[{...approved,engineer_name:' Reviewer ',feedback_remarks:' Reviewed '}])).body.unchanged,true);assert.equal((await read(kind)).body._version,loaded._version);
    assert.equal(Number((await db.query(`SELECT COUNT(*) n FROM ${c.requests}`))[0][0].n),0);assert.equal(Number((await db.query('SELECT COUNT(*) n FROM permit_final_reviews'))[0][0].n),0);
   });
-  test(kind+': wrong station, unassigned, inactive, admin and IT accounts cannot edit',async t=>{
+  test(kind+': wrong station, unassigned, inactive, unassigned admin and IT accounts cannot edit',async t=>{
    const {db,read,save}=await fixture(t);for(const user of [2,3,4,5])assert.equal((await save(kind,[approved],{user})).code,403);
    assert.equal((await read(kind,{user:4})).body.matrix[0].can_edit,false);assert.equal((await read(kind,{user:3})).code,403);
    await db.query('UPDATE users SET is_active=0 WHERE id=1');assert.equal((await save(kind,[approved])).code,403);
@@ -223,6 +223,95 @@ module.exports=function register(open,dialect){
    const before=(await read(kind)).body;
    assert.equal((await save(kind,[{...approved,feedback_remarks:'Must roll back'},{...approved,id:52}])).code,403);
    assert.equal((await read(kind)).body._version,before._version);
+  });
+  test(kind+': an admin without station assignments can read every row but cannot save signatures or dates',async t=>{
+   const {db,workflow,read,save,call}=await fixture(t),c=workflow.configs[kind];
+   await db.query(`INSERT INTO ${c.matrix} (id,${c.key},discipline_name,engineer_name,signature_status,feedback_remarks) VALUES (51,10,'Sanitary','','Pending','')`);
+   const before=(await read(kind,{user:2})).body;
+   assert.deepEqual(before.assigned_stations,[]);assert.deepEqual(before.matrix.map(row=>row.can_edit),[false,false]);
+   assert.equal((await save(kind,[{...approved,engineer_name:'Admin Display Name'}],{user:2})).code,403);
+   const dates={station_id:50,date_checked:'2026-01-01',date_approved:null,expected_dates:{date_checked:'',date_approved:''}};
+   assert.equal((await call(workflow.submit(kind,'station_dates',dates),{user:2})).code,403);
+   const after=(await read(kind,{user:2})).body;assert.equal(after._version,before._version);assert.deepEqual(after.matrix,before.matrix);
+   assert.equal(Number((await db.query(`SELECT COUNT(*) n FROM ${c.requests}`))[0][0].n),0);
+  });
+  test(kind+': assigned admins save only their stations and their profile becomes the last reviewer',async t=>{
+   const {db,workflow,read,save,review}=await fixture(t),c=workflow.configs[kind],{engineer_name,...withoutName}=approved;
+   await db.query("INSERT INTO permit_station_assignments VALUES (2,'ELECTRICAL','Electrical'),(2,'SANITARY','Sanitary')");
+   await db.query(`INSERT INTO ${c.matrix} (id,${c.key},discipline_name,engineer_name,signature_status,feedback_remarks) VALUES (51,10,'Sanitary','','Pending',''),(52,10,'Mechanical','','Pending','')`);
+   const loaded=(await read(kind,{user:2})).body;
+   assert.deepEqual(loaded.assigned_stations,['Electrical','Sanitary']);assert.deepEqual(loaded.matrix.map(row=>row.can_edit),[true,true,false]);
+   assert.ok(loaded.matrix[0].assigned_operators.some(user=>user.id===2&&user.display_name==='Admin Display Name'));
+   const saved=await save(kind,[withoutName,{...withoutName,id:51}],{user:2});assert.equal(saved.code,200);assert.equal(saved.body.pending,undefined);
+   const rows=(await read(kind,{user:2})).body.matrix;
+   for(const row of rows.slice(0,2)){assert.equal(row.signature_status,'Approved');assert.equal(row.last_updated_by,2);assert.equal(row.engineer_name,'Admin Display Name');}
+   assert.equal(rows[2].signature_status,'Pending');assert.equal(rows[2].last_updated_by,null);
+   assert.equal((await save(kind,[{...withoutName,engineer_name:'Reviewer',feedback_remarks:'Forged name'}],{user:2})).code,400);
+   assert.equal((await save(kind,[{...withoutName,feedback_remarks:'Roll back'},{...withoutName,id:52}],{user:2})).code,403);
+   assert.equal((await read(kind)).body._version,(await read(kind,{user:2})).body._version);
+   assert.equal((await read(kind)).body.matrix[0].feedback_remarks,'Reviewed');
+   assert.equal(Number((await db.query(`SELECT COUNT(*) n FROM ${c.requests}`))[0][0].n),0);
+   await db.query(`UPDATE ${c.matrix} SET signature_status='Approved' WHERE id=52`);
+   assert.equal((await review(kind,'approved')).body.success,true,'Assigned admins retain their existing final-review permission.');
+  });
+  test(kind+': mixed admin batches and a revoked assignment cannot change rows or final-review history',async t=>{
+   const {db,workflow,read,save,review}=await fixture(t),c=workflow.configs[kind],{engineer_name,...withoutName}=approved;
+   await db.query("INSERT INTO permit_station_assignments VALUES (2,'ELECTRICAL','Electrical')");
+   await db.query(`INSERT INTO ${c.matrix} (id,${c.key},discipline_name,engineer_name,signature_status,feedback_remarks) VALUES (51,10,'Sanitary','Sanitary Reviewer','Approved','Reviewed')`);
+   assert.equal((await save(kind,[withoutName],{user:2})).body.success,true);await review(kind,'approved');
+   const before=(await read(kind,{user:2})).body,history=JSON.stringify((await db.query('SELECT * FROM permit_final_reviews ORDER BY id'))[0]);
+   assert.equal((await save(kind,[{...withoutName,feedback_remarks:'Unauthorized batch'},{...withoutName,id:51}],{user:2,version:before._version})).code,403);
+   assert.equal((await read(kind,{user:2})).body._version,before._version);assert.equal(JSON.stringify((await db.query('SELECT * FROM permit_final_reviews ORDER BY id'))[0]),history);
+   await db.query('DELETE FROM permit_station_assignments WHERE user_id=2');
+   assert.equal((await save(kind,[{...withoutName,feedback_remarks:'Permission revoked'}],{user:2,version:before._version})).code,403);
+   const after=(await read(kind,{user:2})).body;assert.deepEqual(after.matrix.map(row=>row.can_edit),[false,false]);assert.equal(after._version,before._version);assert.equal(after.final_approval.status,'approved');
+   assert.equal(JSON.stringify((await db.query('SELECT * FROM permit_final_reviews ORDER BY id'))[0]),history);
+  });
+  test(kind+': admin date saves enforce assignment, current values, validation and live revocation',async t=>{
+   const {db,workflow,read,call}=await fixture(t),c=workflow.configs[kind];
+   await db.query("INSERT INTO permit_station_assignments VALUES (2,'ELECTRICAL','Electrical')");
+   await db.query(`INSERT INTO ${c.matrix} (id,${c.key},discipline_name,engineer_name,signature_status,feedback_remarks) VALUES (51,10,'Sanitary','','Pending','')`);
+   const payload={station_id:50,date_checked:'2026-01-01',date_approved:null,expected_dates:{date_checked:'',date_approved:''}};
+   assert.equal((await call(workflow.submit(kind,'station_dates',{...payload,station_id:51}),{user:2})).code,403);
+   assert.equal((await call(workflow.submit(kind,'station_dates',{...payload,date_checked:'2026-02-30'}),{user:2})).code,400);
+   assert.equal((await call(workflow.submit(kind,'station_dates',{...payload,station_id:60}),{user:2})).code,404);
+   assert.equal((await call(workflow.submit(kind,'station_dates',payload),{user:2})).body.success,true);
+   const saved=(await read(kind,{user:2})).body;
+   assert.equal(saved.matrix[0].date_checked,'2026-01-01');assert.equal(saved.matrix[0].last_updated_by,2);assert.equal(saved.matrix[0].engineer_name,'Admin Display Name');
+   assert.equal((await call(workflow.submit(kind,'station_dates',{...payload,date_checked:'2026-01-02'}),{user:2})).code,409);
+   await db.query('DELETE FROM permit_station_assignments WHERE user_id=2');
+   assert.equal((await call(workflow.submit(kind,'station_dates',{...payload,date_checked:'2026-01-02',expected_dates:{date_checked:'2026-01-01',date_approved:''}}),{user:2})).code,403);
+   assert.equal((await read(kind)).body._version,saved._version);assert.equal((await read(kind)).body.matrix[1].date_checked,null);
+  });
+  test(kind+': inactive, unverified, forged-role and IT sessions cannot use admin station assignments',async t=>{
+   const {db,workflow,read,save,call}=await fixture(t),{engineer_name,...withoutName}=approved;
+   await db.query("INSERT INTO permit_station_assignments VALUES (2,'ELECTRICAL','Electrical'),(3,'ELECTRICAL','Electrical')");
+   const before=(await read(kind,{user:2})).body;
+   const dates={station_id:50,date_checked:'2026-01-01',date_approved:null,expected_dates:{date_checked:'',date_approved:''}};
+   for(const options of [{user:2,role:'operator'},{user:1,role:'admin'},{user:3},{user:3,role:'admin'}]){
+    assert.equal((await save(kind,[withoutName],options)).code,403);
+    assert.equal((await call(workflow.submit(kind,'station_dates',dates),options)).code,403);
+   }
+   assert.equal((await read(kind,{user:3})).code,403);
+   for(const state of ['is_active=0','is_active=1,is_verified=0']){
+    await db.query('UPDATE users SET '+state+' WHERE id=2');
+    assert.equal((await save(kind,[withoutName],{user:2})).code,403);
+    assert.equal((await call(workflow.submit(kind,'station_dates',dates),{user:2})).code,403);
+    assert.equal((await read(kind,{user:2})).code,403);
+   }
+   await db.query('UPDATE users SET is_active=1,is_verified=1 WHERE id=2');assert.equal((await read(kind,{user:2})).body._version,before._version);
+  });
+  test(kind+': admin routing changes require their assigned station and never grant IT station access',async t=>{
+   const {db,workflow,read,call}=await fixture(t),c=workflow.configs[kind];
+   const routing=async(remove,name,options={})=>{const loaded=(await read(kind,{user:2})).body;return call(workflow.routing(kind,remove),{user:2,version:loaded._version,[remove?'query':'body']:{[c.key]:10,discipline_name:name},...options});};
+   assert.equal((await routing(false,'Mechanical')).code,403);assert.equal((await routing(true,'Electrical')).code,403);
+   await db.query("INSERT INTO permit_station_assignments VALUES (2,'ELECTRICAL','Electrical'),(3,'ELECTRICAL','Electrical')");
+   assert.equal((await routing(false,'Sanitary')).code,403);assert.equal((await routing(true,'Electrical',{user:3})).code,403);assert.equal((await routing(false,'Electrical',{user:3})).code,403);
+   assert.equal((await routing(true,'Electrical')).body.success,true);assert.equal((await read(kind,{user:2})).body.matrix.length,0);
+   assert.equal((await routing(false,'Electrical')).body.success,true);
+   const loaded=(await read(kind,{user:2})).body;assert.equal(loaded.matrix.length,1);assert.equal(loaded.matrix[0].discipline_name,'Electrical');assert.equal(loaded.matrix[0].can_edit,true);
+   await db.query('DELETE FROM permit_station_assignments WHERE user_id=2');
+   assert.equal((await routing(true,'Electrical')).code,403);assert.equal((await read(kind)).body._version,loaded._version);
   });
   test(kind+': last actual saver becomes engineer; no-op, profiles and IT changes cannot steal attribution',async t=>{
    const {db,read,save,review}=await fixture(t),table=workflowTable(kind),{engineer_name,...withoutName}=approved;
@@ -493,7 +582,7 @@ module.exports=function register(open,dialect){
   assert.equal((await route('/accounts/:id/station',5,{station:'Architectural'})).code,409);
   for(const stations of [null,'Electrical',[null],[''],['A'.repeat(101)]])assert.equal((await route('/accounts/:id/stations',5,{stations})).code,400);
   assert.equal((await db.query('SELECT station_key FROM permit_station_assignments WHERE user_id=5'))[0].length,2);
-  assert.equal((await route('/accounts/:id/stations',2,{stations:['Structural']})).code,400);assert.equal((await route('/accounts/:id/active',5,{active:false})).body.success,true);assert.equal((await db.query('SELECT is_active FROM users WHERE id=5'))[0][0].is_active,0);assert.equal((await route('/accounts/:id/role',5,{role:'admin'})).body.success,true);assert.equal((await db.query('SELECT station_key FROM permit_station_assignments WHERE user_id=5'))[0].length,0);assert.equal((await route('/accounts/:id/active',3,{active:false})).code,400);assert.equal((await route('/accounts/:id/role',3,{role:'operator'})).code,400);
+  assert.equal((await route('/accounts/:id/stations',2,{stations:['Structural']})).body.success,true);assert.deepEqual((await db.query('SELECT station_key FROM permit_station_assignments WHERE user_id=2'))[0].map(row=>row.station_key),['STRUCTURAL']);assert.equal((await route('/accounts/:id/stations',3,{stations:['Electrical']})).code,400);assert.equal((await route('/accounts/:id/active',5,{active:false})).body.success,true);assert.equal((await db.query('SELECT is_active FROM users WHERE id=5'))[0][0].is_active,0);assert.equal((await route('/accounts/:id/role',5,{role:'admin'})).body.success,true);assert.equal((await db.query('SELECT station_key FROM permit_station_assignments WHERE user_id=5'))[0].length,0);assert.equal((await route('/accounts/:id/active',3,{active:false})).code,400);assert.equal((await route('/accounts/:id/role',3,{role:'operator'})).code,400);
  });
  test('IT assignment replacement is atomic when a later station insert fails',async t=>{
   const {db,connection}=await fixture(t),before=(await db.query('SELECT * FROM permit_station_assignments ORDER BY user_id,station_key'))[0];
@@ -508,5 +597,42 @@ module.exports=function register(open,dialect){
   assert.equal((await read('permits',{user:4})).body.sub_permits[0].matrix[0].can_edit,true);
   assert.equal((await save('permits',[{...withoutName,id:51}],{user:4})).body.success,true);
   const saved=(await read('permits')).body;assert.equal(saved.sub_permits[0].matrix[0].last_updated_by,4);assert.equal(saved.sub_permits[0].matrix[0].engineer_name,'Sanitary Reviewer');assert.equal(saved.matrix[0].last_updated_by,null);
+ });
+ test('building: admin station assignment applies to main and sub-permit signatures, dates and routing',async t=>{
+  const {db,workflow,read,save,call}=await fixture(t),{engineer_name,...withoutName}=approved;
+  await db.query("INSERT INTO sub_permits VALUES (7,10,'Annex')");
+  await db.query("INSERT INTO permit_routing_matrix (id,sub_permit_id,discipline_name,engineer_name,signature_status,feedback_remarks) VALUES (51,7,'Electrical','','Pending',''),(52,7,'Sanitary','','Pending','')");
+  assert.deepEqual((await read('permits',{user:2})).body.sub_permits[0].matrix.map(row=>row.can_edit),[false,false]);
+  await db.query("INSERT INTO permit_station_assignments VALUES (2,'ELECTRICAL','Electrical')");
+  const loaded=(await read('permits',{user:2})).body;
+  assert.equal(loaded.matrix[0].can_edit,true);assert.deepEqual(loaded.sub_permits[0].matrix.map(row=>row.can_edit),[true,false]);
+  assert.equal((await save('permits',[withoutName,{...withoutName,id:51}],{user:2,version:loaded._version})).body.success,true);
+  const saved=(await read('permits',{user:2})).body;
+  assert.equal(saved.matrix[0].last_updated_by,2);assert.equal(saved.sub_permits[0].matrix[0].last_updated_by,2);assert.equal(saved.sub_permits[0].matrix[0].engineer_name,'Admin Display Name');
+  assert.equal((await save('permits',[{...withoutName,id:51,feedback_remarks:'Must roll back'},{...withoutName,id:52}],{user:2,version:saved._version})).code,403);
+  assert.equal((await read('permits')).body._version,saved._version);
+  const dates={station_id:51,date_checked:'2026-01-03',date_approved:'2026-01-04',expected_dates:{date_checked:'2026-01-01',date_approved:'2026-01-02'}};
+  assert.equal((await call(workflow.submit('permits','station_dates',dates),{user:2})).body.success,true);
+  let current=(await read('permits',{user:2})).body;
+  assert.equal(current.sub_permits[0].matrix[0].date_checked,'2026-01-03');assert.equal(current.matrix[0].date_checked,'2026-01-01');
+  assert.equal((await call(workflow.routing('permits',true),{user:2,version:current._version,query:{sub_permit_id:7,discipline_name:'Sanitary'}})).code,403);
+  assert.equal((await call(workflow.routing('permits',true),{user:2,version:current._version,query:{sub_permit_id:7,discipline_name:'Electrical'}})).body.success,true);
+  current=(await read('permits',{user:2})).body;
+  assert.equal(current.matrix.length,1);assert.equal(current.sub_permits[0].matrix.length,1);assert.equal(current.sub_permits[0].matrix[0].discipline_name,'Sanitary');
+  assert.equal((await call(workflow.routing('permits'),{user:2,version:current._version,body:{sub_permit_id:7,discipline_name:'Electrical'}})).body.success,true);
+  current=(await read('permits',{user:2})).body;assert.equal(current.sub_permits[0].matrix.find(row=>row.discipline_name==='Electrical').can_edit,true);
+  await db.query('DELETE FROM permit_station_assignments WHERE user_id=2');
+  assert.equal((await save('permits',[{...withoutName,feedback_remarks:'Assignment removed'}],{user:2,version:current._version})).code,403);
+  assert.equal((await read('permits')).body._version,current._version);
+ });
+ test('assigned admins and IT accounts cannot initialize either standard station flow',async t=>{
+  const {db,workflow,read,call}=await fixture(t);
+  await db.query("INSERT INTO permit_station_assignments VALUES (2,'ELECTRICAL','Electrical'),(3,'ELECTRICAL','Electrical')");
+  await db.query('DELETE FROM permit_routing_matrix WHERE permit_id=20');await db.query('DELETE FROM occupancy_routing_matrix WHERE occupancy_id=20');
+  for(const [kind,handler] of [['permits',workflow.initializeBuildingStations()],['occupancy',workflow.initializeOccupancyStations()]]){
+   const version=(await read(kind,{id:20,user:2})).body._version;
+   for(const user of [2,3])assert.equal((await call(handler,{id:20,user,version})).code,403);
+   const after=(await read(kind,{id:20,user:2})).body;assert.equal(after._version,version);assert.equal(after.matrix.length,0);
+  }
  });
 };
