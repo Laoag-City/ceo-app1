@@ -108,12 +108,8 @@
  byId('reportRefresh').addEventListener('click',load);
  byId('reportExport').addEventListener('click',exportCSV);
  byId('reportPrint').addEventListener('click',()=>{if(report && !pending)window.print();});
- const serviceWindows={'Releasing Bldg. Permit':'PC1','Releasing Bldg. Occupancy':'PC2','Receiving Bldg. Permit':'PC3','Receiving Bldg. Occupancy':'PC3','Inquire':'PC3'};
- byId('reportWindow').addEventListener('change',()=>{
-  const window=byId('reportWindow').value,select=byId('reportService');
-  for(const option of select.options)option.disabled=!!window && !!option.value && serviceWindows[option.value]!==window;
-  if(select.selectedOptions[0]?.disabled)select.value='';
- });
+ // Keep service and window filters independent: past visits may have been
+ // served at a window whose current service assignments have changed.
  load();
 })();
 </script>

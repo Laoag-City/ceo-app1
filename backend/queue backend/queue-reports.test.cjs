@@ -34,7 +34,8 @@ test('cohort reports retain repeated ticket numbers and do not invent legacy tim
     assert.equal(report.daily[0].registered,1);
     assert.equal(report.daily[0].averageWaitSeconds,null);
     assert.equal(report.daily[1].registered,3);
-    assert.equal(report.windows[0].registered,2);
+    assert.equal(report.windows[0].registered,1);
+    assert.equal(report.windows[2].registered,2);
     assert.equal(report.windows[1].averageServiceSeconds,null);
     assert.ok(!JSON.stringify(report).includes('Never include this'));
 });
@@ -42,15 +43,36 @@ test('cohort reports retain repeated ticket numbers and do not invent legacy tim
 test('window/service filters use bound values on either engine and empty cohorts show unavailable averages', async () => {
     const calls=[];
     const read = createQueueReports({query:async(sql,args)=>{calls.push({sql,args});return [[]];}});
-    const response = await read({from:'2026-10-08',to:'2026-10-08',window:'PC3',service:'Inquire'});
+    const response = await read({from:'2026-10-08',to:'2026-10-08',window:'PC1',service:'Inquire'});
     assert.equal(response.summary.registered,0);
     assert.equal(response.summary.averageWaitSeconds,null);
     assert.equal(response.summary.averageServiceSeconds,null);
-    assert.deepEqual(calls[0].args,[new Date('2026-10-07T16:00:00Z'),new Date('2026-10-08T16:00:00Z'),['Receiving Bldg. Permit','Receiving Bldg. Occupancy','Inquire'],'Inquire']);
+    assert.deepEqual(calls[0].args,[new Date('2026-10-07T16:00:00Z'),new Date('2026-10-08T16:00:00Z'),'Inquire']);
     assert.ok(!calls[0].sql.includes('phone'));
     const compiled=bind(convert(calls[0].sql,calls[0].args).sql,calls[0].args);
-    assert.match(compiled.sql,/reason IN \(\$3,\$4,\$5\)/);
-    assert.equal(compiled.args[5],'Inquire');
+    assert.match(compiled.sql,/reason=\$3/);
+    assert.equal(compiled.args[2],'Inquire');
+});
+
+test('reports retain recorded serving and finished windows while unassigned visits follow the current service map',async()=>{
+    const rows=[
+        {reason:'Releasing Bldg. Permit',status:'completed',called_by:'PC1'},
+        {reason:'Releasing Bldg. Permit',status:'dropped',called_by:'PC1'},
+        {reason:'Inquire',status:'serving',called_by:'PC3'},
+        {reason:'Releasing Bldg. Permit',status:'waiting',called_by:'PC1'},
+        {reason:'Inquire',status:'holding',called_by:'PC3'},
+        {reason:'Releasing Bldg. Permit',status:'completed',called_by:'unknown'}
+    ].map(row=>({...row,created_at:'2026-10-08T00:00:00Z'}));
+    const filters={from:'2026-10-08',to:'2026-10-08'};
+    const report=aggregateReport(rows,reportFilters(filters));
+    assert.deepEqual(report.windows.map(row=>row.registered),[3,0,3]);
+    const read=createQueueReports({query:async()=>[rows]});
+    const oldBuilding=await read({...filters,window:'PC1',service:'Releasing Bldg. Permit'});
+    assert.equal(oldBuilding.summary.registered,2);
+    assert.equal(oldBuilding.summary.completed,1);
+    assert.equal(oldBuilding.summary.dropped,1);
+    assert.equal((await read({...filters,window:'PC3',service:'Inquire'})).summary.serving,1);
+    assert.equal((await read({...filters,window:'PC3',service:'Releasing Bldg. Permit'})).summary.waiting,1);
 });
 
 test('an immediate measured call tolerates database timestamp rounding and remains distinct from unknown history', () => {

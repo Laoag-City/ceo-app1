@@ -2,11 +2,7 @@
  * across server processes; the transaction locks the selected ticket until commit.
  * UI ticket IDs protect against a stale tab acting on a newer customer's ticket.
  */
-const tasks = {
-    PC1: ['Releasing Bldg. Permit'],
-    PC2: ['Releasing Bldg. Occupancy'],
-    PC3: ['Receiving Bldg. Permit', 'Receiving Bldg. Occupancy', 'Inquire']
-};
+const {tasks} = require('./queue-services');
 const {recordTicketTransition} = require('./queue-reports');
 function fail(message, status = 409) { throw Object.assign(new Error(message), {status}); }
 
@@ -70,7 +66,10 @@ function createQueueService(db, lockName = 'queue_system:service-transitions', o
                 }
             } else if (action === 'drop') {
                 if (!ticketId) fail('Choose a valid ticket.',400);
-                const [[target]] = await conn.query('SELECT * FROM tickets WHERE id = ? AND reason IN (?) FOR UPDATE',[ticketId.slice(4),tasks[workspace]]);
+                // A ticket already being served stays with its recorded window
+                // even when that window's service assignments change.
+                const target = active.find(row => `TKT-${row.id}` === ticketId) ||
+                    (await conn.query('SELECT * FROM tickets WHERE id = ? AND reason IN (?) FOR UPDATE',[ticketId.slice(4),tasks[workspace]]))[0][0];
                 if (!target || !['waiting','holding','serving'].includes(target.status) ||
                     (expectedStatus && target.status !== expectedStatus) ||
                     (target.status === 'serving' && target.called_by !== workspace)) fail('That ticket changed or belongs to another window. Refresh and try again.');

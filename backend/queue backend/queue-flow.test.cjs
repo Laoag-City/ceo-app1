@@ -5,7 +5,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const {createQueueService}=require('./queue-service');
 const {ensureReportColumns}=require('./queue-reports');
-const tasks={PC1:['Releasing Bldg. Permit'],PC2:['Releasing Bldg. Occupancy'],PC3:['Receiving Bldg. Permit','Receiving Bldg. Occupancy','Inquire']};
+const tasks={PC1:['Receiving Bldg. Permit','Receiving Bldg. Occupancy','Inquire'],PC2:['Releasing Bldg. Occupancy'],PC3:['Releasing Bldg. Permit']};
 
 async function fixture() {
     let conn,end;
@@ -30,6 +30,53 @@ async function fixture() {
     };
     return {conn,act,seed,end};
 }
+
+test('all receiving and inquiry services route to Window 1 while releasing stays isolated at Windows 2 and 3',async()=>{
+    const {conn,act,seed,end}=await fixture();
+    try {
+        await seed([[1,'PC1'],[2,'PC1'],[3,'PC1'],[4,'PC2'],[5,'PC3']]);
+        await conn.query('UPDATE tickets SET reason=? WHERE id=2',['Receiving Bldg. Occupancy']);
+        await conn.query('UPDATE tickets SET reason=? WHERE id=3',['Inquire']);
+        await assert.rejects(act('drop',{workspace:'PC3',ticketId:'TKT-1',expectedStatus:'waiting'}),/another window/);
+        await assert.rejects(act('drop',{workspace:'PC1',ticketId:'TKT-5',expectedStatus:'waiting'}),/another window/);
+        for(const [workspace,ids] of [['PC1',[1,2,3]],['PC2',[4]],['PC3',[5]]]) {
+            for(const id of ids) {
+                const called=await act('call-next',{workspace,source:'queue'});
+                assert.equal(called.id,id);
+                assert.equal(called.called_by,workspace);
+                await act('complete',{workspace,ticketId:`TKT-${id}`});
+            }
+            await assert.rejects(act('call-next',{workspace,source:'queue'}),/No waiting tickets/);
+        }
+    }finally{await end();}
+});
+
+test('reassigned windows can finish their existing active ticket without rewriting history or taking another window’s ticket',async()=>{
+    const {conn,act,seed,end}=await fixture();
+    try {
+        for(const action of ['complete','drop','next','hold']) {
+            await seed([[10,'PC3','serving'],[11,'PC1'],[12,'PC3']]);
+            await conn.query("UPDATE tickets SET called_by='PC1' WHERE id=10");
+            await assert.rejects(act('drop',{workspace:'PC3',ticketId:'TKT-10',expectedStatus:'serving'}),/another window/);
+            const result=await act(action,{workspace:'PC1',ticketId:'TKT-10',expectedStatus:'serving'});
+            const [[saved]]=await conn.query('SELECT reason,status,called_by FROM tickets WHERE id=10');
+            assert.equal(saved.reason,'Releasing Bldg. Permit');
+            if(action==='hold') {
+                assert.equal(saved.status,'holding');
+                assert.equal(saved.called_by,null);
+                await assert.rejects(act('resume',{workspace:'PC1',ticketId:'TKT-10',currentTicketId:null}),/another window/);
+                assert.equal((await act('resume',{workspace:'PC3',ticketId:'TKT-10',currentTicketId:null})).ticket.called_by,'PC3');
+            } else {
+                assert.equal(saved.status,action==='drop'?'dropped':'completed');
+                assert.equal(saved.called_by,'PC1');
+                if(action==='next') {
+                    assert.equal(result.ticket.id,11);
+                    assert.equal(result.ticket.reason,'Receiving Bldg. Permit');
+                }
+            }
+        }
+    }finally{await end();}
+});
 
 test('actual clerk handlers and SQL: finish and call next, select held, drop, and reconnect across all three windows',async()=>{
     const {conn,act,seed,end}=await fixture();

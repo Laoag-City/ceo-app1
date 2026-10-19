@@ -69,18 +69,18 @@
     }
 
     const workspaceTasks = {
-        'PC1': ['Releasing Bldg. Permit'],
+        'PC1': ['Receiving Bldg. Permit', 'Receiving Bldg. Occupancy', 'Inquire'],
         'PC2': ['Releasing Bldg. Occupancy'],
-        'PC3': ['Receiving Bldg. Permit', 'Receiving Bldg. Occupancy', 'Inquire']
+        'PC3': ['Releasing Bldg. Permit']
         // Kiosk and Monitor don't need filters
     };
 
     function friendlyStationName(code) {
         const map = { 
             Kiosk: 'Registration Desk',
-            PC1: 'Window 1 (Releasing Bldg. Permit)', 
+            PC1: 'Window 1 (Receiving / Inquiries)',
             PC2: 'Window 2 (Releasing Bldg. Occupancy)', 
-            PC3: 'Window 3 (Receiving Bldg. permit/Occupancy)', 
+            PC3: 'Window 3 (Releasing Bldg. Permit)',
             Monitor: 'Monitor Display' 
         };
         return map[code] || code;
@@ -111,7 +111,7 @@
             const windowName = 'Window ' + currentWorkspace.slice(-1);
             document.title = windowName + ' | Office of the City Engineer';
             document.getElementById('clerkHeader').textContent = windowName;
-            document.getElementById('windowServiceDescription').textContent = {PC1:'Building permit releasing',PC2:'Occupancy permit releasing',PC3:'Applications and inquiries'}[currentWorkspace] || '';
+            document.getElementById('windowServiceDescription').textContent = {PC1:'Building and occupancy permit receiving / inquiries',PC2:'Occupancy permit releasing',PC3:'Building permit releasing'}[currentWorkspace] || '';
             document.getElementById('queuePageTitle').textContent = 'Service desk';
             document.getElementById('queuePageDescription').textContent = 'Call the next client, pause a ticket, or resume someone from On hold.';
         }
@@ -168,7 +168,7 @@
         if (allowedTasks) {
             currentQueue = currentQueue.filter(t => allowedTasks.includes(t.reason));
             currentHold = currentHold.filter(t => allowedTasks.includes(t.reason));
-            currentFinished = currentFinished.filter(t => t.calledBy === currentWorkspace && allowedTasks.includes(t.reason));
+            currentFinished = currentFinished.filter(t => t.calledBy === currentWorkspace);
         }
 
         waitingTickets=currentQueue;heldTickets=currentHold;finishedTickets=currentFinished;

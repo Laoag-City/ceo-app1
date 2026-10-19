@@ -6,7 +6,7 @@ import {JSDOM} from 'jsdom';
 
 const source = readFileSync(new URL('../features/queue/service-desk.html', import.meta.url), 'utf8');
 const bundle = readFileSync(new URL('../../system-dist/app.js',import.meta.url),'utf8');
-const tasks={PC1:['Releasing Bldg. Permit'],PC2:['Releasing Bldg. Occupancy'],PC3:['Receiving Bldg. Permit','Receiving Bldg. Occupancy','Inquire']};
+const tasks={PC1:['Receiving Bldg. Permit','Receiving Bldg. Occupancy','Inquire'],PC2:['Releasing Bldg. Occupancy'],PC3:['Releasing Bldg. Permit']};
 const ticket=(id,workspace='PC1',name='Client '+id)=>({id:'TKT-'+id,name,reason:tasks[workspace][0],calledBy:workspace});
 const settle=()=>new Promise(resolve=>setTimeout(resolve,20));
 
@@ -56,6 +56,20 @@ test('each window filters all lists, reconnects, and can finish its last client'
             assert.equal(f.node('activeTicketStatus').textContent,'In service');
         }finally{f.dom.window.close();}
     }
+});
+
+test('the original window retains an existing active ticket and its finished history after services change',async()=>{
+    const f=await queueFixture('PC1');
+    try {
+        const legacy={...ticket(1,'PC1'),reason:'Releasing Bldg. Permit'};
+        const waiting={...ticket(2,'PC3'),calledBy:null};
+        f.handlers.queueUpdate({serving:[legacy],queue:[waiting],finished:[legacy]});
+        assert.equal(f.node('activeTicketLabel').textContent,'TKT-1');
+        assert.equal(f.node('dropBtn').disabled,false);
+        assert.equal(f.node('finishedCount').textContent,'1');
+        assert.equal(f.node('waitingCount').textContent,'0');
+        assert.match(f.node('clerkFinishedList').textContent,/TKT-1/);
+    }finally{f.dom.window.close();}
 });
 
 test('Next finishes current, calls next, reports success, and blocks double clicks',async()=>{

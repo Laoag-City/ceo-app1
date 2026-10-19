@@ -4,11 +4,9 @@
  */
 const crypto = require('node:crypto');
 
-const windows = {
-    PC1: {label:'Window 1', services:['Releasing Bldg. Permit']},
-    PC2: {label:'Window 2', services:['Releasing Bldg. Occupancy']},
-    PC3: {label:'Window 3', services:['Receiving Bldg. Permit','Receiving Bldg. Occupancy','Inquire']}
-};
+const {tasks} = require('./queue-services');
+const windows = Object.fromEntries(Object.entries(tasks).map(([code,services]) =>
+    [code,{label:`Window ${code.slice(2)}`,services}]));
 const services = Object.values(windows).flatMap(window => window.services);
 const reportFields = 'report_visit_id,report_tracking_started,first_called_at,completed_at,dropped_at,service_started_at,service_ms';
 const reportDefinitions = {
@@ -134,7 +132,11 @@ function aggregateReport(rows, filters) {
         if (!date) continue;
         const day = localDate(date);
         if (!daily.has(day)) continue;
-        const window = Object.keys(windows).find(key => windows[key].services.includes(row.reason));
+        // Preserve the actual window for served visits. Unassigned waiting/held
+        // visits follow today's routing, including after a service reassignment.
+        const window = ['serving','completed','dropped'].includes(row.status) && Object.hasOwn(windows, row.called_by)
+            ? row.called_by
+            : Object.keys(windows).find(key => windows[key].services.includes(row.reason));
         if ((filters.window && filters.window !== window) || (filters.service && filters.service !== row.reason)) continue;
         addVisit(summary, row);
         addVisit(daily.get(day), row);
@@ -154,10 +156,11 @@ function createQueueReports(db, options = {}) {
         const filters = reportFilters(query, options.now ? options.now() : new Date());
         const start = new Date(filters.from + 'T00:00:00+08:00');
         const end = new Date(new Date(filters.to + 'T00:00:00+08:00').getTime() + 86400000);
-        const columns = `reason,status,created_at,${reportFields}`;
+        const columns = `reason,status,created_at,called_by,${reportFields}`;
         let where = ' WHERE created_at>=? AND created_at<?';
         const args = [start,end];
-        if (filters.window) { where += ' AND reason IN (?)'; args.push(windows[filters.window].services); }
+        // Filter windows during aggregation so historical service/window pairs
+        // remain searchable after their current assignment changes.
         if (filters.service) { where += ' AND reason=?'; args.push(filters.service); }
         // One statement sees a coherent snapshot during a concurrent reset, with
         // no client names/contact details exposed to the aggregate report.

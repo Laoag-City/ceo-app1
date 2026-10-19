@@ -44,20 +44,21 @@ test('PostgreSQL report timing, Manila midnight, and reset preservation use isol
             [1003,'Releasing Bldg. Occupancy','waiting','2026-10-07T16:00:00Z',1],
             [1004,'Inquire','waiting','2026-10-07T16:00:00Z',1]
         ]) await conn.query('INSERT INTO tickets (id,name,reason,status,created_at,report_visit_id,report_tracking_started) VALUES (?,?,?,?,?,?,?)',[id,'Fixture visitor',reason,status,new Date(created),'00000000-0000-4000-8000-'+String(id).padStart(12,'0'),tracked]);
-        await action('call-next',{workspace:'PC1',source:'queue'});
+        await conn.query("UPDATE tickets SET called_by='PC1' WHERE id=1001");
+        await action('call-next',{workspace:'PC3',source:'queue'});
         const [[firstCall]]=await conn.query('SELECT first_called_at,service_started_at FROM tickets WHERE id=1002');
         at='2026-10-07T16:01:30Z';
-        await action('recall',{workspace:'PC1',ticketId:'TKT-1002'});
+        await action('recall',{workspace:'PC3',ticketId:'TKT-1002'});
         const [[afterRecall]]=await conn.query('SELECT first_called_at,service_started_at FROM tickets WHERE id=1002');
         assert.deepEqual(afterRecall,firstCall,'Recalling must not restart first wait or active service');
         at='2026-10-07T16:02:00Z';
-        await action('hold',{workspace:'PC1',ticketId:'TKT-1002'});
+        await action('hold',{workspace:'PC3',ticketId:'TKT-1002'});
         at='2026-10-07T16:12:00Z';
-        await action('resume',{workspace:'PC1',ticketId:'TKT-1002',currentTicketId:null});
+        await action('resume',{workspace:'PC3',ticketId:'TKT-1002',currentTicketId:null});
         at='2026-10-07T16:15:00Z';
-        await action('next',{workspace:'PC1',ticketId:'TKT-1002'});
+        await action('next',{workspace:'PC3',ticketId:'TKT-1002'});
         at='2026-10-07T16:18:00Z';
-        await action('drop',{workspace:'PC3',ticketId:'TKT-1004',expectedStatus:'waiting'});
+        await action('drop',{workspace:'PC1',ticketId:'TKT-1004',expectedStatus:'waiting'});
         const before=await report({from:'2026-10-07',to:'2026-10-08'});
         assert.equal(before.summary.registered,4);
         assert.equal(before.summary.completed,2);
@@ -67,11 +68,17 @@ test('PostgreSQL report timing, Manila midnight, and reset preservation use isol
         assert.deepEqual(before.daily.map(day=>day.registered),[1,3]);
         assert.deepEqual(before.timingCoverage,{measured:1,total:4,waitMeasured:1,serviceMeasured:1});
         assert.equal(before.daily[0].averageServiceSeconds,null,'Legacy completion is unavailable, not zero');
+        assert.deepEqual(before.windows.map(window=>window.registered),[2,1,1]);
+        const legacyFilters={from:'2026-10-07',to:'2026-10-08',window:'PC1',service:'Releasing Bldg. Permit'};
+        const historical=await report(legacyFilters);
+        assert.equal(historical.summary.registered,1,'The old building release remains at its recorded Window 1');
+        assert.equal(historical.summary.completed,1);
         await conn.query('SELECT pg_temp.report_fixture_reset()');
         const [[archived]]=await conn.query('SELECT report_visit_id,service_ms,first_called_at FROM queue_client_history_archive WHERE ticket_id=1002');
         assert.equal(archived.report_visit_id,'00000000-0000-4000-8000-000000001002');
         assert.equal(archived.service_ms,240000);
         assert.deepEqual(await report({from:'2026-10-07',to:'2026-10-08'}),before,'Reset keeps the whole report cohort unchanged');
+        assert.deepEqual(await report(legacyFilters),historical,'Archiving preserves old service/window pairs too');
 
         const submission=createTicketSubmission(adapter);
         const payload={requestId:'11111111-1111-4111-8111-111111111111',name:'New fixture',phone:'09123456789',email:'',barangay:'Test',reason:'Releasing Bldg. Occupancy'};

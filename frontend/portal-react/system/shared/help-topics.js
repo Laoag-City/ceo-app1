@@ -57,7 +57,7 @@ export const helpTopics = {
  'queue-start': {
   title:'Choose a queue workstation', system:'Queue Management',
   summary:'Each workstation has a specific job in the visitor workflow.',
-  steps:['Choose Registration Desk to register visitors and issue tickets.','Choose Window 1 for Building permit releasing, Window 2 for Occupancy permit releasing, or Window 3 for receiving applications and inquiries.','Open Monitor Display for the public queue screen, or Client History to find past visits.'],
+  steps:['Choose Registration Desk to register visitors and issue tickets.','Choose Window 1 for receiving Building and Occupancy permit applications and inquiries, Window 2 for Occupancy permit releasing, or Window 3 for Building permit releasing.','Open Monitor Display for the public queue screen, or Client History to find past visits.'],
   note:'A service window may already be in use. Return to workstations when you finish so another staff member can use your window.'
  },
  'queue-registration': {

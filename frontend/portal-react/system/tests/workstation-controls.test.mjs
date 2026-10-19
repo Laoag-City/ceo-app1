@@ -26,6 +26,16 @@ function fixture(handler = async () => ({allowed:false, message:'This window is 
  return {dom, w, d:w.document, calls, cards:[...w.document.querySelectorAll('.station-card[data-value]')]}
 }
 
+test('workstation descriptions show receiving and inquiries at Window 1 and releasing at Windows 2 and 3',()=>{
+ const f=fixture()
+ try {
+  const card=workspace=>f.d.querySelector(`.station-card[data-value="${workspace}"]`).textContent
+  assert.match(card('PC1'),/Building and occupancy permit receiving \/ inquiries/)
+  assert.match(card('PC2'),/Occupancy permit releasing/)
+  assert.match(card('PC3'),/Building permit releasing/)
+ } finally {f.dom.window.close()}
+})
+
 // JSDOM does not perform native button keyboard activation. Emulate that default
 // only when the real controller has not prevented it, as a browser would do.
 function activateKey(w, button, key) {

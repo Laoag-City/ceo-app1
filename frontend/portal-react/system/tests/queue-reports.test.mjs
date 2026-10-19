@@ -24,9 +24,22 @@ test('reports show real counts and unavailable old service timing without presen
  const f=fixture()
  try{await tick();assert.equal(f.get('report-registered').textContent,'6');assert.equal(f.get('report-completed').textContent,'2');assert.equal(f.get('reportWait').textContent,'1 min 25 sec');assert.equal(f.get('reportDuration').textContent,'Unavailable');assert.match(f.get('reportCoverage').textContent,/2 measured visits/);assert.match(f.get('reportWindowRows').textContent,/Window 1/);assert.equal(f.get('reportExport').disabled,false);assert.equal(f.get('reportResults').getAttribute('aria-busy'),'false')}finally{f.w.close()}
 })
-test('changing window limits service choices and submitted filters reach the report API',async()=>{
+test('window and service choices remain independent so historical assignments can still be reported',async()=>{
  const f=fixture(url=>payload(Object.fromEntries(url.searchParams)))
- try{await tick();f.get('reportService').value='Releasing Bldg. Occupancy';f.get('reportWindow').value='PC1';f.get('reportWindow').dispatchEvent(new f.w.Event('change'));assert.equal(f.get('reportService').value,'');assert.ok([...f.get('reportService').options].find(o=>o.value==='Releasing Bldg. Occupancy').disabled);f.get('reportFrom').value='2026-10-01';f.get('reportTo').value='2026-10-04';f.submit();await tick();assert.equal(f.calls.at(-1).searchParams.get('window'),'PC1');assert.equal(f.calls.at(-1).searchParams.get('from'),'2026-10-01');assert.match(f.get('reportPeriod').textContent,/Window 1/)}finally{f.w.close()}
+ try {
+  await tick()
+  f.get('reportService').value='Releasing Bldg. Permit'
+  f.get('reportWindow').value='PC1'
+  f.get('reportWindow').dispatchEvent(new f.w.Event('change'))
+  assert.equal(f.get('reportService').value,'Releasing Bldg. Permit')
+  assert.equal([...f.get('reportService').options].some(option=>option.disabled),false)
+  f.get('reportFrom').value='2026-10-01';f.get('reportTo').value='2026-10-04'
+  f.submit();await tick()
+  assert.equal(f.calls.at(-1).searchParams.get('window'),'PC1')
+  assert.equal(f.calls.at(-1).searchParams.get('service'),'Releasing Bldg. Permit')
+  assert.equal(f.calls.at(-1).searchParams.get('from'),'2026-10-01')
+  assert.match(f.get('reportPeriod').textContent,/Window 1/)
+ } finally {f.w.close()}
 })
 test('invalid dates do not request a report and API failure disables CSV and print',async()=>{
  let fail=false

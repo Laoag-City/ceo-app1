@@ -20,7 +20,14 @@ test('real HTTP session checks protect queue ownership, roles, expiry, logout an
  assert.equal((await post('/claim',0,{workspace:'Monitor'})).status,400);
  assert.equal((await post('/claim',0)).status,200);assert.equal((await post('/claim',0)).status,200);assert.equal((await post('/claim',1)).status,409);
  assert.equal((await post('/claim',1,{workspace:'PC2'})).status,200);
- for(const action of ['call-next','next','resume','recall','hold','complete','drop','unhold']){assert.equal((await post('/'+action,0)).status,200);assert.equal((await post('/'+action,1,{workspace:'PC1',role:'superadmin'})).status,409);}
+ for(const action of ['call-next','next','resume','recall','hold','complete','drop','unhold']){
+  const response=await post('/'+action,0);assert.equal(response.status,200);
+  assert.deepEqual(await response.json(),{workspace:'PC1',reasons:['Receiving Bldg. Permit','Receiving Bldg. Occupancy','Inquire']});
+  assert.equal((await post('/'+action,1,{workspace:'PC1',role:'superadmin'})).status,409);
+ }
+ assert.deepEqual(await (await post('/next',1,{workspace:'PC2'})).json(),{workspace:'PC2',reasons:['Releasing Bldg. Occupancy']});
+ assert.equal((await post('/claim',2,{workspace:'PC3'})).status,200);
+ assert.deepEqual(await (await post('/next',2,{workspace:'PC3'})).json(),{workspace:'PC3',reasons:['Releasing Bldg. Permit']});
  assert.equal((await post('/release',1)).status,409);assert.equal((await post('/reset',0,{confirmation:'RESET',role:'superadmin'})).status,403);
  users.get(hash(tokens[2])).role='operator';assert.equal((await post('/reset',2)).status,403);users.get(hash(tokens[2])).role='admin';
  assert.equal((await post('/reset',2)).status,200);assert.equal((await post('/call-next',0)).status,409);

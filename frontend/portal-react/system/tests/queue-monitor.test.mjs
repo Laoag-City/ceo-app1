@@ -215,11 +215,11 @@ test('public monitor groups live FIFO tickets by service window without personal
         f.handlers.queueUpdate({queue:waiting, onHold:[], serving:[], nowServing:null})
         const columns = [...f.document.querySelectorAll('.monitor-waiting-window')]
         assert.equal(f.document.getElementById('waitingQueueCount').textContent, '4 waiting')
-        assert.deepEqual([...columns[0].querySelectorAll('li strong')].map(node => node.textContent), ['TKT-1002','TKT-1005'])
+        assert.deepEqual([...columns[0].querySelectorAll('li strong')].map(node => node.textContent), ['TKT-1003'])
         assert.equal(columns[0].querySelector('.monitor-ticket-status').textContent, 'Next')
-        assert.equal(columns[0].querySelectorAll('.monitor-ticket-position')[1].textContent, '2')
+        assert.equal(columns[2].querySelectorAll('.monitor-ticket-position')[1].textContent, '2')
         assert.equal(columns[1].querySelector('li strong').textContent, 'TKT-1004')
-        assert.equal(columns[2].querySelector('li strong').textContent, 'TKT-1003')
+        assert.deepEqual([...columns[2].querySelectorAll('li strong')].map(node => node.textContent), ['TKT-1002','TKT-1005'])
         assert.doesNotMatch(f.document.body.textContent, /Private name|Private phone/)
     } finally {f.dom.window.close()}
 })
@@ -234,7 +234,7 @@ test('waiting, serving and held ticket displays follow the latest queue state', 
         assert.match(callCard(f, 'PC1').getAttribute('aria-label'), /Proceed to Window 1/)
         assert.equal(f.document.getElementById('windowServingList'), null, 'No duplicate bottom window cards')
         assert.equal(f.document.getElementById('monitorHoldList').hidden, false)
-        assert.match(f.document.getElementById('monitorHoldList').textContent, /TKT-1003 · Window 3/)
+        assert.match(f.document.getElementById('monitorHoldList').textContent, /TKT-1003 · Window 1/)
         assert.doesNotMatch(f.document.getElementById('waitingQueueList').textContent, /TKT-1001|TKT-1003/)
         f.handlers.queueUpdate({queue:[], onHold:[], serving:[], nowServing:null})
         assert.equal(callNumber(f, 'PC1'), '---')

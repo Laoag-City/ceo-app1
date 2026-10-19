@@ -22,9 +22,9 @@ function GroupHeading({id,title,description,walkthrough=false}) {
 }
 
 const windows=[
- {value:'PC1',title:'Window 1',description:'Building permit releasing',accent:'blue'},
+ {value:'PC1',title:'Window 1',description:'Building and occupancy permit receiving / inquiries',accent:'blue'},
  {value:'PC2',title:'Window 2',description:'Occupancy permit releasing',accent:'green'},
- {value:'PC3',title:'Window 3',description:'Application receiving and inquiries',accent:'gold'}
+ {value:'PC3',title:'Window 3',description:'Building permit releasing',accent:'gold'}
 ];
 
 export default function WorkstationChooser() {
