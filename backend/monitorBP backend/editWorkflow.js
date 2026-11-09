@@ -14,6 +14,18 @@ const finalApproval=require('./finalApproval');
 const occupancyStations=require('./occupancyStations');
 const buildingStations=require('./buildingStations');
 const validation=require('./permitValidation');
+const duplicateChecks=require('./permitDuplicates');
+function duplicateProposal(kind,state,payload) {
+    const data=Object.fromEntries(validation.fields[kind].map(key=>[key,payload[key]??state.record[key]]));
+    if(kind==='permits')data.lot_numbers=payload.lot_numbers??(state.lots||[]).map(row=>row.lot_number);
+    return data;
+}
+function duplicateIdentityChanged(kind,state,payload) {
+    const before=duplicateProposal(kind,state,{}),after=duplicateProposal(kind,state,payload);
+    const fields=['project_title','owner_name','location',...(kind==='occupancy'?['bp_reference_no']:[])];
+    return fields.some(key=>duplicateChecks.normalize(before[key])!==duplicateChecks.normalize(after[key])) ||
+        (kind==='permits' && JSON.stringify(before.lot_numbers.map(duplicateChecks.normalize).sort())!==JSON.stringify(after.lot_numbers.map(duplicateChecks.normalize).sort()));
+}
 const configs = {
     permits: { records: 'permits', requests: 'permit_change_requests', key: 'permit_id', matrix: 'permit_routing_matrix' },
     occupancy: { records: 'occupancy_permits', requests: 'occupancy_change_requests', key: 'occupancy_id', matrix: 'occupancy_routing_matrix' }
@@ -61,18 +73,19 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
         });
         return { state, hash: digest(hashState) };
     }
-    async function run(res, operation) {
-        let conn;
+    async function run(res, operation, duplicateKind) {
+        let conn,unlock;
         try {
             conn = await openConnection();
             await conn.beginTransaction();
+            if(duplicateKind)unlock=await duplicateChecks.lock(conn,duplicateKind);
             const result = await operation(conn);
             await conn.commit();
             return res.status(result.status || 200).json(result.body);
         } catch (err) {
             if (conn) await conn.rollback().catch(() => {});
-            return res.status(err.status || 500).json({ success: false, conflict:err.status===409 && !err.duplicate, message: err.status ? err.message : 'Unable to save this request. No changes were applied. Please refresh and try again.' });
-        } finally { if (conn) await conn.end(); }
+            return res.status(err.status || 500).json({ success: false, ...duplicateChecks.response(err), conflict:err.status===409 && !err.duplicate && err.code!=='POSSIBLE_DUPLICATE', message: err.status ? err.message : 'Unable to save this request. No changes were applied. Please refresh and try again.' });
+        } finally {try{if(unlock)await unlock();}finally{if(conn)await conn.end();}}
     }
     function submit(kind, type, input) {
         const c = configs[kind];
@@ -89,6 +102,11 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
                 if(payload.lot_numbers!==undefined)payload.lot_numbers=validation.lots(payload.lot_numbers,sanitize);
             }
             if(type==='permit_update' && proposedChanges(type,payload,current.state)===digest({}))return {body:{success:true,unchanged:true,message:'No project changes to save.',_version:current.hash}};
+            let duplicateApproval;
+            if(type==='permit_update'&&duplicateIdentityChanged(kind,current.state,payload)) {
+                duplicateApproval=await duplicateChecks.check(conn,kind,duplicateProposal(kind,current.state,payload),req.body,id);
+                duplicateChecks.acknowledge(res,duplicateApproval);
+            }
             if (type === 'matrix_update') {
                 validateMatrix(payload, current.state);
                 const originals=[...current.state.matrix,...(current.state.subMatrix || [])];
@@ -137,12 +155,12 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
                     return { status: 409, body: { success: false, duplicate: true, requestId: request.id, message: 'These same changes are already awaiting administrator approval. No duplicate request was created.' } };
                 }
             }
-            const changes = { ...payload, _baseSnapshot: current.hash, _before: { ...current.state.record, lot_numbers: (current.state.lots || []).map(row => row.lot_number), matrix: [...current.state.matrix, ...(current.state.subMatrix || [])].map(row=>({...row, date_checked:stationDates.calendar(row.date_checked), date_approved:stationDates.calendar(row.date_approved)})) } };
+            const changes = { ...payload, ...(duplicateApproval?{_duplicateApproval:duplicateApproval}:{}), _baseSnapshot: current.hash, _before: { ...current.state.record, lot_numbers: (current.state.lots || []).map(row => row.lot_number), matrix: [...current.state.matrix, ...(current.state.subMatrix || [])].map(row=>({...row, date_checked:stationDates.calendar(row.date_checked), date_approved:stationDates.calendar(row.date_approved)})) } };
             res.locals = res.locals || {};
             res.locals.projectChangeDetail = JSON.stringify({version:1,changes:require('./projectChanges').fromSnapshot(changes._before,payload)});
             await conn.query(`INSERT INTO ${c.requests} (${c.key}, requested_by, change_type, changes, status, remarks) VALUES (?, ?, ?, ?, 'pending', ?)`, [id, user.id, type, JSON.stringify(changes), 'Operator submitted changes for approval. Checked against the current permit version.']);
             return { body: { success: true, pending: true, message: 'Changes submitted for administrator approval.' } };
-        });
+        },type==='permit_update'?kind:null);
     }
     function proposedChanges(type, changes, state) {
         if(type==='station_dates')return digest([Number(changes.station_id),stationDates.calendar(changes.date_checked),stationDates.calendar(changes.date_approved)]);
@@ -249,17 +267,21 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
             }
             if(['matrix_update','station_dates'].includes(request.change_type))throw invalid('Station edit approvals have been retired. The designated operator must save the station updates directly. This historical request has been retained.',409);
             if (!['permit_update', 'matrix_update','station_dates'].includes(request.change_type) || (kind === 'occupancy' && !['matrix_update','station_dates'].includes(request.change_type))) throw invalid('Unsupported change request.');
-            const changes = decode(request.changes) || {};
+            let changes = decode(request.changes) || {};
             if (!changes._baseSnapshot || changes._baseSnapshot !== current.hash) {
                 const message = changes._baseSnapshot ? 'Outdated request — approval blocked. This permit changed after the request was submitted. The current permit was not overwritten. Ask the operator to refresh the workspace and submit a fresh request based on its current status.' : 'This older request has no version snapshot and cannot be safely approved. Ask the operator to refresh the permit and submit a new request.';
                 await conn.query(`UPDATE ${c.requests} SET status = 'conflict', reviewed_by = ?, reviewed_at = NOW(), remarks = ? WHERE id = ?`, [String(user.id), message, requestId]);
                 return { status: 409, body: { success: false, conflict: true, message } };
             }
+            changes={...changes,...validation.metadata('permits',changes,sanitize,true)};
+            if(changes.lot_numbers!==undefined)changes.lot_numbers=validation.lots(changes.lot_numbers,sanitize);
+            const acknowledgement=req.body?.allowDuplicates===true?req.body:{allowDuplicates:!!changes._duplicateApproval,duplicateVersion:changes._duplicateApproval?.version};
+            if(duplicateIdentityChanged(kind,current.state,changes))duplicateChecks.acknowledge(res,await duplicateChecks.check(conn,kind,duplicateProposal(kind,current.state,changes),acknowledgement,id));
             await finalApproval.invalidate(conn,kind,id,user,current.state);
             await applyChanges(conn,c,id,request.change_type,changes,current);
             await conn.query(`UPDATE ${c.requests} SET status = 'approved', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?`, [String(user.id), requestId]);
             return { body: { success: true, message: 'Changes approved and applied successfully.' } };
-        });
+        },kind);
     }
     function read(kind) {
         const c=configs[kind];

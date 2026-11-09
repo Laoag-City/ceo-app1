@@ -1,4 +1,6 @@
 {
+  "permits-approval-inbox":["approvalInboxKind","ai-tab-all","ai-tab-edit","ai-tab-deletion","ai-tab-final"],
+  "permits-monthly-reports":["monthlyReportMonth","monthlyReportKind","mr-tab-summary","mr-tab-details","mr-tab-print"],
   "permits-login": [
     "formMessage",
     "loginForm",
@@ -272,7 +274,6 @@
   ],
   "queue-monitor": [
     "callingWindowList",
-    "lobbyVideo",
     "logoutBtn",
     "logoutTooltip",
     "mainDisplayContainer",

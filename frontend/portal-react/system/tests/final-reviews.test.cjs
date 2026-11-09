@@ -4,7 +4,7 @@ const wait=()=>new Promise(resolve=>setTimeout(resolve,20));
 async function until(check){for(let i=0;i<200;i++){if(check())return;await wait()}assert.fail('Review did not reach the expected state')}
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status});
 async function mount(role,{kind='permits',hooks={}}={}){
- const dom=new JSDOM('<style>*{margin:0;padding:0}</style><div id="system-react-root" data-page="permits-superadmin"></div>',{url:'http://localhost/',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:new VirtualConsole()});
+ const dom=new JSDOM('<style>*{margin:0;padding:0}</style><div id="system-react-root" data-page="permits-superadmin"></div>',{url:'http://localhost/'+(role==='admin'?'admin#finalReviews':'superadmin'),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:new VirtualConsole()});
  const w=dom.window,d=w.document,calls=[];let saved=0;
  w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});w.ResizeObserver=class{observe(){}disconnect(){}};
  w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};w.sessionStorage.setItem('oboUser',JSON.stringify({id:role==='admin'?2:3,role}));
@@ -32,6 +32,53 @@ test('IT workspace has only account navigation and never fetches engineering rev
   assert.ok(!d.getElementById('buildingReview'));assert.ok(!d.getElementById('occupancyReview'));assert.ok(!d.getElementById('finalReviews'));assert.ok(!d.querySelector('.permit-transfer-tools'));assert.ok(d.getElementById('createAccountForm'));assert.ok(d.body.textContent.includes('Account access'));assert.equal(calls.filter(c=>/final-reviews|\/api\/permits|\/api\/occupancy/.test(c.url)).length,0);
  }finally{dom.window.close()}
 });
+
+test('browser Back closes the open project review and Forward keeps it closed',async()=>{
+ const fixture=await mount('admin'),{dom,w,d}=fixture;
+ try{
+  w.scrollTo=()=>{};
+  const review=d.querySelector('.fr-dialog');
+  const heading=d.querySelector('.topbar h1');
+  w.location.hash='adminOverview';
+  await until(()=>heading.textContent==='Admin Overview');
+  d.querySelector('.permit-sidebar a[href="#finalReviews"]').click();
+  await until(()=>heading.textContent==='Final Project Review');
+  await fixture.open();
+
+  w.history.back();
+  await until(()=>heading.textContent==='Admin Overview');
+  assert.equal(review.open,false);
+  await until(()=>d.activeElement===heading);
+
+  w.history.forward();
+  await until(()=>heading.textContent==='Final Project Review');
+  assert.equal(review.open,false);
+  await fixture.open();
+  assert.equal(writes(fixture).length,0);
+ }finally{dom.window.close()}
+});
+
+test('a pending review load cannot reopen the dialog after leaving the subsection',async()=>{
+ let finishRead;
+ const fixture=await mount('admin',{hooks:{read:()=>new Promise(resolve=>{finishRead=resolve})}}),{dom,w,d}=fixture;
+ try{
+  w.scrollTo=()=>{};
+  const reviewButton=d.querySelector('#finalReviews .fr-projects button');
+  reviewButton.click();
+  await until(()=>finishRead);
+
+  w.location.hash='buildingReview';
+  await until(()=>!d.getElementById('buildingReview').hidden);
+  w.history.back();
+  await until(()=>!d.getElementById('finalReviews').hidden);
+  finishRead();
+  await until(()=>!reviewButton.disabled);
+
+  assert.equal(d.querySelector('.fr-dialog').open,false);
+  assert.equal(writes(fixture).length,0);
+ }finally{dom.window.close()}
+});
+
 for(const kind of ['permits','occupancy']){
  test(`${kind}: centered review confirms approval, prevents repeated clicks and announces the saved result`,async()=>{
   let release;const fixture=await mount('admin',{kind,hooks:{put:()=>new Promise(resolve=>release=resolve)}}),{dom,w,d}=fixture;

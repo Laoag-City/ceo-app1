@@ -17,12 +17,14 @@
         const date = new Date(key + 'T00:00:00Z');
         return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === key ? key : '';
     }
-    const sorts = ['newest', 'oldest', 'id-newest', 'id-oldest', 'az', 'za'];
+    const sorts = ['newest', 'oldest', 'id-newest', 'id-oldest', 'az', 'za', 'inactive-desc'];
+    const agingFilters = ['all', 'attention', 'overdue', 'unknown'];
     function cleanState(value, statuses) {
         const state = value && typeof value === 'object' ? value : {};
         return {
             query: typeof state.query === 'string' ? state.query : '',
             status: statuses.includes(state.status) ? state.status : 'all',
+            aging: agingFilters.includes(state.aging) ? state.aging : 'all',
             from: dateKey(state.from), to: dateKey(state.to),
             sort: sorts.includes(state.sort) ? state.sort : 'id-newest',
             page: Number.isSafeInteger(state.page) && state.page > 0 ? state.page : 1
@@ -41,11 +43,21 @@
             const haystack = normalize(fields.join(' '));
             if (!words.every(word => haystack.includes(word))) return false;
             if (state.status !== 'all' && statusOf(p) !== state.status) return false;
+            if (state.aging && state.aging !== 'all') {
+                const status=p.aging?.status || 'unknown';
+                if(state.aging==='attention' ? !['followup','overdue'].includes(status) : status!==state.aging)return false;
+            }
             const date = dateOf(p);
             return (!state.from || (date && date >= state.from)) && (!state.to || (date && date <= state.to));
         }).sort((a, b) => {
             let order = 0;
-            if (state.sort === 'id-newest' || state.sort === 'id-oldest') {
+            if (state.sort === 'inactive-desc') {
+                const idle=p=>Number.isSafeInteger(p.aging?.inactive_days)&&p.aging.inactive_days>=0?p.aging.inactive_days:null;
+                const ad=idle(a),bd=idle(b);
+                if(ad===null && bd!==null)return 1;
+                if(ad!==null && bd===null)return -1;
+                order=(bd??-1)-(ad??-1);
+            } else if (state.sort === 'id-newest' || state.sort === 'id-oldest') {
                 // Compare numeric database IDs, not padded BP/OP display strings.
                 order = (Number(a.id) - Number(b.id)) * (state.sort === 'id-oldest' ? 1 : -1);
             } else if (state.sort === 'az' || state.sort === 'za') {
@@ -78,11 +90,13 @@
         const from = document.getElementById('registryDateFrom');
         const to = document.getElementById('registryDateTo');
         const sort = document.getElementById('registrySort');
+        const aging = document.getElementById('registryAging');
         const error = document.getElementById('registryFilterError');
         search.value = restored.query; from.value = restored.from; to.value = restored.to; sort.value = restored.sort;
+        if(aging)aging.value=restored.aging;
         options.restore(restored);
         function state() {
-            return { query: search.value, from: from.value, to: to.value, sort: sort.value, status: options.status(), page: options.page() };
+            return { query: search.value, from: from.value, to: to.value, sort: sort.value, aging: aging?.value || 'all', status: options.status(), page: options.page() };
         }
         function sync() {
             const current = state();
@@ -94,13 +108,14 @@
                 button.classList.toggle('active', active);
                 button.setAttribute('aria-pressed', String(active));
             });
-            document.getElementById('registryClear').disabled = !current.query && !current.from && !current.to && current.status === 'all' && current.sort === 'id-newest';
+            document.getElementById('registryClear').disabled = !current.query && !current.from && !current.to && current.status === 'all' && current.sort === 'id-newest' && current.aging === 'all';
             try { sessionStorage.setItem(key, JSON.stringify(current)); } catch {}
         }
         search.addEventListener('input', options.change);
-        [from, to, sort].forEach(control => control.addEventListener('change', options.change));
+        [from, to, sort, aging].filter(Boolean).forEach(control => control.addEventListener('change', options.change));
         document.getElementById('registryClear').addEventListener('click', () => {
             search.value = ''; from.value = ''; to.value = ''; sort.value = 'id-newest';
+            if(aging)aging.value='all';
             options.restore(cleanState({}, options.statuses));
             options.change();
             search.focus();

@@ -16,6 +16,7 @@
         if(target === '/login') return '/login';
         if(page === 'dashboard') return path === target ? null : target;
         if(page === 'operator' && !['operator','admin'].includes(user.role)) return target;
+        if(['reports','inbox'].includes(page) && user.role !== 'admin') return target;
         return null;
     }
     const api = {home, readUser, redirectFor};

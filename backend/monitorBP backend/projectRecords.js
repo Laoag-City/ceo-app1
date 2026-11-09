@@ -101,6 +101,13 @@ module.exports = function projectRecords(db) {
                 try { if(typeof submitted==='string')submitted=JSON.parse(submitted); } catch (_) { submitted=null; }
                 if(submitted?._before) detail=JSON.stringify({version:1,changes:changes.fromSnapshot(submitted._before,submitted)});
                 action = `${review[2] === 'approve' ? 'Approved' : 'Declined'} ${rows[0].change_type === 'delete' ? 'project deletion' : rows[0].change_type === 'inspection_delete' ? 'inspection deletion' : 'edit request'} #${review[1]}`;
+                // Preserve the filing metadata before an operator's approved
+                // deletion cascades the parent row. Only a saved audit outcome
+                // is reportable; blocked/failed/unconfirmed attempts stay excluded.
+                if(review[2]==='approve' && rows[0].change_type==='delete') {
+                    const records=await query(`SELECT * FROM ${c.table} WHERE id=?`,[id]);
+                    if(records[0])detail=JSON.stringify({version:1,changes:[{field:'Permit record',before:records[0].project_title,after:'Deleted with related records'}],deletion:{mode:'approved_request',project:{record:records[0]}}});
+                }
             } else if (/\/matrix\/(add|remove)$/.test(path)) {
                 id = Number(body[c.key] || req.query[c.key]);
                 const sub = Number(body.sub_permit_id || req.query.sub_permit_id);
@@ -132,7 +139,13 @@ module.exports = function projectRecords(db) {
                 if(result?.unchanged){query('DELETE FROM project_records WHERE id=?',[event.insertId]).then(()=>original(result)).catch(()=>original(result));return res;}
                 const success = res.statusCode < 400 && result?.success === true && !result.duplicate;
                 const message = success && result.pending ? `Submitted for administrator approval: ${action.replace(/^Deleted inspection/, 'Inspection deletion').replace(/^Updated /, '').replace(/^Edited /, '').replace(/^Requested /, '')}` : result?.conflict ? `${action} — blocked because the request was outdated` : action;
-                query('UPDATE project_records SET project_id=COALESCE(?,project_id), outcome=?, message=?, details=? WHERE id=?', [res.locals.projectRecordId || null, success ? 'saved' : result?.conflict ? 'blocked' : 'failed', message, res.locals.projectChangeDetail || detail, event.insertId])
+                let confirmedDetail=res.locals.projectChangeDetail || detail;
+                if(success && res.locals.duplicateAcknowledgement) {
+                    let parsed;try{parsed=JSON.parse(confirmedDetail);}catch{}
+                    const warning=res.locals.duplicateAcknowledgement;
+                    confirmedDetail=JSON.stringify({version:1,changes:[...(parsed?.version===1&&Array.isArray(parsed.changes)?parsed.changes:[]),{field:'Possible duplicates',before:warning.references.join(', ')+(warning.total>warning.references.length?' and other matches':''),after:'Reviewed and acknowledged before saving'}]});
+                }
+                query('UPDATE project_records SET project_id=COALESCE(?,project_id), outcome=?, message=?, details=? WHERE id=?', [res.locals.projectRecordId || null, success ? 'saved' : result?.conflict ? 'blocked' : 'failed', message, confirmedDetail, event.insertId])
                     .then(() => original(result))
                     .catch(error => { console.error('Activity confirmation failed:', error.message); original({ ...result, activityWarning: 'The action completed but its activity confirmation is unavailable.' }); });
                 return res;

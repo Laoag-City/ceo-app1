@@ -11,6 +11,7 @@ const cors = require('cors');
 
 const app = express();
 const PORT = Number(process.env.PORT || process.env.PERMIT_PORT || 3000);
+const permitAging = require('./permitAging');
 require('../http-security')(app);
 require('../office-services')(app, 'permits');
 
@@ -195,6 +196,7 @@ db.connect(async (err) => {
         await sessions.initialize();
         await peopleProfiles.initialize();
         await permitTransfer.initialize();
+        await require('./permitCreationRequests').initialize(dbPromise);
         await projectRecords.initialize();
         app.listen(PORT, process.env.OFFICE_BIND_HOST || undefined, () => console.log('Permit server ready on port '+PORT+' ('+mysql.dialect+')'));
     } catch (dbErr) {
@@ -228,6 +230,7 @@ app.use('/api',(req,res,next)=>{
 });
 app.use('/api', peopleProfiles.router);
 app.use('/api', require('./adminOverview')(db,sessions));
+app.use('/api/admin/monthly-reports',require('./monthlyReports')(()=>bulkDeletionPool.getConnection(),sessions));
 app.use('/api/permit-transfer', permitTransfer.router);
 app.use('/api', (req,res,next)=>{
     if (/^\/(permits|occupancy)\/change-requests\//i.test(req.path)) return sessions.requireRoles('admin')(req,res,next);
@@ -265,7 +268,7 @@ app.get('/api/final-reviews',sessions.requireRoles('admin'),async(req,res)=>{
         const finalApproval=require('./finalApproval');
         const building=await finalApproval.projectList(db.promise(),'permits');
         const occupancy=await finalApproval.projectList(db.promise(),'occupancy');
-        res.json({success:true,projects:[...building,...occupancy]});
+        res.set('Cache-Control','no-store').json({success:true,projects:[...building,...occupancy]});
     } catch(error){res.status(503).json({success:false,message:'Final review records are unavailable. Please retry.'});}
 });
 
@@ -320,10 +323,10 @@ app.get('/api/permits', (req, res) => {
     
     db.query(sql, (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
-        require('./finalApproval').projectList(db.promise(),'permits').then(projects=>{
+        require('./finalApproval').projectList(db.promise(),'permits').then(async projects=>{
             const byId=new Map(projects.map(p=>[Number(p.id),p.final_approval]));
-            res.json(results.map(p=>({...p,final_approval:byId.get(Number(p.id))})));
-        }).catch(()=>res.status(503).json({message:'Permit approval status is unavailable. Please retry.'}));
+            res.json(await permitAging.decorate(db.promise(),'permits',results.map(p=>({...p,final_approval:byId.get(Number(p.id))}))));
+        }).catch(()=>res.status(503).json({message:'Permit approval or aging information is unavailable. Please retry.'}));
     });
 });
 
@@ -374,8 +377,8 @@ app.get('/api/permits/change-requests/pending', (req, res) => {
         ORDER BY c.created_at DESC`;
 
     db.query(sql, async (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: err.message });
-        try { res.json({ success: true, requests: [...await bulkDeletionWorkflow.pending('permits'), ...results] }); }
+        if (err) return res.status(503).json({ success: false, message: 'Permit requests could not be loaded. Please retry.' });
+        try { res.set('Cache-Control','no-store').json({ success: true, requests: [...await bulkDeletionWorkflow.pending('permits'), ...results] }); }
         catch (_) { res.status(503).json({ success: false, message: 'Permit requests could not be loaded. Please retry.' }); }
     });
 });
@@ -402,10 +405,10 @@ app.get('/api/occupancy', (req, res) => {
 
         db.query("SELECT * FROM occupancy_routing_matrix", (matrixErr, matrix) => {
             if (matrixErr) return res.status(500).json({ error: matrixErr.message });
-            Promise.all([require('./finalApproval').projectList(db.promise(),'occupancy'),require('./stationAccess').engineers(db.promise())]).then(([projects,operators])=>{
+            Promise.all([require('./finalApproval').projectList(db.promise(),'occupancy'),require('./stationAccess').engineers(db.promise())]).then(async ([projects,operators])=>{
                 const byId=new Map(projects.map(p=>[Number(p.id),p.final_approval]));
-                res.json({permits:permits.map(p=>({...p,final_approval:byId.get(Number(p.id))})),matrix:matrix.map(row=>require('./stationAccess').engineer(row,operators))});
-            }).catch(()=>res.status(503).json({message:'Permit approval status is unavailable. Please retry.'}));
+                res.json({permits:await permitAging.decorate(db.promise(),'occupancy',permits.map(p=>({...p,final_approval:byId.get(Number(p.id))}))),matrix:matrix.map(row=>require('./stationAccess').engineer(row,operators))});
+            }).catch(()=>res.status(503).json({message:'Permit approval or aging information is unavailable. Please retry.'}));
         });
     });
 });
@@ -478,8 +481,8 @@ app.get('/api/occupancy/change-requests/pending', (req, res) => {
         ORDER BY c.created_at DESC`;
 
     db.query(sql, async (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: err.message });
-        try { res.json({ success: true, requests: [...await bulkDeletionWorkflow.pending('occupancy'), ...results] }); }
+        if (err) return res.status(503).json({ success: false, message: 'Permit requests could not be loaded. Please retry.' });
+        try { res.set('Cache-Control','no-store').json({ success: true, requests: [...await bulkDeletionWorkflow.pending('occupancy'), ...results] }); }
         catch (_) { res.status(503).json({ success: false, message: 'Permit requests could not be loaded. Please retry.' }); }
     });
 });

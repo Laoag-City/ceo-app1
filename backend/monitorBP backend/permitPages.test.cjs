@@ -89,3 +89,21 @@ test('admins and operators can open both registries/details while IT remains in 
   assert.equal(redirect,destination);
  }
 });
+
+test('monthly reporting page and normalized aliases are engineering-admin only',async()=>{
+ const path=require('node:path'),gate=require('./permitPages')(path.resolve(__dirname,'../../frontend/monitorBP frontend'));
+ for(const url of ['/monthly-reports','/monthly-reports.html','/MONTHLY-REPORTS.HTML','/%6donthly-reports/']){
+  for(const [role,expected] of [[null,'/login'],['operator','/index.html'],['superadmin','/superadmin']]){
+   let redirect;gate({path:url,user:role?{id:1,role}:null},{set(){},redirect(value){redirect=value;}},()=>assert.fail('Report page must be protected'));assert.equal(redirect,expected);
+  }
+ }
+});
+
+test('approval inbox and normalized aliases exclude operators, IT and anonymous visitors',()=>{
+ const gate=require('./permitPages')(__dirname);
+ for(const url of ['/approval-inbox','/approval-inbox.html','/APPROVAL-INBOX.HTML','/%61pproval-inbox/','/directory/../approval-inbox.html']){
+  for(const [role,expected] of [[null,'/login'],['operator','/index.html'],['superadmin','/superadmin']]){
+   let redirect;gate({path:url,user:role?{id:1,role}:null},{set(){},redirect(value){redirect=value;}},()=>assert.fail('Inbox must not fall through to static files'));assert.equal(redirect,expected);
+  }
+ }
+});

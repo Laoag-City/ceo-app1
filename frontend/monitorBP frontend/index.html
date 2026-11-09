@@ -7,6 +7,7 @@
     <script src="/appearance.js"></script>
     <script src="/destructive-action.js"></script>
     <script src="/request-feedback.js"></script>
+    <script src="/permit-duplicates.js"></script>
     <script src="/form-safety.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -306,6 +307,7 @@ html[data-theme='dark'] .bp-page .registry-card .main-data-row .lot-badge-inline
 <link rel="stylesheet" href="/status-badges.css">
 <link rel="stylesheet" href="/registry-filters.css">
 <script src="/registry-filters.js"></script>
+<link rel="stylesheet" href="/permit-aging.css"><script src="/permit-aging.js"></script>
 <link rel="stylesheet" href="/appearance.css">
 <link rel="stylesheet" href="/project-records.css">
 <script src="/project-records.js"></script>
@@ -380,6 +382,7 @@ html[data-theme='dark'] .bp-page .registry-card .main-data-row .lot-badge-inline
         if (getStoredUser()?.role !== 'operator') return;
         const lotVal = document.getElementById('lot_input_field').value.trim();
         const dataPayload = {
+            requestId: window.PermitDuplicates?.creationKey('permits'),
             project_title: document.getElementById('project_title').value,
             sub_project_title: document.getElementById('sub_project_title').value,
             location: document.getElementById('location').value,
@@ -394,8 +397,10 @@ html[data-theme='dark'] .bp-page .registry-card .main-data-row .lot-badge-inline
             body: JSON.stringify(dataPayload)
         });
         const result=await res.json();
+        if(result.cancelled)return;
         if (!res.ok || !result.success) { alert(result.message || 'Unable to create permit.'); return; }
         if (result.success) {
+            window.PermitDuplicates?.complete('permits');
             FormSafety.clean('permitForm'); closeCreatePermitModal();
             stagedLotNumbersArray = [];
             getPermitLogs();
@@ -405,7 +410,9 @@ html[data-theme='dark'] .bp-page .registry-card .main-data-row .lot-badge-inline
     async function getPermitLogs() {
         try {
             const res = await RequestFeedback.fetch('/api/permits');
-            globalPermitsCache = await res.json();
+            const data=await res.json();
+            if(res.ok===false || !Array.isArray(data))throw Error('Permit records could not be loaded.');
+            globalPermitsCache = data;
             filterPermitLogs();
             window.dispatchEvent(new Event('permit-registry-changed'));
         } catch(e) { console.error("Fetch logs failure:", e); }
@@ -503,6 +510,7 @@ window.permitExportIds = () => filteredPermitsList.map(p => p.id);
         const pageIndicator = document.getElementById('paginationPageIndicator');
         tableBody.innerHTML = '';
         permitProgressViews.clear();
+        PermitAging.updatePolicy(globalPermitsCache || []);
         const totalPages = Math.ceil(filteredPermitsList.length / recordsPerPage) || 1;
         currentPage = Math.max(1, Math.min(currentPage, totalPages));
         registryFilters.sync();
@@ -512,7 +520,7 @@ window.permitExportIds = () => filteredPermitsList.map(p => p.id);
         document.getElementById('recordCounter').innerText = `${filteredPermitsList.length} of ${globalPermitsCache.length} records`;
 
         if (filteredPermitsList.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">No matching permit records found.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px;">No matching permit records found.</td></tr>`;
             return;
         }
 
@@ -567,6 +575,7 @@ window.permitExportIds = () => filteredPermitsList.map(p => p.id);
                 <td class="permit-detail-text" style="white-space:nowrap;">${formattedDate}</td>
                 <td><div style="display:flex;flex-wrap:wrap;gap:2px;max-width:180px;">${lotsHtml}</div></td>
                 <td><span class="permit-status-chip permit-status-${permitStatus}">${statusLabel}</span></td>
+                <td class="permit-aging-cell">${PermitAging.cell(rowItem.aging)}</td>
                 <td>
                     <div class="action-group">
                         <button type="button" class="btn-progress" onclick="openPermitProgress(${rowItem.id})" aria-haspopup="dialog">Progress</button>

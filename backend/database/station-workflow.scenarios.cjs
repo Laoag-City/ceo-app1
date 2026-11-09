@@ -347,7 +347,7 @@ module.exports=function register(open,dialect){
   for(const row of [...loaded.matrix,...loaded.sub_permits[0].matrix]){assert.equal(row.signature_status,'Pending');assert.equal(row.date_checked,null);assert.equal(row.date_approved,null);assert.equal(row.feedback_remarks,'');}
   assert.equal(loaded.matrix.find(row=>row.discipline_name==='Electrical').engineer_name,'Reviewer');assert.equal(loaded.final_approval.ready,false);
   assert.equal((await read('permits')).body.matrix.length,1);assert.equal(Number((await db.query('SELECT COUNT(*) n FROM permit_change_requests'))[0][0].n),0);
-  const mainOnly=await call(create,{body:newBuildingBody});assert.equal((await read('permits',{id:mainOnly.body.id})).body.sub_permits.length,0);assert.equal((await read('permits',{id:mainOnly.body.id})).body.matrix.length,9);
+  const mainOnly=await call(create,{body:{...newBuildingBody,project_title:'Another building',owner_name:'Another client',location:'Other address'}});assert.equal((await read('permits',{id:mainOnly.body.id})).body.sub_permits.length,0);assert.equal((await read('permits',{id:mainOnly.body.id})).body.matrix.length,9);
  });
  test('building: creation validates inputs and live account access before saving',async t=>{
   const {db,connection,call}=await fixture(t);let opened=0;

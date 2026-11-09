@@ -18,7 +18,7 @@ for(const page of layouts) test(`${page.id}: rendered page and inline controller
   const dom=new JSDOM(`<div id="system-react-root" data-page="${page.id}"></div>`,{url:'http://localhost'+(page.url||'/'),runScripts:'dangerously'})
   dom.window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}})
   dom.window.ResizeObserver=class {observe(){}disconnect(){}}
-  dom.window.sessionStorage.setItem('oboUser',JSON.stringify({id:1,role:page.id==='permits-superadmin'?'admin':'operator'}))
+  dom.window.sessionStorage.setItem('oboUser',JSON.stringify({id:1,role:['permits-superadmin','permits-monthly-reports','permits-approval-inbox'].includes(page.id)?'admin':'operator'}))
   // Data-loading islands must leave controller targets usable even offline.
   dom.window.fetch=async()=>({ok:false,json:async()=>({message:'Offline test fixture'})})
   try {

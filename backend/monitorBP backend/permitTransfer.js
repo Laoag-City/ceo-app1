@@ -5,6 +5,7 @@
 const crypto = require('node:crypto');
 const express = require('express');
 const occupancyStations = require('./occupancyStations');
+const duplicateChecks=require('./permitDuplicates');
 const fields = {
     permits: ['project_title','location','owner_name','designer_name','permit_date','lot_numbers'],
     occupancy: ['project_title','location','owner_name','bp_reference_no','date_applied']
@@ -12,7 +13,7 @@ const fields = {
 const tables = {permits:'permits',occupancy:'occupancy_permits'};
 const bad = (message,status=400) => Object.assign(new Error(message),{status});
 const digest = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const normalize = value => String(value).normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
+const normalize = duplicateChecks.normalize;
 // Quoting alone does not stop spreadsheet formula execution.
 function csv(rows) {
     return '\uFEFF' + rows.map(row => row.map(value => {
@@ -78,11 +79,14 @@ module.exports = function createTransfer(connect,sessions) {
     const wrap=fn=>async(req,res)=>{let db;try {db=await connect();await fn(req,res,db);}catch(e){res.status(e.status||503).json({success:false,message:e.status?e.message:'Transfer failed. Nothing was partially imported. You can retry the same submission.'});}finally{if(db)await db.end();}};
     async function preview(db,kind,text) {
         const rows=validate(kind,text);
-        const [existing]=await db.query(`SELECT id,project_title,owner_name,location FROM ${tables[kind]}`);
+        const existing=await duplicateChecks.candidates(db,kind);
         const seen=new Map();
         for(const row of rows) {
             const key=normalize(row.data.project_title);
-            row.duplicates=existing.filter(p=>normalize(p.project_title)===key || (normalize(p.owner_name)===normalize(row.data.owner_name)&&normalize(p.location)===normalize(row.data.location))).map(p=>(kind==='permits'?'BP-':'OP-')+String(p.id));
+            const matches=duplicateChecks.compare(kind,row.data,existing);
+            row.duplicates=matches.matches.map(p=>p.reference);
+            row.duplicateVersion=matches.version;
+            row.duplicateTotal=matches.total;
             if(seen.has(key))row.errors.push('Repeated project name within file (row '+seen.get(key)+')');
             seen.set(key,row.row);
         }
@@ -123,8 +127,10 @@ module.exports = function createTransfer(connect,sessions) {
             const [lock]=await db.query("SELECT GET_LOCK(CONCAT(DATABASE(), ':permit-import'),10) acquired");
             if(!lock[0].acquired)throw bad('Another import is running. Try again shortly.',409);
         }
+        let unlock;
         try {
             await db.beginTransaction();
+            unlock=await duplicateChecks.lock(db,kind);
             if(db.dialect==='postgres')await db.query("SELECT pg_advisory_xact_lock(hashtextextended(current_database() || ':permit-import',0))");
             const [prior]=await db.query('SELECT * FROM permit_import_batches WHERE request_id=?',[requestId]);
             if(prior.length) {
@@ -147,7 +153,7 @@ module.exports = function createTransfer(connect,sessions) {
             }
             await db.query('INSERT INTO permit_import_batches (request_id,actor_id,kind,content_hash,project_ids) VALUES (?,?,?,?,?)',[requestId,req.user.id,kind,hash,JSON.stringify(ids)]);
             await db.commit();res.json({success:true,ids});
-        }catch(e){await db.rollback();throw e;}finally{if(db.dialect!=='postgres')await db.query("SELECT RELEASE_LOCK(CONCAT(DATABASE(), ':permit-import'))");}
+        }catch(e){await db.rollback();throw e;}finally{try{if(unlock)await unlock();}finally{if(db.dialect!=='postgres')await db.query("SELECT RELEASE_LOCK(CONCAT(DATABASE(), ':permit-import'))");}}
     }));
     return {router,initialize:async()=>{const db=await connect();try{await db.query(schema);}finally{await db.end();}}};
 };

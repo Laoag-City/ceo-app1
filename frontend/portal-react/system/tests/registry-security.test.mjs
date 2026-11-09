@@ -22,6 +22,7 @@ for(const kind of ['building','occupancy'])for(const role of ['operator','admin'
   w.RequestFeedback={fetch:async()=>({ok:true,json:async()=>kind==='building'?rows:{permits:rows,matrix:[]}})}
   w.eval(bundle)
   w.eval(readFileSync(new URL('../assets/permits/registry-filters.js',import.meta.url),'utf8'))
+  w.eval(readFileSync(new URL('../assets/permits/permit-aging.js',import.meta.url),'utf8'))
   const shell=readFileSync(new URL(`../features/${kind}/registry.html`,import.meta.url),'utf8')
   const controller=[...shell.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]).find(script=>script.includes(kind==='building'?'function displayPaginatedRows':'function renderTable'))
   w.eval(controller)

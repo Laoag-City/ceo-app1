@@ -16,6 +16,14 @@ body.permit-navigation-collapsed { --permit-nav-width: 76px; }
 .permit-sidebar .permit-nav-link { display:flex; align-items:center; gap:11px; width:100%; min-height:46px; margin:5px 0; padding:12px 11px; border:1px solid transparent; border-radius:9px; text-decoration:none; color:var(--nav-text); background:transparent; font:500 12px/1.4 'DM Sans','Segoe UI',sans-serif; text-align:left; cursor:pointer; white-space:nowrap; }
 .permit-sidebar .permit-nav-link:hover,.permit-nav-heading button:hover { background:var(--nav-active); color:var(--nav-accent); }
 .permit-sidebar .permit-nav-link.is-current { background:var(--nav-active); color:var(--nav-accent); font-weight:700; }
+.permit-nav-submenu { margin:2px 0 10px 20px; padding-left:10px; border-left:1px solid var(--nav-line); }
+.permit-nav-submenu[hidden] { display:none!important; }
+.permit-sidebar .permit-nav-submenu .permit-nav-link { min-height:38px; margin:2px 0; padding:9px 8px; gap:8px; font-size:11px; }
+.permit-sidebar .permit-nav-submenu svg { width:17px; height:17px; flex-basis:17px; }
+.permit-sidebar .permit-nav-section-chevron { display:inline-flex; margin-left:auto; flex:0 0 14px; }
+.permit-sidebar .permit-nav-section-chevron svg { width:14px; height:14px; flex-basis:14px; }
+.permit-nav-section-toggle[aria-expanded=true] .permit-nav-section-chevron { transform:rotate(90deg); }
+.permit-sidebar .permit-nav-section-toggle.is-current-group { color:var(--nav-accent); font-weight:700; }
 .permit-nav-link i { width:5px; height:5px; border-radius:50%; background:currentColor; margin-left:auto; }
 .permit-nav-footer { margin-top:auto; padding-top:22px; }
 .permit-nav-footer::before { content:''; display:block; border-top:1px solid var(--nav-line); margin:0 10px 16px; }
@@ -34,6 +42,7 @@ html[data-theme='dark'] .permit-sidebar .permit-nav-logout:hover { background:#4
 @media(min-width:1001px) {
  .permit-navigation-collapsed .permit-nav-heading>div,.permit-navigation-collapsed .permit-nav-label,.permit-navigation-collapsed .permit-nav-link span,.permit-navigation-collapsed .permit-nav-link i,.permit-navigation-collapsed .permit-nav-caption { display:none; }
  .permit-navigation-collapsed .permit-nav-link span.walkthrough-help-mark { display:inline-flex; }
+ .permit-navigation-collapsed .permit-nav-section-toggle .permit-nav-section-chevron { display:none; }
  .permit-navigation-collapsed .permit-nav-heading { justify-content:center; padding-bottom:26px; }
  .permit-navigation-collapsed .permit-nav-heading svg { transform:rotate(180deg); }
  .permit-navigation-collapsed .permit-nav-link { justify-content:center; padding:12px 0; }

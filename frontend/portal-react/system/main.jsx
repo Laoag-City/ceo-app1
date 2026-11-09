@@ -20,7 +20,7 @@ if (!Page) throw new Error('Unknown system page: ' + host.dataset.page)
 // Classic blocking bundle: mount before the following controller scripts run,
 // preserving normal DOMContentLoaded and deferred script order exactly once.
 // No StrictMode replay or root rerenders around legacy controller-owned nodes.
-const withSidebar = ['permits-index', 'permits-occupancy', 'permits-edit', 'permits-occupancy_edit', 'permits-superadmin'].includes(host.dataset.page)
+const withSidebar = ['permits-index', 'permits-occupancy', 'permits-edit', 'permits-occupancy_edit', 'permits-superadmin','permits-monthly-reports','permits-approval-inbox'].includes(host.dataset.page)
 if (withSidebar) document.body.classList.add('permit-navigation', 'permit-panel-shell')
 if (host.dataset.page === 'queue-log-in') document.body.classList.add(window.location.pathname === '/workstations.html' ? 'queue-workstation-page' : 'staff-sign-in')
 // Both sign-in pages and workstation selection share the body backdrop.

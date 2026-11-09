@@ -1,5 +1,17 @@
 // Guides describe the existing workflow; opening help never performs an action.
 export const helpTopics = {
+ 'permit-approval-inbox': {
+  title:'Review the approval inbox',system:'Permit Management',roles:['admin'],
+  summary:'Review pending edits, permit and inspection deletions, and projects ready for final approval in one place.',
+  steps:['Choose a request type and Building or Occupancy. Submitted requests appear oldest first; automatic final reviews follow.','Open Review to inspect the latest submitted changes or deletion scope. Approve or decline, then confirm your decision. Delete All requires typing DELETE ALL.','For final approval, review all main and sub-permit stations in the existing project review dialog. Enter remarks when returning a project for correction.'],
+  note:'A request can become outdated while another admin is reviewing it. Refresh its details before retrying. Final-review entries are created by station readiness and have no separate requester or submission date.'
+ },
+ 'permit-monthly-reports': {
+  title:'Monthly permit reports',system:'Permit Management',roles:['admin'],
+  summary:'Summarize applications and recorded review decisions for a selected month.',
+  steps:['Choose the reporting month and permit type. The current month includes dates up to today in Manila.','Use Summary for totals and processing time, or Detailed records to inspect the applications behind those totals.','Export Excel or CSV for every matched record. Open Print summary to print or save a PDF.'],
+  note:'Filing counts use filing dates. Approvals and corrections use action dates and may relate to earlier applications. Each parent permit counts once per metric; incomplete applications are excluded from the processing-time average.'
+ },
  'permit-create': {
   title:'Create a permit', system:'Permit Management', roles:['operator'],
   summary:'Building and Occupancy permits start with their standard routing stations.',
@@ -99,6 +111,8 @@ export const helpTopics = {
 }
 
 export function helpForPage(page, role, workspace, resetVisible=false) {
+ if(page==='permits-approval-inbox')return {start:'permit-approval-inbox',topics:role==='admin'?['permit-approval-inbox','permit-final-review','permit-deletion']:[]}
+ if(page==='permits-monthly-reports')return {start:'permit-monthly-reports',topics:role==='admin'?['permit-monthly-reports']:[]}
  if (page==='queue-log-in') return {start:'queue-start', topics:['queue-start','queue-registration','queue-actions','queue-held','queue-recall','queue-history']}
  if (page==='queue-kiosk') return {start:workspace==='Kiosk'?'queue-registration':'queue-actions',topics:workspace==='Kiosk'?['queue-registration','queue-start']:['queue-actions','queue-held','queue-recall','queue-start',...(resetVisible?['queue-reset']:[])]}
  if (page==='queue-client-history') return {start:'queue-history',topics:['queue-history','queue-start']}

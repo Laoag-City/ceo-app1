@@ -1,5 +1,6 @@
 .admin-overview{margin-bottom:30px;color:#173248}.ao-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}.ao-heading h2{font-size:20px}.ao-heading p,.ao-panels p{margin:5px 0 14px;font-size:13px;color:#617689}.ao-refresh{display:flex;align-items:center;gap:12px;font-size:11px;color:#617689}
 .admin-overview button{font:inherit;cursor:pointer;border:1px solid #c6d5e1;border-radius:8px;padding:9px 13px;background:#fff;color:#173248;font-weight:600}.admin-overview button:disabled{opacity:.55;cursor:wait}.admin-overview button:focus-visible{outline:3px solid #2681bd;outline-offset:3px}
+.ao-inbox{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0;padding:12px 14px;border:1px solid var(--theme-line,#c6d5e1);border-radius:8px;color:var(--theme-text,#1769aa);background:var(--theme-card,#fff);font-size:13px;font-weight:600;text-decoration:none}.ao-inbox:focus-visible{outline:2px solid #2681bd;outline-offset:3px}
 .ao-stat-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
 .ao-stat-heading>span:first-child{font-size:13px;font-weight:500;line-height:1.5;color:#74808a}
 .ao-stat-icon{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:0 0 24px;background:transparent;color:#1769aa}

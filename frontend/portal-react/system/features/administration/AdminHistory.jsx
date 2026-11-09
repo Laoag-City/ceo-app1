@@ -29,6 +29,7 @@ export default function AdminHistory(){
   return data
  }
  useEffect(()=>{
+  if(open && dialog.current.closest('[hidden]')){setOpen(false);return}
   if(open)dialog.current.showModal();else if(dialog.current.open){dialog.current.close();opener.current?.focus()}
  },[open])
  useEffect(()=>{
@@ -54,7 +55,7 @@ export default function AdminHistory(){
  function close(event){event?.preventDefault();setOpen(false)}
  return <>
   <button className="ao-history-launch" type="button" onClick={event=>{opener.current=event.currentTarget;setOpen(true)}}>View full history</button>
-  <dialog ref={dialog} className="ao-history-dialog" aria-labelledby="admin-history-title" onCancel={close}>
+  <dialog ref={dialog} className="ao-history-dialog" aria-labelledby="admin-history-title" onCancel={close} onClose={()=>{if(!dialog.current?.open)setOpen(false)}}>
    <header className="ao-history-heading"><div><h2 id="admin-history-title">Permit history</h2><p>Past requests, station activity, remarks, and final reviews.</p></div><button type="button" aria-label="Close history" onClick={close}>×</button></header>
    <div className="ao-history-filters"><label>Permit<select value={kind} onChange={event=>setKind(event.target.value)}><option value="all">Both permits</option><option value="permits">Building</option><option value="occupancy">Occupancy</option></select></label><label>Record type<select value={source} onChange={event=>setSource(event.target.value)}><option value="all">All history</option><option value="request">Requests</option><option value="activity">Activity and remarks</option><option value="final_review">Final reviews</option></select></label><label className="ao-history-search">Find records<input type="search" maxLength={100} value={query} onChange={event=>setQuery(event.target.value)} placeholder="Project, ID, or person"/></label><button type="button" disabled={busy} onClick={()=>setReload(value=>value+1)}>Refresh</button></div>
    <div className="ao-history-feed">

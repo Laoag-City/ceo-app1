@@ -63,7 +63,9 @@ test('real database import/export: atomicity, preview, permissions and retries',
         await control.query('CREATE TABLE sub_permits (id INT PRIMARY KEY,permit_id INT) ENGINE=InnoDB');
         await control.query('CREATE TABLE permit_routing_matrix (id INT AUTO_INCREMENT PRIMARY KEY,permit_id INT,sub_permit_id INT,discipline_name VARCHAR(100),engineer_name VARCHAR(100),signature_status VARCHAR(50),feedback_remarks TEXT,date_checked DATE,date_approved DATE) ENGINE=InnoDB');
         await control.query('CREATE TABLE occupancy_routing_matrix (id INT AUTO_INCREMENT PRIMARY KEY,occupancy_id INT,discipline_name VARCHAR(100),engineer_name VARCHAR(100),signature_status VARCHAR(50),feedback_remarks TEXT,date_checked DATE,date_approved DATE,FOREIGN KEY (occupancy_id) REFERENCES occupancy_permits(id)) ENGINE=InnoDB');
-        await control.query('CREATE TABLE permit_final_reviews (id INT AUTO_INCREMENT PRIMARY KEY,kind VARCHAR(16),project_id INT,decision VARCHAR(16),snapshot_hash CHAR(64),remarks TEXT) ENGINE=InnoDB');
+        // Final approval history resolves reviewer profile display names.
+        await control.query('CREATE TABLE permit_user_profiles (user_id INT PRIMARY KEY,display_name VARCHAR(100)) ENGINE=InnoDB');
+        await control.query('CREATE TABLE permit_final_reviews (id INT AUTO_INCREMENT PRIMARY KEY,kind VARCHAR(16),project_id INT,decision VARCHAR(16),snapshot_hash CHAR(64),remarks TEXT,reviewer_id INT,reviewer_name VARCHAR(100)) ENGINE=InnoDB');
         const connect=()=>mysql.createConnection({host:'localhost',user:'root',database,dateStrings:['DATE']});
         const sessions={requireRoles:(...roles)=>(req,res,next)=>!req.user?res.status(401).json({message:'Sign in'}):roles.includes(req.user.role)?next():res.status(403).json({message:'Forbidden'})};
         const feature=transfer(connect,sessions);await feature.initialize();

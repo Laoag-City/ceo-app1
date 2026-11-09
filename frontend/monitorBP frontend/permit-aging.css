@@ -1,0 +1,19 @@
+/* Permit aging uses the same compact cells and indicators in both registries. */
+.registry-card .permit-aging-policy{flex-basis:100%;margin:0;color:var(--text-secondary,#526774);font-size:11px;line-height:1.6;font-weight:400}
+.registry-card .permit-aging-cell{min-width:155px;max-width:210px}
+.permit-aging{display:flex;flex-direction:column;align-items:flex-start;gap:5px;line-height:1.4}
+.permit-aging-badge{display:inline-flex;align-items:center;padding:3px 8px;border:1px solid transparent;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+.permit-aging-normal{color:#526774;background:#f0f4f7;border-color:#dce5ec}
+.permit-aging-followup{color:#956200;background:#fff6dd;border-color:#f0d592}
+.permit-aging-overdue{color:#a92f3c;background:#fff0f1;border-color:#f1c4ca}
+.permit-aging-completed{color:#067354;background:#eaf7f1;border-color:#bce3d2}
+.permit-aging-unknown{color:#71508d;background:#f4eef9;border-color:#dfcfec}
+.permit-aging-age{font-size:11px;font-weight:600;color:var(--text-primary,#243e53)}
+.permit-aging-detail{max-width:200px;font-size:10px;font-weight:400;color:var(--text-secondary,#607887)}
+html[data-theme='dark'] .permit-aging-age{color:var(--theme-text,#e3e9ef)}
+html[data-theme='dark'] :is(.permit-aging-detail,.registry-card .permit-aging-policy){color:var(--theme-muted,#b7c4d1)}
+html[data-theme='dark'] .permit-aging-normal{color:#c1cfdb;background:#263846;border-color:#435566}
+html[data-theme='dark'] .permit-aging-followup{color:#f6d681;background:#473a22;border-color:#80682f}
+html[data-theme='dark'] .permit-aging-overdue{color:#ffb1ba;background:#4a2932;border-color:#85505c}
+html[data-theme='dark'] .permit-aging-completed{color:#94dfc2;background:#1e4035;border-color:#3f7661}
+html[data-theme='dark'] .permit-aging-unknown{color:#d7baf0;background:#3c2d4b;border-color:#70558b}

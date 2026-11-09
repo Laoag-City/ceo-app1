@@ -1,6 +1,22 @@
 function approvalEscape(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
+// Saved DATE values in older request snapshots can be ISO instants at Manila
+// midnight. Truncating the UTC string would show the previous calendar day.
+function approvalCalendar(value) {
+    if(!value)return '';
+    const text=String(value);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(text))return text;
+    if(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)){
+        const date=new Date(text);
+        if(Number.isFinite(date.getTime())){
+            const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
+            const part=name=>parts.find(item=>item.type===name).value;
+            return part('year')+'-'+part('month')+'-'+part('day');
+        }
+    }
+    return /^\d{4}-\d{2}-\d{2}[ T]/.test(text)?text.slice(0,10):text;
+}
 function renderApprovalChanges(request, { compact = false } = {}) {
     if (request.change_type === 'delete') return '<p class="approval-delete-note">Permanently delete this permit and all related records.</p>';
     let changes;
@@ -12,7 +28,7 @@ function renderApprovalChanges(request, { compact = false } = {}) {
     }
     if (request.change_type === 'inspection_delete') {
         const inspection = changes.inspection || {};
-        return '<p class="approval-delete-note">Delete inspection #'+approvalEscape(changes.inspection_id)+' only. The parent permit will remain.</p><dl>'+[['Type',inspection.inspection_type],['Inspection date',String(inspection.inspection_date || '').slice(0,10)],['Inspector',inspection.inspector_name],['Result',inspection.result],['Findings / remarks',inspection.findings]].map(([label,value])=>'<dt>'+approvalEscape(label)+'</dt><dd>'+approvalEscape(value || '—')+'</dd>').join('')+'</dl>';
+        return '<p class="approval-delete-note">Delete inspection #'+approvalEscape(changes.inspection_id)+' only. The parent permit will remain.</p><dl>'+[['Type',inspection.inspection_type],['Inspection date',approvalCalendar(inspection.inspection_date)],['Inspector',inspection.inspector_name],['Result',inspection.result],['Findings / remarks',inspection.findings]].map(([label,value])=>'<dt>'+approvalEscape(label)+'</dt><dd>'+approvalEscape(value || '—')+'</dd>').join('')+'</dl>';
     }
     const before = changes._before;
     const rows = [];
@@ -27,16 +43,16 @@ function renderApprovalChanges(request, { compact = false } = {}) {
     }
     const labels={project_title:'Project name',location:'Location',owner_name:'Owner / applicant',designer_name:'Designer',permit_date:'Permit date',lot_numbers:'Lots'};
     if (request.change_type === 'permit_update') {
-        for (const [key,label] of Object.entries(labels)) if (changes[key] !== undefined) add(label,before?.[key],changes[key],!!before);
+        for (const [key,label] of Object.entries(labels)) if (changes[key] !== undefined) add(label,key==='permit_date'?approvalCalendar(before?.[key]):before?.[key],key==='permit_date'?approvalCalendar(changes[key]):changes[key],!!before);
     } else if(request.change_type === 'station_dates') {
         const old=before?.matrix?.find(row=>Number(row.id)===Number(changes.station_id));
-        for(const [key,label] of [['date_checked','Date Checked'],['date_approved','Date Approved']])add((old?.discipline_name || 'Station')+' · '+label,old?.[key] ? String(old[key]).slice(0,10) : '',changes[key],!!old);
+        for(const [key,label] of [['date_checked','Date Checked'],['date_approved','Date Approved']])add((old?.discipline_name || 'Station')+' · '+label,approvalCalendar(old?.[key]),approvalCalendar(changes[key]),!!old);
     } else if (request.change_type === 'matrix_update') {
         for(const row of changes.updatedMatrixRows || []) {
             const old = before?.matrix?.find(item=>Number(item.id)===Number(row.id));
             const station = old ? old.discipline_name + (old.sub_permit_id ? ' (sub-permit '+old.sub_permit_id+')' : '') : 'Station #'+row.id;
             for(const [key,label] of [['engineer_name','Engineer'],['signature_status','Status'],['feedback_remarks','Remarks'],['date_checked','Date Checked'],['date_approved','Date Approved']]) {
-                const calendar=value=>value ? String(value).slice(0,10) : '';
+                const calendar=approvalCalendar;
                 if(row[key] !== undefined) add(station+' · '+label,key.startsWith('date_') ? calendar(old?.[key]) : old?.[key],key.startsWith('date_') ? calendar(row[key]) : row[key],!!old);
             }
         }

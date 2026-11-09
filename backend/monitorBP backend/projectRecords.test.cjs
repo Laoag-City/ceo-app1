@@ -33,6 +33,13 @@ test('comments validate authors/content, persist once on retry, and isolate proj
     res=f.response();await f.routes.post(f.req('permits','10',{message:'   ',requestId:key}),res);assert.equal(res.statusCode,400);
     res=f.response();const inactive=f.req();inactive.user={id:3,role:'operator'};await f.routes.get(inactive,res);assert.equal(res.statusCode,403);
 });
+
+test('approved operator deletion retains filing metadata for monthly reporting, while failure is not a successful archive',async t=>{
+ const f=await fixture(t);await f.conn.query('ALTER TABLE permits ADD COLUMN permit_date DATE');await f.conn.query("UPDATE permits SET permit_date='2026-10-01' WHERE id=10");
+ const req=f.req();Object.assign(req,{path:'/api/permits/change-requests/5/approve',method:'PUT',body:{},user:{id:2,role:'admin'}});const res=f.response();
+ await f.service.audit(req,res,()=>{f.conn.query('DELETE FROM permits WHERE id=10').then(()=>res.json({success:true}))});await res.completed;
+ const [rows]=await f.conn.query('SELECT * FROM project_records');assert.equal(rows.length,1);assert.equal(rows[0].outcome,'saved');const detail=JSON.parse(rows[0].details);assert.equal(detail.deletion.mode,'approved_request');assert.equal(detail.deletion.project.record.id,10);assert.equal(require('./monthlyReports').day(detail.deletion.project.record.permit_date),'2026-10-01');
+});
 test('audits direct actions, sub-permit ownership, pending approvals and failed requests truthfully', async t => {
     const f=await fixture(t);
     async function action(path,body,result,status=200){const req=f.req();Object.assign(req,{path,method:'POST',body});const res=f.response();await f.service.audit(req,res,()=>{res.status(status).json(result);});await res.completed;return res;}

@@ -8,6 +8,8 @@ const pagePolicy = {
     '/occupancy':['occupancy.html','operator','admin'], '/occupancy.html':['occupancy.html','operator','admin'],
     '/occupancy/edit':['occupancy_edit.html','operator','admin'], '/occupancy_edit.html':['occupancy_edit.html','operator','admin'],
     '/admin':['superadmin.html','admin'], '/admin.html':['superadmin.html','admin'],
+    '/monthly-reports':['monthly-reports.html','admin'], '/monthly-reports.html':['monthly-reports.html','admin'],
+    '/approval-inbox':['approval-inbox.html','admin'], '/approval-inbox.html':['approval-inbox.html','admin'],
     '/superadmin':['superadmin.html','superadmin'], '/superadmin.html':['superadmin.html','superadmin']
 };
 return (req,res,next)=>{

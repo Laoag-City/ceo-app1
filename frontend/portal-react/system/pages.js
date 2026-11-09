@@ -13,7 +13,11 @@ import Page11 from './features/queue/audit-logs.jsx'
 import Page12 from './features/queue/management.jsx'
 import Page13 from './features/queue/client-history.jsx'
 import QueueReports from './features/queue/reports.jsx'
+import MonthlyReports from './features/administration/monthly-reports.jsx'
+import ApprovalInbox from './features/administration/approval-inbox.jsx'
 export default {
+"permits-approval-inbox": ApprovalInbox,
+"permits-monthly-reports": MonthlyReports,
 "permits-login": Page0,
 "permits-occupancy_login": Page1,
 "permits-admin-login": Page2,

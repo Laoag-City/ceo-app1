@@ -1,8 +1,8 @@
-import React,{useEffect,useRef,useState} from 'react'
+import React,{forwardRef,useEffect,useImperativeHandle,useRef,useState} from 'react'
 import css from './final-reviews.css?inline'
 
 const date=value=>value?String(value).slice(0,10):'—'
-function PermitTypeBadge({kind}){
+export function PermitTypeBadge({kind}){
   const building=kind==='permits'
   return <span className={`fr-permit-badge ${building?'is-building':'is-occupancy'}`} title={building?'Building permit':'Occupancy permit'}>
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">{building?<><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M10 21v-3h4v3"/></>:<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>}</svg>
@@ -12,7 +12,7 @@ function PermitTypeBadge({kind}){
 function StationTable({rows}){
   return <div className="fr-table"><table><thead><tr>{['Station','Assigned engineer','Status','Date checked','Date approved','Remarks'].map(label=><th key={label}>{label}</th>)}</tr></thead><tbody>{rows.map(row=><tr key={row.id}><td>{row.discipline_name}</td><td>{row.engineer_name || '—'}</td><td><span className={`fr-status is-${(row.signature_status || 'Pending').toLowerCase()}`}>{row.signature_status || 'Pending'}</span></td><td>{date(row.date_checked)}</td><td>{date(row.date_approved)}</td><td className="fr-remarks">{row.feedback_remarks || '—'}</td></tr>)}{!rows.length && <tr><td colSpan={6}>No stations configured.</td></tr>}</tbody></table></div>
 }
-export default function FinalReviews(){
+const FinalReviews=forwardRef(function FinalReviews({dialogOnly=false},externalRef){
   const [projects,setProjects]=useState(null),[filter,setFilter]=useState('ready'),[query,setQuery]=useState(''),[selected,setSelected]=useState(null),[error,setError]=useState(''),[remarks,setRemarks]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(false)
   const [confirming,setConfirming]=useState(false),[reviewError,setReviewError]=useState(''),[result,setResult]=useState(''),[saving,setSaving]=useState(null),[needsRefresh,setNeedsRefresh]=useState(false)
   const approved=selected?.final_approval.status==='approved'
@@ -24,19 +24,35 @@ export default function FinalReviews(){
     let data;try{data=await response.json()}catch{throw Error('The review service is unavailable. Restart the permit server and refresh this page.')}
     if(!response.ok || data.success===false)throw Error(data.message || 'Review could not be loaded.');return data
   }
-  async function refresh(){setLoading(true);setError('');try{const data=await api('/api/final-reviews');if(!Array.isArray(data.projects))throw Error('Project reviews could not be loaded. Please retry.');setProjects(data.projects)}catch(e){setError(e.message)}finally{setLoading(false)}}
-  useEffect(()=>{refresh()},[])
+  async function refresh(){if(dialogOnly)return;setLoading(true);setError('');try{const data=await api('/api/final-reviews');if(!Array.isArray(data.projects))throw Error('Project reviews could not be loaded. Please retry.');setProjects(data.projects)}catch(e){setError(e.message)}finally{setLoading(false)}}
+  useEffect(()=>{if(!dialogOnly)refresh()},[dialogOnly])
+  // The inbox opens this same version-checked review; it does not own a second
+  // final-approval implementation or give administrators station edit access.
+  useImperativeHandle(externalRef,()=>({open:(project,element)=>open(project,{currentTarget:element})}))
   useEffect(()=>{if(confirming){confirmation.current?.scrollIntoView?.({block:'nearest'});confirmButton.current?.focus({preventScroll:true})}else if(restoreApprovalFocus.current){restoreApprovalFocus.current=false;approveButton.current?.focus()}},[confirming])
   useEffect(()=>{if(result || reviewError){notice.current?.scrollIntoView?.({block:'nearest'})}},[result,reviewError])
-  async function readProject(project){
-    const data=await api(`/api/${project.kind}/${project.id}`)
+  async function readProject(project,options){
+    const data=await api(`/api/${project.kind}/${project.id}`,options)
+    if(options?.signal?.aborted)return
     if(!data.final_approval || !Array.isArray(data.final_approval.history) || !Array.isArray(data.matrix))throw Error('Project review details could not be loaded. Please refresh.')
     setSelected({...data,kind:project.kind});setNeedsRefresh(false)
   }
   async function open(project,event){
     if(inFlight.current)return
     inFlight.current=true;opener.current=event.currentTarget;setBusy(true);setError('');setRemarks('');setConfirming(false);setReviewError('');setResult('');setNeedsRefresh(false)
-    try{await readProject(project);dialog.current.showModal()}catch(e){setError(e.message)}finally{inFlight.current=false;setBusy(false)}
+    const controller=new AbortController()
+    const cancelLoad=()=>controller.abort()
+    if(!dialogOnly)window.addEventListener('hashchange',cancelLoad,{once:true})
+    try{
+      await readProject(project,{signal:controller.signal})
+      const element=dialog.current
+      if(element && !controller.signal.aborted && !element.closest('[hidden]'))element.showModal()
+    }catch(e){
+      if(!controller.signal.aborted)setError(e.message)
+    }finally{
+      window.removeEventListener('hashchange',cancelLoad)
+      inFlight.current=false;setBusy(false)
+    }
   }
   function close(event){event?.preventDefault();if(inFlight.current)return;dialog.current.close();setSelected(null);setConfirming(false);(opener.current?.isConnected?opener.current:refreshButton.current)?.focus()}
   function askApproval(){if(inFlight.current || approved || !selected?.final_approval.ready || needsRefresh)return;setReviewError('');setResult('');setConfirming(true)}
@@ -62,12 +78,13 @@ export default function FinalReviews(){
     finally{inFlight.current=false;setBusy(false);setSaving(null)}
   }
   const visible=(projects || []).filter(p=>(filter==='all'||p.final_approval.status===filter) && `${p.project_title} ${p.owner_name} ${p.location} ${p.kind==='permits'?'BP':'OP'}-${p.id}`.toLowerCase().includes(query.trim().toLowerCase()))
-  return <section id="finalReviews" className="card full-width final-reviews">
-    <style>{css}</style><div className="fr-heading"><div><p className="page-kicker">ADMIN REVIEW</p><h2>Final project approval</h2><p>Review every station before approving the project.</p></div><div className="fr-heading-actions"><button ref={refreshButton} type="button" onClick={refresh} disabled={loading || busy}>Refresh</button></div></div>
+  return <section id="finalReviews" className={dialogOnly?'final-reviews ai-final-review':'card full-width final-reviews'}>
+    <style>{css}</style>{!dialogOnly && <><div className="fr-heading"><div><p className="page-kicker">ADMIN REVIEW</p><h2>Final project approval</h2><p>Review every station before approving the project.</p></div><div className="fr-heading-actions"><button ref={refreshButton} type="button" onClick={refresh} disabled={loading || busy}>Refresh</button></div></div>
     <div className="fr-filters"><label>Show<select value={filter} onChange={e=>setFilter(e.target.value)}><option value="ready">Ready for final review</option><option value="approved">Finally approved</option><option value="returned">Returned for correction</option><option value="all">All projects</option></select></label><label>Find a project<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Project, owner, address, or ID"/></label></div>
     {error && <p className="fr-error" role="alert">{error}</p>}
-    {!projects?<p role="status">{loading?'Loading projects…':'Projects unavailable. Use Refresh to try again.'}</p>:<div className="fr-projects">{visible.map(p=><article key={`${p.kind}:${p.id}`}><div><div className="fr-project-meta"><PermitTypeBadge kind={p.kind}/><span className="fr-project-reference">#{p.id}</span></div><h3>{p.project_title}</h3><p>{p.owner_name} · {p.location}</p><strong className="fr-label">{p.final_approval.label}</strong></div><button type="button" onClick={e=>open(p,e)} disabled={busy}>Review project</button></article>)}{!visible.length && <p>No projects match this view.</p>}</div>}
-    <dialog className="fr-dialog" ref={dialog} onCancel={close} aria-labelledby="fr-title">
+    {!projects?<p role="status">{loading?'Loading projects…':'Projects unavailable. Use Refresh to try again.'}</p>:<div className="fr-projects">{visible.map(p=><article key={`${p.kind}:${p.id}`}><div><div className="fr-project-meta"><PermitTypeBadge kind={p.kind}/><span className="fr-project-reference">#{p.id}</span></div><h3>{p.project_title}</h3><p>{p.owner_name} · {p.location}</p><strong className="fr-label">{p.final_approval.label}</strong></div><button type="button" onClick={e=>open(p,e)} disabled={busy}>Review project</button></article>)}{!visible.length && <p>No projects match this view.</p>}</div>}</>}
+    {dialogOnly && error && <p className="fr-error" role="alert">{error}</p>}
+    <dialog className="fr-dialog" ref={dialog} onCancel={close} onClose={()=>{if(!dialog.current?.open){setSelected(null);setConfirming(false)}}} aria-labelledby="fr-title">
       <div className="fr-heading"><div>{selected && <div className="fr-project-meta"><PermitTypeBadge kind={selected.kind}/><span className="fr-project-reference">#{selected.id}</span></div>}<h2 id="fr-title">{selected?.project_title}</h2></div><button type="button" aria-label="Close review" onClick={close} disabled={busy}>×</button></div>
       {selected && <div className="fr-dialog-body"><p className="fr-label">{selected.final_approval.label}</p><dl className="fr-meta"><div><dt>Owner</dt><dd>{selected.owner_name}</dd></div><div><dt>Location</dt><dd>{selected.location}</dd></div><div><dt>{selected.kind==='permits'?'Designer':'Building reference'}</dt><dd>{selected.designer_name || selected.bp_reference_no || '—'}</dd></div><div><dt>Date filed</dt><dd>{date(selected.permit_date || selected.date_applied)}</dd></div>{selected.lot_numbers && <div><dt>Lots</dt><dd>{selected.lot_numbers.join(', ') || '—'}</dd></div>}</dl>
         <h3>Main permit stations</h3><StationTable rows={selected.matrix}/>{(selected.sub_permits || []).map(sub=><section key={sub.id}><h3>Sub-permit: {sub.sub_project_title}</h3><StationTable rows={sub.matrix}/></section>)}
@@ -85,4 +102,5 @@ export default function FinalReviews(){
       </div>}
     </dialog>
   </section>
-}
+})
+export default FinalReviews

@@ -28,3 +28,10 @@ test('old login bookmarks converge on shared login',()=>{
  assert.equal(redirectFor('legacy-login','/admin-login.html',null),'/login');
  assert.equal(redirectFor('login','/login',null),null);
 });
+
+test('approval inbox is an engineering-admin workspace',()=>{
+ assert.equal(redirectFor('inbox','/approval-inbox',user('admin')),null);
+ assert.equal(redirectFor('inbox','/approval-inbox',user('operator')),'/index.html');
+ assert.equal(redirectFor('inbox','/approval-inbox',user('superadmin')),'/superadmin');
+ assert.equal(redirectFor('inbox','/approval-inbox',null),'/login');
+});

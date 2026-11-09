@@ -1,6 +1,7 @@
 import React,{useEffect,useState} from 'react'
 import css from './admin-overview.css?inline'
 import AdminHistory,{sourceName} from './AdminHistory'
+import AdminConsoleSections from './AdminConsoleSections'
 
 function SummaryIcon({type}){
   const icons={
@@ -41,12 +42,17 @@ export default function AdminOverview(){
       .finally(()=>{if(!controller.signal.aborted)setLoading(false)})
     return()=>controller.abort()
   },[version])
-  const go=selector=>{const el=document.querySelector(selector);if(el){el.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});el.setAttribute('tabindex','-1');el.focus({preventScroll:true})}}
+  const go=selector=>{
+    const view={'.building-review':'buildingReview','.occupancy-review':'occupancyReview'}[selector]
+    if(view){window.location.hash=view;return}
+    const el=document.querySelector(selector);if(el){el.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});el.setAttribute('tabindex','-1');el.focus({preventScroll:true})}
+  }
   const t=data?.totals
   const pending=t?Number(t.buildingPending)+Number(t.occupancyPending):0
   let isIT=false;try{isIT=JSON.parse(sessionStorage.getItem('oboUser') || 'null')?.role==='superadmin'}catch{}
   if(isIT)return <section className="admin-overview" aria-label="Account overview"><style>{css}</style><div className="ao-heading"><div><h2>Account access</h2><p>IT manages accounts, roles, activation, and station assignments.</p></div><button onClick={()=>setVersion(v=>v+1)} disabled={loading}>Refresh overview</button></div>{error && <p role="alert">{error}</p>}<div className="ao-stats" style={{gridTemplateColumns:'repeat(2,minmax(0,1fr))'}}><SummaryCard label="Accounts" value={t?.accounts ?? '—'} detail="Registered users" type="accounts"/><SummaryCard label="Pending accounts" value={t?.pendingAccounts ?? '—'} detail="Awaiting IT activation" type="pendingAccounts" tone="amber"/></div><p className="ao-empty">An operator can update only their assigned station. Unassigned operators have view access.</p><button className="ao-directory" onClick={()=>go('#accountListSection')}>Manage accounts and stations</button></section>
   return <section className="admin-overview" aria-label="Dashboard overview">
+    <AdminConsoleSections/>
     <style>{css}</style>
     <div className="ao-heading"><div><h2>At a glance</h2><p>Permit records and requests awaiting your review.</p></div><div className="ao-refresh"><span>{loading?'Updating…':updated&&!error?`Updated ${updated}`:''}</span><button disabled={loading} onClick={()=>setVersion(v=>v+1)}>Refresh overview</button></div></div>
     {error?<div role="alert" className="ao-error">{error}</div>:!t?<p role="status">Loading dashboard…</p>:<>
@@ -56,7 +62,8 @@ export default function AdminOverview(){
         <SummaryCard label="Pending reviews" value={pending.toLocaleString()} detail="Building and occupancy requests" type="pending" tone="amber"/>
         <SummaryCard label="Deletion requests" value={(Number(t.buildingDeletions)+Number(t.occupancyDeletions)).toLocaleString()} detail="Included in pending reviews" type="deletion" tone="red"/>
       </div>
-      <div className="ao-panels"><section><h3>Needs your attention</h3><p>{pending?'Review requests using the panels below.':'You’re caught up on permit reviews.'}</p>
+      <div className="ao-panels"><section><h3>Needs your attention</h3><p>{pending?'Choose a request list or open the approval inbox.':'You’re caught up on permit reviews.'}</p>
+        <a href="/approval-inbox" className="ao-inbox">Open approval inbox <span aria-hidden="true">→</span></a>
         <button className="ao-queue" onClick={()=>go('.building-review')}><span>Building permit reviews</span><strong>{t.buildingPending}</strong></button>
         <button className="ao-queue" onClick={()=>go('.occupancy-review')}><span>Occupancy permit reviews</span><strong>{t.occupancyPending}</strong></button>
         {t.pendingAccounts!==undefined&&<><button className="ao-queue" onClick={()=>go('#accountSection')}><span>Account requests</span><strong>{t.pendingAccounts} <span aria-hidden="true">→</span></strong></button><button className="ao-directory" onClick={()=>go('#accountListSection')}>Manage accounts ({t.accounts})</button></>}

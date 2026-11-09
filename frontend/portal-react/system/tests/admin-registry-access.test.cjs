@@ -21,7 +21,7 @@ async function fixture(kind,role='admin'){
   return new Response(JSON.stringify(data));
  };
  w.eval(fs.readFileSync(path.resolve(base,'../system-dist/app.js'),'utf8'));await settle();
- for(const file of ['request-feedback.js','form-safety.js','project-identity.js','registry-filters.js','station-dates.js'])w.eval(fs.readFileSync(path.join(base,'assets/permits',file),'utf8'));
+ for(const file of ['request-feedback.js','form-safety.js','project-identity.js','registry-filters.js','station-dates.js','permit-aging.js'])w.eval(fs.readFileSync(path.join(base,'assets/permits',file),'utf8'));
  const shell=fs.readFileSync(path.join(base,'features',kind,'registry.html'),'utf8');
  const controller=[...shell.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(match=>match[1]).find(code=>code.includes(occupancy?'let allPermits':'let globalPermitsCache'));
  assert.ok(controller,'Registry controller exists');w.eval(controller);
@@ -45,4 +45,14 @@ for(const kind of ['building','occupancy'])test(kind+': admin registry permits c
   const writes=calls.filter(call=>call.options.method==='DELETE');assert.equal(writes.length,1);assert.equal(writes[0].url,'/api/'+(kind==='building'?'permits':'occupancy')+'/7');assert.deepEqual(JSON.parse(writes[0].options.body),{confirmation:'DELETE'});
   assert.doesNotMatch(d.getElementById('permitTableBody').textContent,/Visible permit/);
  }finally{dom.window.close()}
+});
+
+for(const kind of ['building','occupancy'])test(kind+': a failed aging/registry refresh preserves previously loaded records and export selection',async()=>{
+ const {dom,w,d}=await fixture(kind);try {
+  assert.match(d.getElementById('permitTableBody').textContent,/Visible permit/);
+  w.RequestFeedback.fetch=async()=>({ok:false,json:async()=>({message:'Permit aging information is unavailable.'})});
+  if(kind==='building')await w.getPermitLogs();else await w.loadData();
+  assert.match(d.getElementById('permitTableBody').textContent,/Visible permit/);
+  assert.deepEqual(Array.from(w.permitExportIds()),[7]);
+ }finally{dom.window.close();}
 });

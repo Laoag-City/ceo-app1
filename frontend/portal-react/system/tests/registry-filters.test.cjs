@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const filters = require('../assets/permits/registry-filters.js');
-const defaults = { query: '', from: '', to: '', sort: 'newest', status: 'all' };
+const defaults = { query: '', from: '', to: '', sort: 'newest', status: 'all', aging: 'all' };
 const records = [
     { id: 1, project_title: 'Café 10', owner_name: 'Maria Cruz', location: 'Laoag', designer_name: 'Reyes', permit_date: '2026-09-01', lot_numbers: '["Lot 12"]', sub_permits: '[{"title":"Annex"}]', status: 'pending' },
     { id: 2, project_title: 'Alpha 2', owner_name: 'Gamo', location: 'Dingras', permit_date: '2026-09-09T00:00:00.000Z', status: 'approved' },
@@ -83,6 +83,21 @@ test('returning to a registry restores filters and page, isolated by system and 
     assert.equal(returned.controller.state().page, 3);
     assert.equal(mount(storage, 'occupancy').controller.state().query, '');
     assert.equal(mount(storage, 'building', 8).controller.state().query, '');
+});
+
+test('aging preferences reset pagination, combine with existing controls, and clear per registry/account',()=>{
+    const storage=new Map(),view=mount(storage);
+    view.changePage(4);
+    view.elements.get('registryAging').value='overdue';
+    view.elements.get('registryAging').events.change();
+    assert.equal(view.controller.state().page,1);
+    assert.equal(view.elements.get('registryClear').disabled,false);
+    assert.equal(mount(storage).controller.state().aging,'overdue');
+    assert.equal(mount(storage,'occupancy').controller.state().aging,'all');
+    assert.equal(mount(storage,'building',8).controller.state().aging,'all');
+    view.elements.get('registryClear').events.click();
+    assert.equal(view.controller.state().aging,'all');
+    assert.equal(mount(storage).controller.state().aging,'all');
 });
 test('search edits reset pagination and Clear filters resets all controls', () => {
     const view = mount(new Map());

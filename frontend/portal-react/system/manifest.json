@@ -1,4 +1,6 @@
 [
+  {"id":"permits-approval-inbox","folder":"monitorBP frontend","file":"approval-inbox.html","source":"features/administration/approval-inbox","url":"/approval-inbox"},
+  {"id":"permits-monthly-reports","folder":"monitorBP frontend","file":"monthly-reports.html","source":"features/administration/monthly-reports","url":"/monthly-reports"},
   {
     "id": "permits-login",
     "folder": "monitorBP frontend",

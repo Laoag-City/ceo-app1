@@ -6,6 +6,7 @@
     <script src="/appearance.js"></script>
     <script src="/destructive-action.js"></script>
     <script src="/request-feedback.js"></script>
+    <script src="/permit-duplicates.js"></script>
     <script src="/form-safety.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -104,10 +105,13 @@
     
     const currentUser=getStoredUser();
     if(!currentUser || !['admin','superadmin'].includes(currentUser.role)){window.location.replace(PermitRouting.home(currentUser));}
-    const dashboardTitle = currentUser?.role === 'superadmin' ? 'User Account Management' : 'Admin Project Review';
-    document.querySelector('.topbar h1').textContent = dashboardTitle;
-    document.title = dashboardTitle + ' — Office of the City Engineer';
-    document.querySelector('.topbar p').textContent=currentUser?.role==='superadmin'?'Manage accounts, roles, activation, and designated station operators.':'Review station details and make the final project decision.';
+    // Engineering headings follow the selected sidebar view. IT retains its
+    // existing account-management screen and controller ownership.
+    if(currentUser?.role==='superadmin'){
+        document.querySelector('.topbar h1').textContent='User Account Management';
+        document.title='User Account Management — Office of the City Engineer';
+        document.querySelector('.topbar p').textContent='Manage accounts, roles, activation, and designated station operators.';
+    }
 
     function handleSignOut() {
         return PermitRouting.logout();
@@ -311,6 +315,7 @@
                 body: JSON.stringify(isBulk ? {confirmation:confirmed?'DELETE ALL':undefined} : {remarks:'Rejected by administrator.'})
             });
             const data = await res.json();
+            if(data.cancelled)return false;
             alert(data.message || (res.ok && data.success ? 'Request reviewed.' : 'Unable to review this request.'));
             try {
                 if (kind === 'permits') await loadPermitApprovals();

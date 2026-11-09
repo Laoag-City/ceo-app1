@@ -13,8 +13,8 @@
  class RequestError extends Error {constructor(message){super(message);this.name='RequestError';}}
  function verification(url){
   const u=new URL(url,location.href),p=u.pathname;
-  if(p.startsWith('/api/permit-deletions/'))return {url:u.origin+p.split('/').slice(0,4).join('/'),view:'/admin',label:'bulk deletion request status and administrator requests'};
-  if(p.includes('/change-requests/'))return {url:u.origin+(p.startsWith('/api/occupancy')?'/api/occupancy':'/api/permits'),view:'/superadmin',label:'administrator request list'};
+  if(p.startsWith('/api/permit-deletions/'))return {url:u.origin+p.split('/').slice(0,4).join('/'),view:'/approval-inbox',label:'bulk deletion request status and administrator requests'};
+  if(p.includes('/change-requests/'))return {url:u.origin+(p.startsWith('/api/occupancy')?'/api/occupancy':'/api/permits'),view:'/approval-inbox',label:'administrator request list'};
   if(p.startsWith('/api/occupancy'))return {url:u.origin+'/api/occupancy',view:'/occupancy.html',label:'occupancy registry and administrator requests'};
   if(p.startsWith('/api/permits')||p.startsWith('/api/matrix'))return {url:u.origin+'/api/permits',view:'/index.html',label:'building registry and administrator requests'};
   if(p.startsWith('/api/auth'))return {url:u.origin+'/api/permits',view:'/superadmin',label:'account directory'};
@@ -45,12 +45,14 @@
    };
   }
  }
- async function request(url,options={}){
+ async function transport(url,options={}){
   const method=(options.method||'GET').toUpperCase(),write=!['GET','HEAD'].includes(method),u=new URL(url,location.href),key=method+' '+u.href;
   let ticketRetry=false;try{ticketRetry=u.pathname==='/api/tickets'&&!!JSON.parse(options.body||'{}').requestId;}catch(_){}
+  let permitRetry=false;try{permitRetry=method==='POST'&&/^\/api\/(permits|occupancy)\/?$/.test(u.pathname)&&/^[a-f0-9-]{36}$/i.test(JSON.parse(options.body||'{}').requestId||'');}catch(_){}
+  const safeRetry=ticketRetry||permitRetry;
   const authLogin=u.pathname==='/api/auth/login';
   const context={url:u.href,key,headers:options.headers};
-  if(pending.has(key)&&!ticketRetry){const e=new RequestError('The previous action is unconfirmed. Entries are preserved. Check the server and review saved records before another attempt.');report(e,context);throw e;}
+  if(pending.has(key)&&!safeRetry){const e=new RequestError('The previous action is unconfirmed. Entries are preserved. Check the server and review saved records before another attempt.');report(e,context);throw e;}
   if(navigator.onLine===false){const e=new RequestError('You are offline. Nothing was sent. Reconnect, then submit again; your entries remain in the form.');report(e);throw e;}
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),options.body instanceof FormData?120000:20000);
   let response;
@@ -59,7 +61,7 @@
    let data;
    try{data=await response.clone().json();}catch(_){const e=new RequestError('The server returned an unreadable response.');e.definite=response.status>=400&&response.status<500;throw e;}
    if(data===null||typeof data!=='object')throw new RequestError('The server returned an unexpected response.');
-   if((!response.ok||data.success===false)&&!data.duplicate){
+   if((!response.ok||data.success===false)&&!data.duplicate&&data.code!=='POSSIBLE_DUPLICATE'){
     const known=response.status<500;
     const message=response.status===401?(authLogin?'Incorrect username or password. Please try signing in again.':data.code==='SESSION_REPLACED'?data.message:'Your session is no longer accepted. Sign in again.'):response.status===403?'Your account does not have permission for this action.':response.status===413?'The selected file is too large. Choose a smaller file.':response.status===429?(Number(data.retryAfter)>0?'Too many attempts. Please try again in '+Math.ceil(Number(data.retryAfter))+' seconds.':'Too many requests. Wait a moment before trying again.'):known&&data.message?String(data.message).slice(0,350):'The server could not complete the request.';
     const e=new RequestError(message);e.definite=known;e.conflict=data.conflict===true;e.sessionExpired=response.status===401&&!authLogin;
@@ -75,9 +77,18 @@
    e.sessionExpired=error.sessionExpired;
    if(error.code==='SESSION_REPLACED'){e.code=error.code;e.message=reason;}
    if(error.conflict){e.conflict=true;e.message=reason;}
-   if(uncertain&&!ticketRetry){pending.add(key);persist();report(e,context);}else{if(uncertain&&ticketRetry)e.message+=' Retry this same form to retrieve the original ticket safely.';report(e);}
+   if(uncertain&&!safeRetry){pending.add(key);persist();report(e,context);}else{if(uncertain&&safeRetry)e.message+=' Retry this same form to retrieve the original '+(permitRetry?'permit':'ticket')+' safely.';report(e);}
    throw e;
   }finally{clearTimeout(timer);}
+ }
+ async function request(url,options={}) {
+  for(;;) {
+   const response=await transport(url,options),data=await response.clone().json();
+   if(data.code!=='POSSIBLE_DUPLICATE')return response;
+   if(!window.PermitDuplicates?.confirm){const error=new RequestError(data.message);report(error);throw error;}
+   if(!await window.PermitDuplicates.confirm(data.possibleDuplicates))return new Response(JSON.stringify({success:false,cancelled:true,message:'No changes were saved.'}),{status:409,headers:{'Content-Type':'application/json'}});
+   options={...options,body:JSON.stringify({...JSON.parse(options.body||'{}'),allowDuplicates:true,duplicateVersion:data.possibleDuplicates.version})};
+  }
  }
  window.addEventListener('unhandledrejection',e=>{if(e.reason?.name==='RequestError'){e.preventDefault();report(e.reason);}});
  window.RequestFeedback={fetch:request,report};
