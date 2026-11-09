@@ -28,14 +28,12 @@
     // This is a public display; opening it directly does not require staff login.
     const socket = io(BACKEND_URL);
     const announced = new Map();
-    const lobbyVideo = document.getElementById('lobbyVideo');
     let audioContext;
     let soundEnabled = false;
     const announcements = [];
     let speaking = false;
     let latestServing = [];
     function enableMonitorSound() {
-        lobbyVideo.muted = false;
         try {
             const Context = window.AudioContext || window.webkitAudioContext;
             if (Context) {
@@ -54,31 +52,13 @@
                 announceNext();
             }
         } catch (error) {
-            // Video audio and speech can still work if Web Audio is unavailable.
+            // Speech can still work if Web Audio is unavailable.
             soundEnabled = true;
             announceNext();
         }
-        playMonitorVideo();
-    }
-    function playMonitorVideo() {
-        if (speaking || !lobbyVideo.src) return;
-        const source = lobbyVideo.getAttribute('src');
-        lobbyVideo.play().catch(error => {
-            if (source !== lobbyVideo.getAttribute('src')) return;
-            if (error.name === 'NotAllowedError' && !lobbyVideo.muted) {
-                // Keep the video visible until a normal page interaction unlocks audio.
-                lobbyVideo.muted = true;
-                lobbyVideo.play().catch(retryError => {
-                    if (retryError.name !== 'NotAllowedError') skipFailedVideo(source);
-                });
-            } else if (error.name !== 'NotAllowedError' && error.name !== 'AbortError') {
-                skipFailedVideo(source);
-            }
-        });
     }
     document.addEventListener('click', enableMonitorSound);
     document.addEventListener('keydown', enableMonitorSound);
-    lobbyVideo.addEventListener('canplay', enableMonitorSound);
     function enqueueAnnouncement(ticket) {
         announcements.push(ticket);
         announceNext();
@@ -88,110 +68,14 @@
         const ticket = announcements.shift();
         if (!latestServing.some(t => t.id === ticket.id && t.recallStamp === ticket.recallStamp)) { announceNext(); return; }
         speaking = true;
-        clearVideoStall();
-        lobbyVideo.pause();
         playChime();
         setTimeout(() => speakTicket(ticket.id, ticket.calledBy), 1600);
     }
     function finishAnnouncement() {
         speaking = false;
         if (soundEnabled && announcements.length) announceNext();
-        else playMonitorVideo();
     }
     let premiumVoice = null;
-
-    const displayContainer = document.getElementById('mainDisplayContainer');
-
-    let playlist = [];
-    let currentVideoIndex = 0;
-    let playlistRevision = 0;
-    let playlistRequest = 0;
-    const failedVideos = new Set();
-    let videoStallTimer = null;
-    const videoFallback = lobbyVideo.parentElement.querySelector('.video-empty-state p');
-    function clearVideoStall() {
-        if (videoStallTimer !== null) clearTimeout(videoStallTimer);
-        videoStallTimer = null;
-    }
-    function clearVideoSource() {
-        clearVideoStall();
-        lobbyVideo.pause();
-        lobbyVideo.removeAttribute('src');
-        lobbyVideo.load();
-    }
-    function skipFailedVideo(source = lobbyVideo.getAttribute('src')) {
-        if (!source || source !== lobbyVideo.getAttribute('src')) return;
-        failedVideos.add(source);
-        advanceVideo();
-    }
-    function advanceVideo() {
-        clearVideoStall();
-        for (let offset = 1; offset <= playlist.length; offset++) {
-            const next = (currentVideoIndex + offset) % playlist.length;
-            if (failedVideos.has(playlist[next])) continue;
-            currentVideoIndex = next;
-            lobbyVideo.src = playlist[next];
-            playMonitorVideo();
-            return;
-        }
-        clearVideoSource();
-        if (playlist.length && videoFallback) videoFallback.textContent = 'Office videos are temporarily unavailable. Please check the playlist.';
-    }
-    function watchVideoStall() {
-        clearVideoStall();
-        if (speaking || !lobbyVideo.getAttribute('src')) return;
-        const source = lobbyVideo.getAttribute('src');
-        videoStallTimer = setTimeout(() => skipFailedVideo(source), 20000);
-    }
-    lobbyVideo.addEventListener('error', () => skipFailedVideo());
-    lobbyVideo.addEventListener('loadstart', watchVideoStall);
-    lobbyVideo.addEventListener('waiting', watchVideoStall);
-    lobbyVideo.addEventListener('stalled', watchVideoStall);
-    lobbyVideo.addEventListener('playing', clearVideoStall);
-    lobbyVideo.addEventListener('pause', clearVideoStall);
-
-    function applyVideoPlaylist(items) {
-        clearVideoStall();
-        failedVideos.clear();
-        if (videoFallback) videoFallback.textContent = 'Office videos will appear here when available.';
-        const current = lobbyVideo.getAttribute('src');
-        playlist = items;
-        playlistRevision += 1;
-        if (!playlist.length) {
-            currentVideoIndex = 0;
-            clearVideoSource();
-            return;
-        }
-        const retainedIndex = playlist.indexOf(current);
-        currentVideoIndex = retainedIndex >= 0 ? retainedIndex : 0;
-        if (current !== playlist[currentVideoIndex]) lobbyVideo.src = playlist[currentVideoIndex];
-        playMonitorVideo();
-    }
-    async function refreshVideoPlaylist() {
-        const revision = playlistRevision, request = ++playlistRequest;
-        try {
-            const response = await RequestFeedback.fetch(`${BACKEND_URL}/api/videos/playlist`);
-            const data = await response.json();
-            if (response.ok === false || !data.success || !Array.isArray(data.playlist)) throw Error('Video playlist is unavailable.');
-            // A late initial response must not overwrite a newer socket update.
-            if (revision === playlistRevision && request === playlistRequest) applyVideoPlaylist(data.playlist);
-        } catch (error) { console.error('Could not fetch the video playlist:', error.message); }
-    }
-
-    // Monitor track completion, increment target array position, and proceed to next file
-    lobbyVideo.addEventListener('ended', function() {
-        if (playlist.length > 0) {
-            advanceVideo();
-        }
-    });
-
-    lobbyVideo.addEventListener('loadedmetadata', function() {
-        // Match the frame to each playlist video's shape without letterboxing or cropping.
-        if (this.videoWidth > 0 && this.videoHeight > 0) {
-            document.body.style.setProperty('--monitor-video-ratio', String(this.videoWidth / this.videoHeight));
-            this.parentElement.classList.toggle('is-portrait', this.videoHeight > this.videoWidth);
-        }
-    });
 
     function loadBestVoice() {
         if (!('speechSynthesis' in window)) return;
@@ -395,7 +279,7 @@
         badge.dataset.connectionState = connected ? 'online' : 'offline';
         badge.querySelector('b').textContent = connected ? 'Live queue' : 'Reconnecting';
     }
-    socket.on('connect', () => { updateMonitorConnection(true); refreshVideoPlaylist(); });
+    socket.on('connect', () => updateMonitorConnection(true));
     socket.on('disconnect', () => updateMonitorConnection(false));
 
     socket.on('queueUpdate', (data) => {
@@ -464,12 +348,6 @@
         }
     }
     updateDisplay([]);
-
-    refreshVideoPlaylist();
-
-    socket.on('playlistUpdate', (data) => {
-        if (Array.isArray(data.playlist)) applyVideoPlaylist(data.playlist);
-    });
 
     enableMonitorSound();
 

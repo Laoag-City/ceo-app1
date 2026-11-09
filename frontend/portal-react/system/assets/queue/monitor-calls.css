@@ -25,7 +25,7 @@ body.queue-monitor-page .monitor-calling-window.is-new-call{animation:monitor-ca
 @keyframes monitor-call-arrived{from{box-shadow:0 0 0 3px var(--q-gold);transform:translateY(-3px)}to{box-shadow:0 0 0 0 transparent;transform:translateY(0)}}
 @media(max-width:1100px){body.queue-monitor-page .monitor-calls .monitor-guidance{display:none}body.queue-monitor-page .now-serving.monitor-calls{padding:16px}body.queue-monitor-page .monitor-calling-window{padding:12px;gap:7px}}
 @media(min-width:1001px) and (max-width:1200px){body.queue-monitor-page .monitor-call-ticket{font-size:clamp(22px,2.5vw,30px)}}
-@media(max-width:1000px){body.queue-monitor-page,body.queue-monitor-page.layout-portrait{grid-template-rows:auto auto auto auto}body.queue-monitor-page .now-serving.monitor-calls{height:auto;min-height:0}body.queue-monitor-page .monitor-call-ticket{font-size:clamp(26px,4.4vw,44px)}}
+@media(max-width:1000px){body.queue-monitor-page,body.queue-monitor-page.layout-portrait{grid-template-rows:auto auto auto}body.queue-monitor-page .now-serving.monitor-calls{height:auto;min-height:0}body.queue-monitor-page .monitor-call-ticket{font-size:clamp(26px,4.4vw,44px)}}
 @media(max-width:650px){body.queue-monitor-page .monitor-calling-windows{grid-template-columns:1fr;gap:10px}body.queue-monitor-page .monitor-calling-window{padding:14px 16px}body.queue-monitor-page .monitor-call-ticket{font-size:42px}body.queue-monitor-page .monitor-call-status{font-size:12px}}
 @media(min-width:1001px) and (max-height:760px){
  body.queue-monitor-page,body.queue-monitor-page.layout-portrait{grid-template-rows:auto 140px minmax(var(--monitor-waiting-min-height,260px),1fr)}

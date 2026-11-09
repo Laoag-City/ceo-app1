@@ -12,59 +12,40 @@ function fixture(prepare) {
     const dom = new JSDOM('<body class="queue-monitor-page"><div id="system-react-root" data-page="queue-monitor" style="display:contents"></div></body>', {
         url: 'http://localhost:5000/monitor.html', runScripts: 'outside-only', virtualConsole: new VirtualConsole()
     })
-    const w = dom.window, handlers = {}, intervals = []
+    const w = dom.window, handlers = {}, intervals = [], requests = []
     w.matchMedia = () => ({matches:false, addEventListener(){}, removeEventListener(){}})
     w.sessionStorage.setItem('currentWorkspace', 'Monitor')
     w.io = () => ({on: (event, callback) => {handlers[event] = callback}})
-    w.HTMLMediaElement.prototype.play = async () => {}
-    w.HTMLMediaElement.prototype.pause = () => {}
-    w.HTMLMediaElement.prototype.load = () => {}
-    w.RequestFeedback = {fetch: async () => ({json:async () => ({success:true, playlist:[]})})}
+    w.RequestFeedback = {fetch: async url => {requests.push(url); return {json:async () => ({success:true, playlist:[]})}}}
     w.setInterval = (callback, milliseconds) => {intervals.push({callback, milliseconds}); return intervals.length}
     w.eval(bundle)
     if (prepare) prepare(w)
     w.eval(controller)
-    return {dom, w, document:w.document, handlers, intervals}
+    return {dom, w, document:w.document, handlers, intervals, requests}
 }
 
 const ticket = (id, reason, extra = {}) => ({id:'TKT-' + id, reason, ...extra})
 const callCard = (f, window) => f.document.querySelector('.monitor-calling-window[data-window="' + window + '"]')
 const callNumber = (f, window) => callCard(f, window).querySelector('.monitor-call-ticket').textContent
 
-test('reconnecting reloads the video playlist and an empty update clears old media', async () => {
+test('the monitor renders the queue board without a video panel or media requests, including after reconnecting', async () => {
     const f = fixture()
     try {
         await new Promise(resolve => setImmediate(resolve))
-        f.w.RequestFeedback.fetch = async () => ({ok:true,json:async()=>({success:true,playlist:['/uploads/original.mp4']})})
+        assert.equal(f.document.querySelector('video, .video-container, .video-empty-state') === null, true)
+        assert.equal(f.document.querySelectorAll('.monitor-calling-window').length, 3)
+        assert.equal(f.document.querySelectorAll('.monitor-waiting-window').length, 3)
+        assert.deepEqual(f.requests, [])
         f.handlers.connect()
         await new Promise(resolve => setImmediate(resolve))
-        assert.equal(f.document.getElementById('lobbyVideo').getAttribute('src'), '/uploads/original.mp4')
-        f.handlers.playlistUpdate({playlist:[]})
-        assert.equal(f.document.getElementById('lobbyVideo').hasAttribute('src'), false)
-    } finally { f.dom.window.close() }
-})
-
-test('late playlist loads cannot replace a newer upload or restart the same video', async () => {
-    const f = fixture()
-    try {
-        await new Promise(resolve => setImmediate(resolve))
-        let finish
-        f.w.RequestFeedback.fetch = () => new Promise(resolve=>{finish=resolve})
-        f.handlers.connect()
-        f.handlers.playlistUpdate({playlist:['/uploads/new.mp4']})
-        finish({ok:true,json:async()=>({success:true,playlist:['/uploads/outdated.mp4']})})
-        await new Promise(resolve => setImmediate(resolve))
-        const video=f.document.getElementById('lobbyVideo')
-        assert.equal(video.getAttribute('src'), '/uploads/new.mp4')
-        video.currentTime=15
-        f.handlers.playlistUpdate({playlist:['/uploads/new.mp4','/uploads/next.mp4']})
-        assert.equal(video.currentTime,15)
-        assert.equal(video.getAttribute('src'), '/uploads/new.mp4')
+        assert.deepEqual(f.requests, [])
+        assert.equal(f.handlers.playlistUpdate, undefined)
+        assert.equal(f.document.querySelector('#monitorConnection b').textContent, 'Live queue')
     } finally { f.dom.window.close() }
 })
 
 function audioFixture(allowed) {
-    const audio = {allowed, plays:[], spoken:[], timers:[], resumes:0}
+    const audio = {allowed, chimes:0, spoken:[], timers:[], resumes:0}
     const f = fixture(w => {
         w.AudioContext = class {
             constructor() {this.state = 'suspended'; this.currentTime = 0; audio.context = this}
@@ -74,14 +55,9 @@ function audioFixture(allowed) {
                 this.state = 'running'
                 return Promise.resolve()
             }
-            createOscillator() {return {frequency:{setValueAtTime(){}}, connect(){}, start(){}, stop(){}}}
+            createOscillator() {return {frequency:{setValueAtTime(){}}, connect(){}, start(){audio.chimes++}, stop(){}}}
             createGain() {return {gain:{setValueAtTime(){}, linearRampToValueAtTime(){}, exponentialRampToValueAtTime(){}}, connect(){}}}
         }
-        w.HTMLMediaElement.prototype.play = function() {
-            audio.plays.push({src:this.src, muted:this.muted})
-            return !audio.allowed && !this.muted ? Promise.reject(new w.DOMException('Interaction required', 'NotAllowedError')) : Promise.resolve()
-        }
-        w.HTMLMediaElement.prototype.pause = () => {}
         w.speechSynthesis = {getVoices:()=>[], cancel(){}, speak:utterance=>audio.spoken.push(utterance)}
         w.SpeechSynthesisUtterance = class {constructor(text) {this.text = text}}
         w.setTimeout = (callback, milliseconds) => {audio.timers.push({callback, milliseconds}); return audio.timers.length}
@@ -89,106 +65,45 @@ function audioFixture(allowed) {
     return {...f, audio}
 }
 
-test('failed clips are skipped, all-failed playback falls back, and playlist updates recover',async()=>{
- const f=fixture();
- try {
-  await new Promise(resolve=>setImmediate(resolve));
-  const video=f.document.getElementById('lobbyVideo');
-  f.handlers.playlistUpdate({playlist:['/uploads/broken.mp4','/uploads/good.mp4']});
-  video.dispatchEvent(new f.w.Event('error'));
-  assert.equal(video.getAttribute('src'),'/uploads/good.mp4');
-  video.dispatchEvent(new f.w.Event('ended'));
-  assert.equal(video.getAttribute('src'),'/uploads/good.mp4','Failed clips stay skipped on later cycles');
-  video.dispatchEvent(new f.w.Event('error'));
-  assert.equal(video.hasAttribute('src'),false);
-  assert.match(f.document.querySelector('.video-empty-state').textContent,/temporarily unavailable/);
-  f.handlers.playlistUpdate({playlist:['/uploads/recovered.mp4']});
-  assert.equal(video.getAttribute('src'),'/uploads/recovered.mp4');
-  f.handlers.playlistUpdate({playlist:[]});
-  assert.equal(video.hasAttribute('src'),false);
-  assert.match(f.document.querySelector('.video-empty-state').textContent,/when available/);
- }finally{f.w.close()}
-});
-
-test('stalled playback advances after a bounded timeout and normal playback cancels it',async()=>{
- const f=fixture(),timers=new Map();let timerId=0;
- try {
-  await new Promise(resolve=>setImmediate(resolve));
-  f.w.setTimeout=(callback,milliseconds)=>{const id=++timerId;timers.set(id,{callback,milliseconds});return id;};
-  f.w.clearTimeout=id=>timers.delete(id);
-  const video=f.document.getElementById('lobbyVideo');
-  f.handlers.playlistUpdate({playlist:['/uploads/slow.mp4','/uploads/next.mp4']});
-  video.dispatchEvent(new f.w.Event('stalled'));
-  assert.equal([...timers.values()][0].milliseconds,20000);
-  video.dispatchEvent(new f.w.Event('playing'));assert.equal(timers.size,0);
-  video.dispatchEvent(new f.w.Event('waiting'));[...timers.values()][0].callback();
-  assert.equal(video.getAttribute('src'),'/uploads/next.mp4');
- }finally{f.w.close()}
-});
-
-test('monitor starts sound automatically and resumes the video after ticket announcements', async () => {
+test('monitor starts sound automatically and keeps ticket chimes and spoken announcements without a video player', async () => {
     const f = audioFixture(true)
     try {
         await new Promise(resolve => setImmediate(resolve))
         assert.equal(f.document.getElementById('enableAnnouncements'), null)
         assert.equal(f.audio.context.state, 'running')
-        f.handlers.playlistUpdate({playlist:['/uploads/office.mp4']})
-        assert.equal(f.audio.plays.at(-1).muted, false)
         const called = ticket(1001,'Releasing Bldg. Permit',{calledBy:'PC1',recallStamp:1})
         f.handlers.queueUpdate({queue:[], onHold:[], serving:[called], nowServing:called})
+        assert.equal(f.audio.chimes, 3)
         f.audio.timers.find(timer => timer.milliseconds === 1600).callback()
         assert.equal(f.audio.spoken.length, 1)
         assert.match(f.audio.spoken[0].text, /ticket 1 0 0 1.*Window 1/)
-        const playCount = f.audio.plays.length
         f.audio.spoken[0].onend()
-        assert.equal(f.audio.plays.length, playCount + 1)
-        assert.equal(f.audio.plays.at(-1).muted, false)
+        assert.equal(f.audio.timers.length, 1)
+        assert.equal(f.document.querySelector('video') === null, true)
     } finally {f.dom.window.close()}
 })
 
-test('blocked autoplay keeps the video visible and unlocks queued announcements on a page click', async () => {
+test('blocked audio unlocks queued announcements on a page click without needing a video player', async () => {
     const f = audioFixture(false)
     try {
-        f.handlers.playlistUpdate({playlist:['/uploads/office.mp4']})
         const called = ticket(1002,'Inquire',{calledBy:'PC3',recallStamp:1})
         f.handlers.queueUpdate({queue:[], onHold:[], serving:[called], nowServing:called})
         await new Promise(resolve => setImmediate(resolve))
         assert.equal(f.audio.spoken.length, 0)
         assert.equal(f.audio.timers.length, 0)
-        assert.equal(f.audio.plays.at(-1).muted, true)
+        assert.equal(f.audio.chimes, 0)
         assert.equal(callNumber(f, 'PC3'), 'TKT-1002')
         f.audio.allowed = true
         f.document.body.click()
         await new Promise(resolve => setImmediate(resolve))
-        assert.equal(f.document.getElementById('lobbyVideo').muted, false)
         assert.equal(f.audio.context.state, 'running')
+        assert.equal(f.audio.chimes, 3)
         f.audio.timers.find(timer => timer.milliseconds === 1600).callback()
         assert.equal(f.audio.spoken.length, 1)
         f.audio.spoken[0].onend()
         f.handlers.queueUpdate({queue:[], onHold:[], serving:[called], nowServing:called})
         f.document.body.click()
         assert.equal(f.audio.timers.length, 1, 'Unchanged tickets must not be announced twice')
-    } finally {f.dom.window.close()}
-})
-
-test('playlist videos keep their own shape without losing the live ticket board', () => {
-    const f = fixture()
-    try {
-        const video = f.document.getElementById('lobbyVideo')
-        const called = ticket(1001,'Releasing Bldg. Permit',{calledBy:'PC1',recallStamp:1})
-        f.handlers.queueUpdate({queue:[ticket(1002,'Inquire')], onHold:[], serving:[called], nowServing:called})
-        for (const [width,height] of [[1080,1920],[1920,1080]]) {
-            Object.defineProperty(video, 'videoWidth', {value:width, configurable:true})
-            Object.defineProperty(video, 'videoHeight', {value:height, configurable:true})
-            video.dispatchEvent(new f.w.Event('loadedmetadata'))
-            assert.equal(Number(f.document.body.style.getPropertyValue('--monitor-video-ratio')), width / height)
-            assert.equal(video.parentElement.classList.contains('is-portrait'), height > width)
-            assert.equal(callNumber(f, 'PC1'), 'TKT-1001')
-            assert.match(f.document.getElementById('waitingQueueList').textContent, /TKT-1002/)
-        }
-        Object.defineProperty(video, 'videoHeight', {value:0, configurable:true})
-        video.dispatchEvent(new f.w.Event('loadedmetadata'))
-        assert.equal(Number(f.document.body.style.getPropertyValue('--monitor-video-ratio')), 1920 / 1080)
     } finally {f.dom.window.close()}
 })
 

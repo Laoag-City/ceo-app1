@@ -40,13 +40,6 @@ export default function Page() {
         <div id="waitingQueueList" className="monitor-waiting-columns" aria-live="polite" aria-atomic="true" />
         <div id="monitorHoldList" className="monitor-hold-strip" hidden />
       </section>
-      <div className="video-container">
-        <div className="video-empty-state" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="15" rx="2" /><path d="m10 8 5 3-5 3zM8 22h8m-4-4v4" /></svg>
-          <p>Office videos will appear here when available.</p>
-        </div>
-        <video id="lobbyVideo" autoPlay playsInline>Your browser does not support the video tag.</video>
-      </div>
     </div>
   </>
 }
