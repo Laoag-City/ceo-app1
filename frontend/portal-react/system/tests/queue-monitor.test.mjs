@@ -51,7 +51,7 @@ function audioFixture(allowed) {
             constructor() {this.state = 'suspended'; this.currentTime = 0; audio.context = this}
             resume() {
                 audio.resumes++
-                if (!audio.allowed) return Promise.reject(new w.DOMException('Interaction required', 'NotAllowedError'))
+                if (!audio.allowed) return new Promise(() => {}) // The browser can leave resume pending until a click.
                 this.state = 'running'
                 return Promise.resolve()
             }
@@ -83,27 +83,41 @@ test('monitor starts sound automatically and keeps ticket chimes and spoken anno
     } finally {f.dom.window.close()}
 })
 
-test('blocked audio unlocks queued announcements on a page click without needing a video player', async () => {
+test('speech starts automatically even when the browser keeps chime audio suspended', () => {
     const f = audioFixture(false)
     try {
         const called = ticket(1002,'Inquire',{calledBy:'PC3',recallStamp:1})
         f.handlers.queueUpdate({queue:[], onHold:[], serving:[called], nowServing:called})
-        await new Promise(resolve => setImmediate(resolve))
-        assert.equal(f.audio.spoken.length, 0)
+        assert.equal(f.audio.context.state, 'suspended')
+        assert.equal(f.audio.spoken.length, 1)
         assert.equal(f.audio.timers.length, 0)
         assert.equal(f.audio.chimes, 0)
         assert.equal(callNumber(f, 'PC3'), 'TKT-1002')
-        f.audio.allowed = true
-        f.document.body.click()
-        await new Promise(resolve => setImmediate(resolve))
-        assert.equal(f.audio.context.state, 'running')
-        assert.equal(f.audio.chimes, 3)
-        f.audio.timers.find(timer => timer.milliseconds === 1600).callback()
-        assert.equal(f.audio.spoken.length, 1)
+        assert.match(f.audio.spoken[0].text, /ticket 1 0 0 2.*Window 3/)
         f.audio.spoken[0].onend()
         f.handlers.queueUpdate({queue:[], onHold:[], serving:[called], nowServing:called})
+        assert.equal(f.audio.spoken.length, 1, 'Unchanged tickets must not be announced twice')
+    } finally {f.dom.window.close()}
+})
+
+test('the first page click retries blocked speech without announcing a replaced call', async () => {
+    const f = audioFixture(true)
+    try {
+        await new Promise(resolve => setImmediate(resolve))
+        const first = ticket(1001, 'Inquire', {calledBy:'PC1', recallStamp:1})
+        const next = ticket(1002, 'Inquire', {calledBy:'PC1', recallStamp:2})
+        f.handlers.queueUpdate({serving:[first]})
+        f.audio.timers.shift().callback()
+        f.audio.spoken[0].onerror({error:'not-allowed'})
+        f.handlers.queueUpdate({serving:[next]})
+        assert.equal(f.audio.timers.length, 0)
         f.document.body.click()
-        assert.equal(f.audio.timers.length, 1, 'Unchanged tickets must not be announced twice')
+        assert.equal(f.audio.timers.length, 1)
+        f.audio.timers.shift().callback()
+        assert.equal(f.audio.spoken.length, 2)
+        assert.match(f.audio.spoken[1].text, /ticket 1 0 0 2.*Window 1/)
+        f.audio.spoken[1].onend()
+        assert.equal(f.audio.timers.length, 0)
     } finally {f.dom.window.close()}
 })
 

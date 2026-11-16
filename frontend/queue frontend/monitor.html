@@ -28,52 +28,57 @@
     // This is a public display; opening it directly does not require staff login.
     const socket = io(BACKEND_URL);
     const announced = new Map();
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const canSpeak = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
     let audioContext;
-    let soundEnabled = false;
-    const announcements = [];
+    let speechBlocked = false;
+    let announcements = [];
     let speaking = false;
     let latestServing = [];
-    function enableMonitorSound() {
+    function startChimeAudio() {
+        if (!AudioContextClass) return;
         try {
-            const Context = window.AudioContext || window.webkitAudioContext;
-            if (Context) {
-                audioContext ||= new Context();
-                if (audioContext.state === 'running') {
-                    soundEnabled = true;
-                    announceNext();
-                } else {
-                    audioContext.resume().then(() => {
-                        soundEnabled = audioContext.state === 'running';
-                        announceNext();
-                    }).catch(() => {});
-                }
-            } else {
-                soundEnabled = true;
-                announceNext();
+            audioContext ||= new AudioContextClass();
+            if (audioContext.state !== 'running') {
+                audioContext.resume().then(announceNext, () => {});
             }
-        } catch (error) {
-            // Speech can still work if Web Audio is unavailable.
-            soundEnabled = true;
-            announceNext();
+        } catch {
+            // Speech can still work if the browser cannot start Web Audio.
         }
     }
-    document.addEventListener('click', enableMonitorSound);
-    document.addEventListener('keydown', enableMonitorSound);
+    function retryAudioAfterInteraction() {
+        speechBlocked = false;
+        startChimeAudio();
+        announceNext();
+    }
+    document.addEventListener('click', retryAudioAfterInteraction);
+    document.addEventListener('keydown', retryAudioAfterInteraction);
+    function isCurrentCall(ticket) {
+        return latestServing.some(t => t.id === ticket.id && t.calledBy === ticket.calledBy && t.recallStamp === ticket.recallStamp);
+    }
     function enqueueAnnouncement(ticket) {
         announcements.push(ticket);
         announceNext();
     }
     function announceNext() {
-        if (!soundEnabled || speaking || !announcements.length) return;
+        if (speaking || speechBlocked || !announcements.length) return;
+        const chimeReady = audioContext?.state === 'running';
+        if (!canSpeak && !chimeReady) return;
         const ticket = announcements.shift();
-        if (!latestServing.some(t => t.id === ticket.id && t.recallStamp === ticket.recallStamp)) { announceNext(); return; }
         speaking = true;
+        if (!chimeReady) {
+            speakTicket(ticket);
+            return;
+        }
         playChime();
-        setTimeout(() => speakTicket(ticket.id, ticket.calledBy), 1600);
+        setTimeout(() => {
+            if (isCurrentCall(ticket)) speakTicket(ticket);
+            else finishAnnouncement();
+        }, 1600);
     }
     function finishAnnouncement() {
         speaking = false;
-        if (soundEnabled && announcements.length) announceNext();
+        announceNext();
     }
     let premiumVoice = null;
 
@@ -98,14 +103,12 @@
         }
     }
 
-    if ('speechSynthesis' in window) {
+    if (canSpeak) {
         loadBestVoice();
         window.speechSynthesis.onvoiceschanged = loadBestVoice;
     }
 
     function playChime() {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
         const ctx = audioContext;
         if (!ctx || ctx.state !== 'running') return;
         [0.0, 0.5, 1.0].forEach((startTime) => {
@@ -126,19 +129,11 @@
         return onlyNumbers.split('').join(' ');
     }
 
-    function speakTicket(ticketId, stationName) {
-        if (!('speechSynthesis' in window)) { finishAnnouncement(); return; }
-        window.speechSynthesis.cancel(); 
-        
-        const translationMap = {
-            PC1: 'Window 1',
-            PC2: 'Window 2',
-            PC3: 'Window 3'
-        };
-        
-        const formattedCounter = translationMap[stationName] || stationName;
-        const numericTicket = cleanAndFormatTicketNumber(ticketId);
-        const phrasing = `Now serving ticket ${numericTicket}. Please proceed to ${formattedCounter}.`;
+    function speakTicket(ticket) {
+        if (!canSpeak) { finishAnnouncement(); return; }
+        const windowName = monitorWindows.find(station => station.code === ticket.calledBy).title;
+        const numericTicket = cleanAndFormatTicketNumber(ticket.id);
+        const phrasing = `Now serving ticket ${numericTicket}. Please proceed to ${windowName}.`;
         
         const utterance = new SpeechSynthesisUtterance(phrasing);
         if (premiumVoice) {
@@ -152,9 +147,8 @@
         utterance.onend = finishAnnouncement;
         utterance.onerror = function(event) {
             if (event.error === 'not-allowed') {
-                soundEnabled = false;
-                const ticket = latestServing.find(ticket => ticket.id === ticketId);
-                if (ticket) announcements.unshift(ticket);
+                speechBlocked = true;
+                if (isCurrentCall(ticket)) announcements.unshift(ticket);
             }
             finishAnnouncement();
         };
@@ -290,6 +284,7 @@
         // Keep the legacy single-call fallback for older queue servers.
         latestServing = (Array.isArray(data.serving) ? data.serving : data.nowServing ? [data.nowServing] : [])
             .filter(ticket => ticket && monitorWindows.some(station => station.code === ticket.calledBy));
+        announcements = announcements.filter(isCurrentCall);
         updateDisplay(latestServing);
         renderWaitingTickets();
         for (const ticket of [...latestServing].reverse()) {
@@ -349,7 +344,7 @@
     }
     updateDisplay([]);
 
-    enableMonitorSound();
+    startChimeAudio();
 
     function handleMonitorBack() {
         sessionStorage.removeItem('currentWorkspace');

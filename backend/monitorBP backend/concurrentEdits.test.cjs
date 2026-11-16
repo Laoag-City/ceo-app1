@@ -27,13 +27,13 @@ test('concurrent workspace saves use the loaded version and remain atomic',async
             permit_routing_matrix:'id INT AUTO_INCREMENT PRIMARY KEY,permit_id INT,sub_permit_id INT,discipline_name VARCHAR(100),engineer_name VARCHAR(100),signature_status VARCHAR(30),feedback_remarks TEXT,date_checked DATE,date_approved DATE,last_updated_by INT NULL',
             occupancy_routing_matrix:'id INT AUTO_INCREMENT PRIMARY KEY,occupancy_id INT,discipline_name VARCHAR(100),engineer_name VARCHAR(100),signature_status VARCHAR(30),feedback_remarks TEXT,date_checked DATE,date_approved DATE,last_updated_by INT NULL',
             occupancy_inspections:'id INT AUTO_INCREMENT PRIMARY KEY,occupancy_id INT,inspection_type VARCHAR(50),inspection_date DATE,inspector_name VARCHAR(150),result VARCHAR(50),findings TEXT,next_inspection_date DATE',
-            occupancy_checklists:'occupancy_id INT PRIMARY KEY,checklist_state JSON'
+            occupancy_checklists:'occupancy_id INT PRIMARY KEY,checklist_state JSON,updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
         };
         for(const [table,columns] of Object.entries(schemas))await admin.query('CREATE TABLE '+table+' ('+columns+') ENGINE=InnoDB');
         for(const [table,key] of [['permit_change_requests','permit_id'],['occupancy_change_requests','occupancy_id']])await admin.query('CREATE TABLE '+table+' (id INT AUTO_INCREMENT PRIMARY KEY,'+key+' INT,requested_by INT,change_type VARCHAR(50),changes JSON,status VARCHAR(20),remarks TEXT,reviewed_by VARCHAR(50),reviewed_at TIMESTAMP NULL) ENGINE=InnoDB');
         await admin.query("INSERT INTO users VALUES (1,'operator','operator',1,1),(2,'boss','admin',1,1),(3,'it','superadmin',1,1)");
         await admin.query("INSERT INTO permit_user_profiles VALUES (1,'Reviewer')");
-        await admin.query("INSERT INTO permit_station_assignments VALUES (1,'ELECTRICAL','Electrical')");
+        await admin.query("INSERT INTO permit_station_assignments VALUES (1,'ELECTRICAL','Electrical'),(2,'MECHANICAL','Mechanical')");
         await admin.query("INSERT INTO permits (id,project_title,permit_date,rejection_history) VALUES (10,'Original','2026-01-01','[]')");
         await admin.query("INSERT INTO occupancy_permits VALUES (10,'Original','2026-01-01','[]')");
         await admin.query("INSERT INTO sub_permits VALUES (7,10,'Annex')");

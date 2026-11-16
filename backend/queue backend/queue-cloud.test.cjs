@@ -12,9 +12,11 @@ test('queue entry point serves cloud health, same-origin assets and authenticate
  const root=path.resolve(__dirname,'../../.feature-backups/queue-cloud-smoke');await fs.mkdir(root,{recursive:true});
  const directory=await fs.mkdtemp(path.join(root,'case-'));t.after(()=>fs.rm(directory,{recursive:true,force:true}));
  const token='c'.repeat(64),hash=crypto.createHash('sha256').update(token).digest('hex');
+ const createdAt=new Date();
+ const expiresAt=new Date(createdAt.getTime()+30*60*1000);
  const videos=[],uploads=[],sent=[];let role='admin';
  const pool={dialect:'postgres',async end(){},async query(sql,args=[]){
-  if(sql.includes('FROM permit_sessions s'))return [args[0]===hash?[{id:1,username:'fixture-admin',role}]:[]];
+  if(sql.includes('FROM permit_sessions s'))return [args[0]===hash?[{id:1,username:'fixture-admin',role,created_at:createdAt,expires_at:expiresAt}]:[]];
   if(sql.startsWith('SELECT filepath FROM videos'))return [videos];
   if(sql.startsWith('SELECT COALESCE(MAX(sort_order)'))return [[{last_order:videos.length}]];
   if(sql.startsWith('INSERT INTO videos')){videos.push({filepath:args[1],sort_order:args[2],is_active:1});return [{affectedRows:1}];}

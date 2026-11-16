@@ -34,13 +34,16 @@ test('HTTP cookie sessions: four users, forged identity, role checks, rotation, 
         const cookies=[];for(const id of [1,2,3,4])cookies.push(await login(id));
         assert.equal(new Set(cookies).size,4);
         const page=(url,cookie='')=>fetch(origin+url,{headers:{cookie},redirect:'manual'});
-        for(const url of ['/','/index.html','/%69ndex.html','/INDEX.HTML','/edit','/occupancy','/occupancy_edit.html','/admin','/superadmin']) {
+        const root=await page('/');
+        assert.equal(root.status,302);
+        assert.equal(root.headers.get('location'),'/portal.html');
+        for(const url of ['/index.html','/%69ndex.html','/INDEX.HTML','/edit','/occupancy','/occupancy_edit.html','/admin','/superadmin']) {
             const response=await page(url);assert.equal(response.status,302,url);assert.equal(response.headers.get('location'),'/login');
         }
-        assert.equal((await page('/superadmin',cookies[0])).headers.get('location'),'/');
+        assert.equal((await page('/superadmin',cookies[0])).headers.get('location'),'/index.html');
         assert.equal((await page('/superadmin',cookies[2])).headers.get('location'),'/admin');
         assert.equal((await page('/occupancy',cookies[3])).headers.get('location'),'/superadmin');
-        for(const [url,cookie] of [['/',cookies[0]],['/admin',cookies[2]],['/superadmin',cookies[3]]]) {
+        for(const [url,cookie] of [['/index.html',cookies[0]],['/admin',cookies[2]],['/superadmin',cookies[3]]]) {
             const response=await page(url,cookie);assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');
             assert.match(await response.text(),/sessionStorage.setItem\("oboUser"/);
         }

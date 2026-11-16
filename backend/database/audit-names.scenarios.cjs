@@ -16,7 +16,11 @@ module.exports=function register(open){
   for(const table of ['permits','occupancy_permits'])await db.query("INSERT INTO "+table+" VALUES (10,'Sample project')");
   const query=async(sql,args=[])=>(await db.query(sql,args))[0];
   const records=create({promise:()=>db}),routes={};
-  records.routes({get:(path,handler)=>routes.get=handler,post:(path,handler)=>routes.post=handler});
+  records.routes({
+   get:(path,handler)=>routes.get=handler,
+   post:(path,handler)=>routes.post=handler,
+   delete:(path,handler)=>routes.delete=handler
+  });
   function response(){let done;const completed=new Promise(resolve=>done=resolve);return {locals:{},statusCode:200,status(code){this.statusCode=code;return this},json(body){this.body=body;done();return this},completed}}
   const request=(kind='permits',user=1)=>({user:{id:user,role:'operator'},params:{kind,id:'10'},query:{},body:{message:'Test remark',requestId:'11111111-1111-4111-8111-111111111111'}});
   return {db,query,records,routes,response,request};

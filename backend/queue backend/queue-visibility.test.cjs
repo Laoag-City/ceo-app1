@@ -6,7 +6,8 @@ const crypto=require('node:crypto');
 
 test('public sockets receive ticket numbers while staff details are revoked after logout or role changes',async()=>{
  const token='a'.repeat(64),hash=crypto.createHash('sha256').update(token).digest('hex');
- let account={id:1,username:'test-staff',role:'operator'};
+ const createdAt=new Date();
+ let account={id:1,username:'test-staff',role:'operator',created_at:createdAt,expires_at:new Date(createdAt.getTime()+30*60*1000)};
  const db={promise:()=>({query:async(sql,args)=>[args[0]===hash&&account?[account]:[]]})};
  const deliver=createDelivery(createPermitSessions(db,{cookieName:'queue_session'}));
  const ticket={id:'TKT-1',name:'Private Name',phone:'Private Phone',email:'Private Email',barangay:'Private Address',reason:'Inquire',calledBy:'PC3'};
