@@ -1,20 +1,76 @@
-# Office of the City Engineer — start here
+# Office of the City Engineer
 
-For small frontend edits, open [WHERE-TO-EDIT.md](WHERE-TO-EDIT.md).
+Laoag City’s Building and Occupancy Permit system and service-window queue.
+The printable staff guide covers sign-in, daily work, account management,
+Windows startup, and recovery. [Open the operations guide (PDF)](docs/office-operations-guide.pdf)
 
-## Start the PostgreSQL system (updated 1 October 2026)
+| Role | Where to start |
+| --- | --- |
+| Operator | Open Building Permits or Occupancy Permits to file applications and review assigned stations. For Queue, choose Registration Desk or your assigned service window. |
+| Admin | Open the Permit Admin console to review requests, approve or return projects, and export monthly reports. Station edits require a matching assignment. |
+| Superadmin | Open Account Requests and Manage Accounts in Permit to approve access, manage roles and activation, and assign stations. |
 
-Run `npm.cmd start` in each backend folder, in separate PowerShell terminals:
-`backend/monitorBP backend` and `backend/queue backend`. Leave both terminals open.
-The launcher decrypts this Windows user's local connection configuration; do not
-start the Node entry files directly without that configuration.
+Staff use individual approved accounts. Signing in again with the same account
+ends its previous session across Permit and Queue. The public Queue display
+opens without a staff sign-in.
 
-Open http://localhost:5000/portal.html or http://localhost:3000/login.
-The active PostgreSQL databases retain the names `permit_system_migration` and
-`queue_system_migration`. PostgreSQL must be running; pgAdmin may be closed.
-MySQL is retained for rollback only and is no longer updated by the websites.
-See [POSTGRES-MIGRATION.md](POSTGRES-MIGRATION.md) for the cutover record and
-[POSTGRES-BACKUP-RECOVERY.md](POSTGRES-BACKUP-RECOVERY.md) for recovery.
+| Service | Local Windows host | Render test site |
+| --- | --- | --- |
+| Permit sign-in | [localhost:3000/login](http://localhost:3000/login) | [Permit sign-in](https://laoag-engineering-permits.onrender.com/login) |
+| Queue sign-in | [localhost:5000/log-in.html](http://localhost:5000/log-in.html) | [Queue sign-in](https://laoag-engineering-queue.onrender.com/log-in.html) |
+| Public Queue monitor | [localhost:5000/monitor.html](http://localhost:5000/monitor.html) | [Queue monitor](https://laoag-engineering-queue.onrender.com/monitor.html) |
+
+Use the address provided by IT for shared office work. Use synthetic records on
+the Render test sites.
+
+## Start both services on Windows
+
+The local setup uses Node.js 22 and PostgreSQL 18. On a new computer, IT
+prepares both databases and the Windows account’s encrypted launcher
+configuration. [PostgreSQL setup and cutover](POSTGRES-MIGRATION.md)
+
+Install runtime dependencies from the repository root on a fresh checkout.
+
+```powershell
+npm.cmd --prefix "backend/database" ci
+npm.cmd --prefix "backend/monitorBP backend" ci
+npm.cmd --prefix "backend/queue backend" ci
+```
+
+With the PostgreSQL Windows service running, open two PowerShell terminals
+at the repository root. Run one start command in each terminal and keep both
+open.
+
+```powershell
+npm.cmd --prefix "backend/monitorBP backend" start
+npm.cmd --prefix "backend/queue backend" start
+```
+
+The launcher reads the current Windows account’s encrypted configuration from
+`PermitManagementConfig\postgres-migration-apps.json` under its user profile.
+The local databases are `permit_system_migration` and `queue_system_migration`.
+Check that the Permit and Queue health endpoints both return success.
+
+```powershell
+Invoke-RestMethod http://localhost:3000/api/health
+Invoke-RestMethod http://localhost:5000/api/health
+```
+
+**EADDRINUSE** means the port is already occupied. Open the affected page to see
+whether the app is running. To restart an existing copy, press **Ctrl+C** in its
+original terminal and run its start command again. If needed, use
+`Get-NetTCPConnection -LocalPort 3000 -State Listen` to identify the owning
+process. Use port 5000 for Queue.
+
+## Backups and releases
+
+On the configured Windows host, `npm.cmd --prefix "backend/monitorBP backend" run backup:create`
+takes a fresh backup and verifies an isolated restore. Check the result and keep
+a protected off-device copy of the verified backup folder. [PostgreSQL backup and recovery](POSTGRES-BACKUP-RECOVERY.md)
+
+For the test sites, check the target commit and required migrations before using
+**Manual Deploy** in Render. Verify health, sign-in, and the monitor after
+deploying. [Render deployment and rollback](RENDER-DEPLOYMENT.md)
 
 ## Project structure
 
@@ -60,9 +116,9 @@ Neither command modifies database records or restarts a running server.
 
 ## Documentation
 
-- [Where to edit](WHERE-TO-EDIT.md): page map and everyday editing instructions.
-- [System overview](SYSTEM-OVERVIEW.md): architecture, workflows, database and operation.
-- [Code documentation](CODE-DOCUMENTATION.md): implementation responsibilities.
-- [Frontend architecture](frontend/portal-react/system/README.md): source/publishing contracts.
+- Page map and everyday editing instructions. [Where to edit](WHERE-TO-EDIT.md)
+- Architecture, workflows, and database. [System overview](SYSTEM-OVERVIEW.md)
+- Implementation responsibilities. [Code documentation](CODE-DOCUMENTATION.md)
+- Frontend source and publishing instructions. [Frontend architecture](frontend/portal-react/system/README.md)
 
 Never commit credentials, private database backups, or uploaded confidential records.
