@@ -28,7 +28,8 @@
         commentButton.type = 'button';
         const icon = node('span', undefined, 'records-comment-icon');
         icon.setAttribute('aria-hidden', 'true');
-        commentButton.append(icon, node('span', 'Add Remarks'));
+        const commentButtonLabel = node('span', 'Add Remarks');
+        commentButton.append(icon, commentButtonLabel);
         const refresh = node('button', 'Refresh', 'records-button'); refresh.type = 'button';
         if(mode !== 'activity') controls.append(commentButton);
         controls.append(refresh); heading.append(title, controls);
@@ -38,6 +39,11 @@
         commentButton.setAttribute('aria-controls', form.id);
         commentButton.setAttribute('aria-expanded', 'false');
         const label = node('label', 'Remark / reminder');
+        const close = node('button', 'Close', 'records-button');
+        close.type = 'button';
+        close.setAttribute('aria-label', 'Close remark form');
+        const formHeading = node('div', undefined, 'records-form-heading');
+        formHeading.append(label, close);
         const textarea = node('textarea');
         textarea.id = `${form.id}-text`; label.htmlFor = textarea.id;
         textarea.required = true; textarea.maxLength = 2000; textarea.rows = 3;
@@ -45,7 +51,7 @@
         textarea.value = readDraft().text || '';
         const help = node('p', 'Visible to operators and administrators. Comments do not change approval status.');
         const submit = node('button', 'Post comment', 'records-button records-submit'); submit.type = 'submit';
-        form.append(label, textarea, help, submit);
+        form.append(formHeading, textarea, help, submit);
         const feedback = node('p', '', 'records-feedback'); feedback.setAttribute('role', 'status');
         const feed = node('div', undefined, 'records-feed');
         const more = node('button', 'Load older records', 'records-button'); more.type = 'button'; more.hidden = true;
@@ -53,6 +59,25 @@
         if(mode !== 'activity') host.append(form);
         host.append(feedback, feed, more);
         let cursor = null, loading = false, saving = false;
+        const deletedRemarks = new Set();
+        const emptyLabel = () => node('p', mode === 'activity' ? 'No activity recorded yet.' : 'No comments yet.', 'records-empty');
+        async function deleteRemark(id, button) {
+            if (button.disabled || !window.confirm('Delete this remark?')) return;
+            button.disabled = true;
+            feedback.textContent = '';
+            try {
+                await RequestFeedback.fetch(url + '/comments/' + id, { method: 'DELETE', headers });
+                deletedRemarks.add(id);
+                feed.querySelector(`[data-remark-id="${id}"]`)?.remove();
+                if (!feed.children.length) feed.append(emptyLabel());
+                feedback.textContent = 'Remark deleted.';
+                if (host.isConnected) refresh.focus();
+            } catch (error) {
+                feedback.textContent = error.message || 'Could not delete the remark. Please try again.';
+            } finally {
+                button.disabled = false;
+            }
+        }
         async function load(append = false) {
             if (loading) return;
             loading = true; refresh.disabled = true; more.disabled = true;
@@ -61,7 +86,10 @@
                 const data = await response.json();
                 if (!host.isConnected) return;
                 if (!append) feed.replaceChildren();
+                else feed.querySelector('.records-empty')?.remove();
                 for (const record of data.records) {
+                    const remarkId = Number(record.id);
+                    if (deletedRemarks.has(remarkId)) continue;
                     const article = node('article', undefined, 'records-entry');
                     const meta = node('div', undefined, 'records-meta');
                     meta.append(node('strong', record.actor_name), node('time', record.created_at));
@@ -78,9 +106,18 @@
                             article.append(container);
                         } else article.append(node('p', record.details, 'records-detail'));
                     }
+                    if (mode === 'comment' && record.category === 'comment' && record.canDelete === true &&
+                        Number.isSafeInteger(remarkId) && remarkId > 0) {
+                        article.dataset.remarkId = remarkId;
+                        const remove = node('button', 'Delete', 'records-button records-delete');
+                        remove.type = 'button';
+                        remove.setAttribute('aria-label', 'Delete your remark');
+                        remove.onclick = () => deleteRemark(remarkId, remove);
+                        article.append(remove);
+                    }
                     feed.append(article);
                 }
-                if (!feed.children.length) feed.append(node('p', mode === 'activity' ? 'No activity recorded yet.' : 'No comments yet.', 'records-empty'));
+                if (!feed.children.length) feed.append(emptyLabel());
                 cursor = data.next; more.hidden = !cursor;
                 return true;
             } catch (error) {
@@ -88,11 +125,14 @@
                 return false;
             } finally { loading = false; refresh.disabled = false; more.disabled = false; }
         }
-        commentButton.onclick = () => {
-            form.hidden = !form.hidden;
-            commentButton.setAttribute('aria-expanded', String(!form.hidden));
-            if (!form.hidden) textarea.focus();
-        };
+        function setFormOpen(open) {
+            form.hidden = !open;
+            commentButtonLabel.textContent = open ? 'Hide form' : 'Add Remarks';
+            commentButton.setAttribute('aria-expanded', String(open));
+            (open ? textarea : commentButton).focus();
+        }
+        commentButton.onclick = () => setFormOpen(form.hidden);
+        close.onclick = () => setFormOpen(false);
         textarea.addEventListener('input', () => {
             textarea.setCustomValidity('');
             const old = readDraft(); remember({ ...old, text: textarea.value });
@@ -114,10 +154,11 @@
             saving = true; submit.disabled = true; textarea.readOnly = true;
             try {
                 const response = await RequestFeedback.fetch(url + '/comments', { method: 'POST', headers, body: JSON.stringify({ message, requestId: draft.requestId }) });
-                await response.json();
+                const result = await response.json();
                 remember({}); textarea.value = ''; window.FormSafety?.clean(form.id);
-                feedback.textContent = 'Comment posted.';
-                if (!await load()) feedback.textContent = 'Comment posted. Refresh to reload the records.';
+                const notice = result.deleted ? 'This remark was already deleted.' : 'Comment posted.';
+                feedback.textContent = notice;
+                if (!await load()) feedback.textContent = notice + ' Refresh to reload the records.';
             } catch (error) {
                 feedback.textContent = error.message || 'Comment could not be confirmed. Your draft is kept; refresh the records before retrying.';
             } finally { saving = false; submit.disabled = false; textarea.readOnly = false; }

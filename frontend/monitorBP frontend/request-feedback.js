@@ -49,7 +49,8 @@
   const method=(options.method||'GET').toUpperCase(),write=!['GET','HEAD'].includes(method),u=new URL(url,location.href),key=method+' '+u.href;
   let ticketRetry=false;try{ticketRetry=u.pathname==='/api/tickets'&&!!JSON.parse(options.body||'{}').requestId;}catch(_){}
   let permitRetry=false;try{permitRetry=method==='POST'&&/^\/api\/(permits|occupancy)\/?$/.test(u.pathname)&&/^[a-f0-9-]{36}$/i.test(JSON.parse(options.body||'{}').requestId||'');}catch(_){}
-  const safeRetry=ticketRetry||permitRetry;
+  const remarkDeleteRetry=method==='DELETE'&&/^\/api\/project-records\/(permits|occupancy)\/\d+\/comments\/\d+$/.test(u.pathname);
+  const safeRetry=ticketRetry||permitRetry||remarkDeleteRetry;
   const authLogin=u.pathname==='/api/auth/login';
   const context={url:u.href,key,headers:options.headers};
   if(pending.has(key)&&!safeRetry){const e=new RequestError('The previous action is unconfirmed. Entries are preserved. Check the server and review saved records before another attempt.');report(e,context);throw e;}
@@ -77,7 +78,7 @@
    e.sessionExpired=error.sessionExpired;
    if(error.code==='SESSION_REPLACED'){e.code=error.code;e.message=reason;}
    if(error.conflict){e.conflict=true;e.message=reason;}
-   if(uncertain&&!safeRetry){pending.add(key);persist();report(e,context);}else{if(uncertain&&safeRetry)e.message+=' Retry this same form to retrieve the original '+(permitRetry?'permit':'ticket')+' safely.';report(e);}
+   if(uncertain&&!safeRetry){pending.add(key);persist();report(e,context);}else{if(uncertain&&safeRetry)e.message+=remarkDeleteRetry?' You can safely retry deleting this remark.':' Retry this same form to retrieve the original '+(permitRetry?'permit':'ticket')+' safely.';report(e);}
    throw e;
   }finally{clearTimeout(timer);}
  }

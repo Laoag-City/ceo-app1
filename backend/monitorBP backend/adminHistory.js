@@ -36,7 +36,7 @@ const projection=`SELECT r.id,'request' source,'permits' kind,r.permit_id projec
  FROM occupancy_change_requests r LEFT JOIN occupancy_permits p ON p.id=r.occupancy_id LEFT JOIN users u ON u.id=r.requested_by LEFT JOIN permit_user_profiles up ON up.user_id=r.requested_by
  UNION ALL
  SELECT a.id,'activity',a.kind,a.project_id,a.project_title,a.outcome,a.category,a.message,COALESCE(NULLIF(TRIM(up.display_name),''),a.actor_name),a.created_at,''
- FROM project_records a LEFT JOIN permit_user_profiles up ON up.user_id=a.actor_id WHERE a.kind IN ('permits','occupancy') AND a.outcome<>'failed'
+ FROM project_records a LEFT JOIN permit_user_profiles up ON up.user_id=a.actor_id WHERE a.kind IN ('permits','occupancy') AND a.outcome NOT IN ('failed','deleted')
  UNION ALL
  SELECT f.id,'final_review',f.kind,f.project_id,
  COALESCE(b.project_title,o.project_title,(SELECT a.project_title FROM project_records a WHERE a.kind=f.kind AND a.project_id=f.project_id ORDER BY a.id DESC LIMIT 1),CONCAT('Permit #',f.project_id)),

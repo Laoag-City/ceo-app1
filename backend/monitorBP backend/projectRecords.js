@@ -36,7 +36,7 @@ module.exports = function projectRecords(db) {
         return user;
     }
     async function target(kind, id) {
-        if (!kinds[kind] || !Number.isSafeInteger(id) || id < 1) throw bad('Invalid project.');
+        if (!Object.hasOwn(kinds, kind) || !Number.isSafeInteger(id) || id < 1) throw bad('Invalid project.');
         const rows = await query(`SELECT project_title FROM ${kinds[kind].table} WHERE id=?`, [id]);
         if (!rows.length) throw bad('This project no longer exists.', 404);
         return rows[0].project_title;
@@ -47,19 +47,23 @@ module.exports = function projectRecords(db) {
     function routes(app) {
         app.get('/api/project-records/:kind/:id', async (req, res) => {
             try {
-                await initialize(); await actor(req);
+                await initialize(); const user = await actor(req);
                 const kind = req.params.kind, id = Number(req.params.id);
                 await target(kind, id);
                 const before = req.query.before ? Number(req.query.before) : Number.MAX_SAFE_INTEGER;
                 if (!Number.isSafeInteger(before) || before < 1) throw bad('Invalid history cursor.');
                 const category = req.query.category || null;
                 if(category && !['activity','comment'].includes(category)) throw bad('Invalid record category.');
-                const rows = await query(`SELECT r.id,COALESCE(NULLIF(TRIM(p.display_name),''),r.actor_name) AS actor_name,r.actor_role,r.category,r.outcome,r.message,r.details,
+                const rows = await query(`SELECT r.id,r.actor_id,COALESCE(NULLIF(TRIM(p.display_name),''),r.actor_name) AS actor_name,r.actor_role,r.category,r.outcome,r.message,r.details,
                     DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at
                     FROM project_records r LEFT JOIN permit_user_profiles p ON p.user_id=r.actor_id
-                    WHERE r.kind=? AND r.project_id=? AND r.outcome <> 'failed' AND r.id < ? AND (? IS NULL OR r.category=?) ORDER BY r.id DESC LIMIT 11`, [kind, id, before, category, category]);
+                    WHERE r.kind=? AND r.project_id=? AND r.outcome NOT IN ('failed','deleted') AND r.id < ? AND (? IS NULL OR r.category=?) ORDER BY r.id DESC LIMIT 11`, [kind, id, before, category, category]);
                 const more = rows.length > 10; if (more) rows.pop();
-                res.json({ success: true, records: rows, next: more ? rows[rows.length - 1].id : null });
+                const records = rows.map(({ actor_id, ...record }) => ({
+                    ...record,
+                    canDelete: record.category === 'comment' && record.outcome === 'saved' && Number(actor_id) === Number(user.id)
+                }));
+                res.json({ success: true, records, next: more ? rows[rows.length - 1].id : null });
             } catch (error) { fail(res, error); }
         });
         app.post('/api/project-records/:kind/:id/comments', async (req, res) => {
@@ -73,8 +77,32 @@ module.exports = function projectRecords(db) {
                 const key = `${user.id}:${req.body.requestId}`;
                 await query(`INSERT INTO project_records (kind,project_id,project_title,actor_id,actor_name,actor_role,category,outcome,message,request_key)
                     VALUES (?,?,?,?,?,?,'comment','saved',?,?) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)`, [kind,id,title,user.id,user.display_name,user.role,message,key]);
-                const rows = await query('SELECT kind,project_id,message FROM project_records WHERE request_key=?', [key]);
-                if (rows[0].kind !== kind || rows[0].project_id !== id || rows[0].message !== message) throw bad('This submission was already used for a different comment. Refresh before posting another.', 409);
+                const rows = await query('SELECT kind,project_id,outcome,message FROM project_records WHERE request_key=?', [key]);
+                const saved = rows[0];
+                if (saved.kind === kind && saved.project_id === id && saved.outcome === 'deleted') {
+                    return res.json({ success: true, deleted: true });
+                }
+                if (saved.kind !== kind || saved.project_id !== id || saved.message !== message) throw bad('This submission was already used for a different comment. Refresh before posting another.', 409);
+                res.json({ success: true });
+            } catch (error) { fail(res, error); }
+        });
+        app.delete('/api/project-records/:kind/:id/comments/:commentId', async (req, res) => {
+            try {
+                await initialize();
+                const user = await actor(req);
+                const { kind } = req.params;
+                const id = Number(req.params.id), commentId = Number(req.params.commentId);
+                if (!Number.isSafeInteger(commentId) || commentId < 1) throw bad('Invalid remark.');
+                await target(kind, id);
+                const scope = "id=? AND kind=? AND project_id=? AND actor_id=? AND category='comment'";
+                const params = [commentId, kind, id, user.id];
+                // Keep the submission key so a delayed posting retry cannot bring the remark back.
+                const result = await query(`UPDATE project_records SET outcome='deleted', message='', details=NULL
+                    WHERE ${scope} AND outcome='saved'`, params);
+                if (!result.affectedRows) {
+                    const deleted = await query(`SELECT id FROM project_records WHERE ${scope} AND outcome='deleted'`, params);
+                    if (!deleted.length) throw bad('This remark is no longer available to delete.', 404);
+                }
                 res.json({ success: true });
             } catch (error) { fail(res, error); }
         });

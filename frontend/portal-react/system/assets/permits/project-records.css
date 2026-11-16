@@ -10,6 +10,7 @@
 .records-button:focus-visible { outline:2px solid var(--record-accent); outline-offset:3px; }
 .records-comment-icon { width:17px; height:16px; background:currentColor; mask:url('/assets/comment-edit-16-regular.svg') center/contain no-repeat; }
 .records-comment-form { display:grid; gap:10px; margin-top:18px; padding:16px; background:#f5f8fa; border-radius:9px; }
+.records-form-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
 .records-comment-form label { font-size:13px; font-weight:600; }
 .records-comment-form textarea { width:100%; box-sizing:border-box; resize:vertical; padding:10px; border:1px solid #c5d5e1; border-radius:7px; font:inherit; font-size:13px; color:inherit; background:#fff; }
 .records-submit { justify-self:start; }
@@ -23,6 +24,7 @@
 .records-meta time { margin-left:auto; font-size:11px; }
 .records-tag { display:inline-block; font-size:10px; padding:3px 6px; border:1px solid #d7e2eb; border-radius:5px; margin-top:9px; color:var(--record-accent); }
 .records-entry p { margin:7px 0 0; font-size:13px; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.65; }
+.records-delete { margin-top:8px; color:#ad2d2d; }
 .records-detail { color:#6b8194; }
 html[data-theme='dark'] .project-records { background:#2e353e; border-color:#485360; color:#e3e9ef; --record-accent:#9ecbf4; }
 html[data-theme='dark'] .occ-page .project-records, html[data-theme='dark'] [data-project-records='occupancy'] { --record-accent:#6ee7b7; }
@@ -30,6 +32,7 @@ html[data-theme='dark'] .records-comment-form, html[data-theme='dark'] .records-
 html[data-theme='dark'] .records-comment-form textarea { background:#222a32; border-color:#53606d; }
 html[data-theme='dark'] .records-heading p, html[data-theme='dark'] .records-comment-form > p, html[data-theme='dark'] .records-meta, html[data-theme='dark'] .records-detail, html[data-theme='dark'] .records-feedback, html[data-theme='dark'] .records-empty { color:#b0c0ce; }
 html[data-theme='dark'] .records-button, html[data-theme='dark'] .records-tag, html[data-theme='dark'] .records-entry { border-color:#495563; }
+html[data-theme='dark'] .records-delete { color:#fca5a5; }
 @media(max-width:600px) { .project-records { padding:15px; } .records-meta time { margin-left:0; } }
 .records-disclosure { margin:20px 0; border:1px solid #d7e2eb; border-radius:10px; background:#fff; color:#17344a; }
 .records-disclosure > summary { padding:14px 18px; font-size:13px; font-weight:600; cursor:pointer; }

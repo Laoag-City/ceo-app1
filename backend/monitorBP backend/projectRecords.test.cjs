@@ -19,7 +19,7 @@ async function fixture(t) {
     await conn.query('INSERT INTO sub_permits VALUES (4,10)');
     const service = create({promise:() => ({query:(sql,args) => conn.query(sql.replace('CREATE TABLE IF NOT EXISTS project_records','CREATE TEMPORARY TABLE IF NOT EXISTS project_records'),args)})});
     const routes = {};
-    service.routes({get:(path,fn)=>routes.get=fn,post:(path,fn)=>routes.post=fn});
+    service.routes({get:(path,fn)=>routes.get=fn,post:(path,fn)=>routes.post=fn,delete:(path,fn)=>routes.delete=fn});
     const req = (kind='permits', id='10', body={}) => ({user:{id:1,role:'operator'},params:{kind,id},query:{},body,get:key=>key==='x-user-id'?'1':'operator'});
     const response = () => { let done;const completed=new Promise(resolve=>done=resolve);return {statusCode:200,locals:{},status(n){this.statusCode=n;return this;},json(body){this.body=body;done();return this;},completed}; };
     return {conn,service,routes,req,response};
@@ -32,6 +32,42 @@ test('comments validate authors/content, persist once on retry, and isolate proj
     let res=f.response();await f.routes.post(f.req('permits','10',{message:'Different',requestId:key}),res);assert.equal(res.statusCode,409);
     res=f.response();await f.routes.post(f.req('permits','10',{message:'   ',requestId:key}),res);assert.equal(res.statusCode,400);
     res=f.response();const inactive=f.req();inactive.user={id:3,role:'operator'};await f.routes.get(inactive,res);assert.equal(res.statusCode,403);
+});
+
+test('only the author can delete a project remark, and a posting retry cannot restore it', async t => {
+    const { conn, routes, req, response } = await fixture(t);
+    const body = { message: 'My remark', requestId: '22222222-2222-4222-8222-222222222222' };
+    await routes.post(req('occupancy', '10', body), response());
+    await conn.query(`INSERT INTO project_records (kind,project_id,project_title,actor_id,actor_name,actor_role,category,outcome,message)
+        VALUES ('occupancy',10,'Project Ten',1,'Operator A','operator','activity','saved','Created project')`);
+    const read = async user => {
+        const res = response();
+        await routes.get({ ...req('occupancy'), user }, res);
+        return res.body.records;
+    };
+    const operator = { id: 1, role: 'operator' }, admin = { id: 2, role: 'admin' };
+    const [activity, remark] = await read(operator);
+    assert.equal(activity.canDelete, false);
+    assert.equal(remark.canDelete, true);
+    assert.equal((await read(admin))[1].canDelete, false);
+    const remove = async ({ user = operator, kind = 'occupancy', projectId = '10', commentId = remark.id } = {}) => {
+        const res = response();
+        await routes.delete({ ...req(), user, params: { kind, id: projectId, commentId } }, res);
+        return res.statusCode;
+    };
+    assert.equal(await remove({ user: admin }), 404);
+    assert.equal(await remove({ kind: 'permits' }), 404);
+    assert.equal(await remove({ projectId: '20' }), 404);
+    assert.equal(await remove({ commentId: activity.id }), 404);
+    assert.equal(await remove(), 200);
+    assert.equal(await remove(), 200);
+    const retry = response();
+    await routes.post(req('occupancy', '10', body), retry);
+    assert.equal(retry.body.deleted, true);
+    assert.deepEqual((await read(operator)).map(record => record.message), ['Created project']);
+    const [[deleted]] = await conn.query('SELECT outcome,message FROM project_records WHERE id=?', [remark.id]);
+    assert.equal(deleted.outcome, 'deleted');
+    assert.equal(deleted.message, '');
 });
 
 test('approved operator deletion retains filing metadata for monthly reporting, while failure is not a successful archive',async t=>{
