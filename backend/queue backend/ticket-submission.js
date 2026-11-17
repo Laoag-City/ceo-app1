@@ -13,7 +13,7 @@ function validateTicket(body = {}) {
  const fields=['name','phone','email','barangay','reason'];
  if(fields.some(key=>body[key]!==undefined && typeof body[key]!=='string'))throw bad('Visitor details must be text.');
  const data=Object.fromEntries(fields.map(k=>[k,typeof body[k]==='string'?body[k].trim():'']));
- if(!data.name||!data.phone||!data.barangay||!data.reason)throw Object.assign(new Error('Complete the visitor name, phone, addresses, and visit reason.'),{status:400});
+ if(!data.name||!data.phone||!data.reason)throw bad('Complete the visitor name, phone, and visit reason.');
  for(const key of fields) {
   if(Array.from(data[key]).length>limits[key])throw bad(`${key[0].toUpperCase()+key.slice(1)} must be ${limits[key]} characters or fewer.`);
   if(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(data[key]))throw bad('Visitor details contain unsupported characters.');

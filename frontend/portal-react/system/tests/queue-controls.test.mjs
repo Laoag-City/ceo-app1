@@ -58,6 +58,34 @@ test('each window filters all lists, reconnects, and can finish its last client'
     }
 });
 
+test('registration issues a ticket with either location field or both left blank', async () => {
+    const f = await queueFixture('Kiosk');
+    try {
+        f.w.FormSafety = {guard: (_formId, submit) => submit};
+        f.w.eval('let popupTimeout;\n' + source.slice(source.indexOf('    let ticketSubmission ='), source.indexOf('    // Disable all service actions')));
+        const options = [
+            ['', '', ''],
+            ['Brgy. 1', '', 'Address: Brgy. 1'],
+            ['', 'Brgy. 2', 'Bldg Loc: Brgy. 2'],
+            ['Brgy. 1', 'Brgy. 2', 'Address: Brgy. 1 | Bldg Loc: Brgy. 2']
+        ];
+        for (const [index, [address, location, stored]] of options.entries()) {
+            const ticketId = 'TKT-' + (index + 1);
+            f.respond(async () => ({success: true, ticketId}));
+            f.node('applicantName').value = 'Test Visitor';
+            f.node('applicantPhone').value = '09123456789';
+            f.node('barangayHiddenValue').value = address;
+            f.node('bldgLocationHiddenValue').value = location;
+            f.d.querySelector('input[name="visitReason"][value="Inquire"]').checked = true;
+            f.node('queueForm').requestSubmit();
+            await settle();
+            assert.equal(f.calls.length, index + 1);
+            assert.equal(f.calls[index].body.barangay, stored);
+            assert.equal(f.node('ticketId').innerText, ticketId);
+        }
+    } finally { f.dom.window.close(); }
+});
+
 test('the original window retains an existing active ticket and its finished history after services change',async()=>{
     const f=await queueFixture('PC1');
     try {

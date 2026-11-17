@@ -14,6 +14,8 @@ test('ticket field boundaries match database widths, including Unicode',()=>{
   assert.throws(()=>validateTicket({...payload,[key]:'a'.repeat(limit+1)}),error=>error.status===400);
  }
  assert.equal(validateTicket({...payload,email:undefined}).email,'');
+ for(const barangay of [undefined, '', '  '])assert.equal(validateTicket({...payload,barangay}).barangay,'');
+ for(const field of ['name','phone'])assert.throws(()=>validateTicket({...payload,[field]:' '}),error=>error.status===400);
  for(const value of [null,[],42,{...payload,phone:12},{...payload,name:'a\0b'}])assert.throws(()=>validateTicket(value),error=>error.status===400);
 });
 test('invalid tickets are rejected before schema queries or database writes',async()=>{

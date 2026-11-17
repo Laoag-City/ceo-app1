@@ -406,15 +406,12 @@
 
         const email = ""; 
 
-        const addressVal = document.getElementById('barangayHiddenValue').value;
-        const bldgLocationVal = document.getElementById('bldgLocationHiddenValue').value;
-        
-        if (!addressVal || !bldgLocationVal) {
-            alert("Please select both addresses from the dropdown lists.");
-            return;
-        }
-
-        const barangay = `Address: ${addressVal} | Bldg Loc: ${bldgLocationVal}`;
+        const address = document.getElementById('barangayHiddenValue').value;
+        const buildingLocation = document.getElementById('bldgLocationHiddenValue').value;
+        const locations = [];
+        if (address) locations.push(`Address: ${address}`);
+        if (buildingLocation) locations.push(`Bldg Loc: ${buildingLocation}`);
+        const barangay = locations.join(' | ');
         const checkedReasonRadio = document.querySelector('input[name="visitReason"]:checked');
         const reason = checkedReasonRadio ? checkedReasonRadio.value : '';
         

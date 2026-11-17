@@ -892,7 +892,7 @@ Error generating stack: `+e.message+`
                         `,_.createElement(`div`,{className:`searchable-dropdown`,id:`barangayDropdownComponent`},`
                             `,_.createElement(`input`,{type:`text`,id:`barangaySearchInput`,placeholder:`Click to search address barangay...`,readOnly:!0}),`
                             
-                            `,_.createElement(`input`,{type:`hidden`,id:`barangayHiddenValue`,required:!0}),`
+                            `,_.createElement(`input`,{type:`hidden`,id:`barangayHiddenValue`}),`
                             
                             `,_.createElement(`div`,{className:`dropdown-menu-container`,id:`dropdownMenuContainer`},`
                                 `,_.createElement(`div`,{className:`search-box-wrapper`},`
@@ -993,7 +993,7 @@ Error generating stack: `+e.message+`
                         `,_.createElement(`div`,{className:`searchable-dropdown`,id:`bldgLocationDropdownComponent`},`
                             `,_.createElement(`input`,{type:`text`,id:`bldgLocationSearchInput`,placeholder:`Click to search bldg location barangay...`,readOnly:!0}),`
                             
-                            `,_.createElement(`input`,{type:`hidden`,id:`bldgLocationHiddenValue`,required:!0}),`
+                            `,_.createElement(`input`,{type:`hidden`,id:`bldgLocationHiddenValue`}),`
                             
                             `,_.createElement(`div`,{className:`dropdown-menu-container`,id:`bldgDropdownMenuContainer`},`
                                 `,_.createElement(`div`,{className:`search-box-wrapper`},`
