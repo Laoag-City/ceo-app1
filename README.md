@@ -4,6 +4,8 @@ Laoag City’s Building and Occupancy Permit system and service-window queue.
 The printable staff guide covers sign-in, daily work, account management,
 Windows startup, and recovery. [Open the operations guide (PDF)](docs/office-operations-guide.pdf)
 
+Setting up a new IT host? Follow the [IT handoff and fresh PostgreSQL setup](docs/it-handoff.md) to create empty databases, activate the first Superadmin, and verify both services.
+
 | Role | Where to start |
 | --- | --- |
 | Operator | Open Building Permits or Occupancy Permits to file applications and review assigned stations. For Queue, choose Registration Desk or your assigned service window. |
@@ -12,7 +14,8 @@ Windows startup, and recovery. [Open the operations guide (PDF)](docs/office-ope
 
 Staff use individual approved accounts. Signing in again with the same account
 ends its previous session across Permit and Queue. The public Queue display
-opens without a staff sign-in.
+opens without a staff sign-in and announces calls automatically when its browser
+allows autoplay. If the browser blocks sound, click the monitor once and test a call.
 
 | Service | Local Windows host | Render test site |
 | --- | --- | --- |
@@ -25,9 +28,9 @@ the Render test sites.
 
 ## Start both services on Windows
 
-The local setup uses Node.js 22 and PostgreSQL 18. On a new computer, IT
-prepares both databases and the Windows account’s encrypted launcher
-configuration. [PostgreSQL setup and cutover](POSTGRES-MIGRATION.md)
+The local setup uses Node.js 22 and PostgreSQL 18. Complete the
+[one-time database setup](docs/it-handoff.md#set-up-a-windows-test-host) before
+starting the services on a new host.
 
 Install runtime dependencies from the repository root on a fresh checkout.
 

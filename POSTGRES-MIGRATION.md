@@ -1,5 +1,8 @@
 # PostgreSQL migration preparation — 30 September 2026
 
+For a fresh installation with empty databases, start with the
+[IT handoff guide](docs/it-handoff.md). This page records the original MySQL-to-PostgreSQL cutover.
+
 Status: fresh MySQL backups verified; source schema inventoried; Steps 1 and 2
 (empty PostgreSQL schemas) complete. Live-record transfer completed and verified.
 PostgreSQL backend preview implemented and automated acceptance tests passed.
@@ -243,12 +246,12 @@ is not automatically available to application tools. Do not send passwords in ch
 For a fresh installation only (already completed on this machine):
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Users\Majin\OneDrive\Desktop\OJT Projects Final\backend\migration\Configure-Postgres.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\backend\migration\Configure-Postgres.ps1
 ```
 
 The policy override applies only to that process. This script prompts with masked
 input, tests a read-only query, and stores Windows DPAPI-encrypted migration
-credentials in `C:\Users\Majin\PermitManagementConfig\postgres-migration.json`.
+credentials in `%USERPROFILE%\PermitManagementConfig\postgres-migration.json`.
 It creates no databases and does not change application settings. It refuses to
 overwrite existing credentials. The encrypted secret can only be used in the
 appropriate Windows user/machine context; it is not a portable backup. Migration

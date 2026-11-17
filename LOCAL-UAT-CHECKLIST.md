@@ -1,8 +1,8 @@
-# Local acceptance checklist — 9 October 2026
+# Local acceptance checklist
 
-The fixes are applied locally. No deployment or database migration is needed for
-these fixes. Saved application records were not changed by the automated tests.
-SQL tests used disposable databases or connection-local temporary tables.
+Use the current version on a test host with synthetic records. For an empty host,
+follow the [IT handoff guide](docs/it-handoff.md) before starting. Automated SQL
+checks use disposable databases or connection-local temporary tables.
 
 ## Start the updated version
 
@@ -98,29 +98,13 @@ The limit applies to the stored combined phone text, including an agent's phone.
 Unsupported service values and malformed API payloads were verified automatically;
 there is no need to modify the service options or send custom API requests.
 
-## 5. Operator playlist and failed-video recovery
+## 5. Public monitor and announcements
 
-- [ ] Sign in as an operator and open Video playlist. Upload two short, known-good
-  clips. Preview them, reorder them with Up/Down, and check Monitor plays both.
-- [ ] Disable one clip: Monitor stops including it. Enable it again: it returns.
-- [ ] To test failure, create a deliberately invalid MP4 in PowerShell:
-
-```powershell
-$uatVideoPath = Join-Path $env:TEMP 'queue-uat-broken.mp4'
-[IO.File]::WriteAllText($uatVideoPath, 'UAT deliberately invalid video')
-Write-Output $uatVideoPath
-```
-
-- [ ] Upload that test file and move it before a working clip. On Monitor, the
-  failed clip is skipped and the working clip plays. Ticket announcements continue.
-- [ ] Temporarily disable the working clips, leaving only the broken UAT clip
-  enabled. Monitor shows the temporary-unavailable message instead of looping.
-- [ ] Enable a working clip again. Playback recovers without reloading Monitor.
-- [ ] Disable the broken UAT clip and any other UAT uploads after this test. Restore
-  the original clips' order/enabled states. Existing videos do not need to be removed.
-
-Network stalls are also covered automatically: playback that remains stalled for
-20 seconds is skipped; resumed playback cancels that timeout.
+- [ ] Open the public monitor and confirm it shows **Live queue** and all three windows.
+- [ ] Call a ticket from each window. Check that the correct ticket appears and the voice reads its number and window. With autoplay allowed, this works without clicking the page.
+- [ ] On a browser that blocks autoplay, click anywhere on the monitor once. Call or recall a ticket and confirm it is audible through the monitor's speakers.
+- [ ] Recall a ticket and verify it is announced again. Update a different window and check that unchanged tickets are not repeated.
+- [ ] For the separate staff Video Playlist page, verify upload, preview, reorder, and enable or disable with synthetic clips. The public monitor displays ticket information and announcements.
 
 ## 6. Authentication and navigation regression
 

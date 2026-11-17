@@ -5,10 +5,15 @@ Node web services, two separate Neon databases, and Cloudinary for videos.
 This is a team test; the IT department will handle the official deployment.
 Local records remain separate from these new cloud copies.
 
-## Current test deployment — 13 October 2026
+## Current test deployment — 16 November 2026
 
-Both Render services are live on application commit `ed6c365543db37738bcdf217efc2cbe8da09d047`.
-The private GitHub repository contains the current code and published frontend.
+Permit and Queue are live on application commit [`105e401`](https://github.com/majingamo/laoag-engineerings-office/commit/105e4016baed5eb5db24fc1fd8d059cfbd937e06). The public Queue Monitor shows the three service windows and reads ticket calls automatically when its browser allows autoplay. A click on the monitor retries blocked audio. Both health endpoints and login pages passed the hosted check. [Permit deploy](https://dashboard.render.com/web/srv-db5jg8g473hc73bdaieg/deploys/dep-dbt9u5k9v7es73a0vdd0) · [Queue deploy](https://dashboard.render.com/web/srv-db5jmgflot8c73f7615g/deploys/dep-dbt9u45ckfvc739h5l1g)
+
+Use the [IT handoff guide](docs/it-handoff.md) for the office installation with empty databases. The restore steps below belong to the hosted test environment.
+
+## Checklist pilot release — 13 October 2026
+
+Both Render services deployed application commit `ed6c365543db37738bcdf217efc2cbe8da09d047` for this pilot release.
 This release adds the Building requirements checklist, six saved procedure steps,
 and matching checklist / summary cards in both permit workspaces. Building shows
 16 items; Occupancy retains its existing 15 documents. Items 8a and 8b show
@@ -267,12 +272,12 @@ Do not guess the URLs or reuse deleted services' addresses. Click **Back to
 portal** from both logins and verify both portal cards open the actual cloud sites.
 No link should open `localhost`.
 
-## 6. Restore video playback and test persistence
+## 6. Verify stored clips through the staff playlist
 
 The dump holds metadata; a local `uploads/...` file cannot play on Render. As an
 operator, admin or superadmin, open Queue's video page, upload the backed-up clip
 from `media/`, preview it and choose its order. Disable an unavailable old local
-entry if needed. Existing Cloudinary URLs remain playable without re-uploading.
+entry if needed. Existing Cloudinary URLs remain playable in playlist preview without re-uploading. The public queue monitor shows tickets and speaks announcements.
 
 Redeploy Queue and verify the video and tickets remain. Records persist in Neon,
 and new videos persist in Cloudinary; Render's free filesystem is temporary.
@@ -282,7 +287,7 @@ and new videos persist in Cloudinary; Render's free filesystem is temporary.
 Use different accounts in separate browser profiles/devices. Check both logins,
 roles, logout and session replacement; copied permits/accounts/tickets/history;
 UAT permit edits and admin approval; remarks and printed display names; all three
-queue windows and monitor isolation; reports with Manila dates; CSV/Excel exports;
+queue windows, monitor isolation, and audible ticket announcements; reports with Manila dates; CSV/Excel exports;
 and operator video upload/preview/reordering/toggling after a restart.
 
 Separate Render domains have separate cookies. Signing in again on the same

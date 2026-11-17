@@ -113,7 +113,7 @@ The permit/queue React pages use a separate build under `system/`; use the syste
 - `backend/queue backend/queue-service.js`: documents window ownership, stale ticket protection, serialized transitions, and the additive completed-status startup migration.
 - `backend/queue backend/queue-service.test.cjs`: regression coverage with temporary database tables; never resets application tickets.
 - `frontend/portal-react/system/features/queue/service-desk.html`: shared pending-action guard, current-ticket display, and explicit completion.
-- `frontend/portal-react/system/features/queue/monitor.html`: all-window state and call-stamp announcement tracking. Enable sound uses a user gesture; manually verify audible recall in the actual monitor browser.
+- `frontend/portal-react/system/features/queue/monitor.html` tracks live calls and recalls for all windows. Speech starts automatically when autoplay is allowed. A click or key press retries speech blocked by the browser. Verify volume and recall on the actual monitor.
 
 
 ## Server-verified permit sessions

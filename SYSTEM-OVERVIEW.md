@@ -1,6 +1,7 @@
 # Office of the City Engineer — System Overview
 
 For the file-by-file maintainer comment map, see [CODE-DOCUMENTATION.md](CODE-DOCUMENTATION.md).
+For a new office host with empty PostgreSQL databases, see the [IT handoff guide](docs/it-handoff.md).
 
 Runtime updated October 1, 2026 for the PostgreSQL cutover. Earlier feature sections retain historical implementation notes; see POSTGRES-MIGRATION.md for PostgreSQL SQL conversions, locking and validation. The field reference originated from a read-only database inspection on September 17.
 
@@ -32,8 +33,8 @@ Successful sign-in opens `/workstations.html`; that route checks the queue cooki
 on the server and redirects anonymous visitors to login. Workstation selection
 no longer contains a credential form. Window selection still uses the existing
 authenticated lease API. Logout on the selection page invalidates the queue session.
-Direct kiosk and monitor URLs remain public for unattended devices; this change
-does not yet secure media uploads, audit logs or public socket payloads.
+Direct kiosk and monitor URLs remain public for unattended devices. Media uploads
+and audit logs require staff permissions, and the public queue feed omits client names and contact details.
 
 Edit `frontend/portal-react/system/features/queue/login.jsx` for both layouts and
 the companion `login.html` for styles/controllers. The publisher copies this shell
@@ -43,9 +44,9 @@ after changing its route guard. Existing permit login behavior is unchanged.
 
 ### Permit entry flow (updated September 20, 2026)
 
-The portal's Permit Management card now opens `/login`, a shared login for operator, admin, and superadmin accounts. Successful login creates a server-side session and retains `oboUser` in sessionStorage only as a UI cache. The verified role routes: operator → `/` (Building registry, with Occupancy available in the sidebar), admin → `/admin`, superadmin → `/superadmin`. Both administrator routes serve the existing dashboard, with role-specific titles; account management remains superadmin-only. The sidebar switches between Building and Occupancy. Logout returns to the shared login. Legacy administration and occupancy login URLs redirect to `/login`. Restart the permit server after this update to register `/admin`.
+The Permit service sends `/` to the public portal at `/portal.html`. The Permit Management card opens `/login`, a shared login for staff accounts. Sign-in creates a server-side session and keeps `oboUser` in sessionStorage as a UI cache. Operators open `/index.html` for the Building registry, with Occupancy available in the sidebar. Admins open `/admin` and Superadmins open `/superadmin`. Only Superadmins manage accounts. Logout returns to the shared login.
 
-`permit-routing.js` centralizes frontend navigation, server logout, same-origin API request headers, and history-restoration checks. `permitSessions.js` authenticates API requests using an HttpOnly cookie. `permitPages.js` guards workspace and dashboard URLs and seeds the verified UI identity before controllers run. Restart the permit server to create the additive session table; existing users must sign in again.
+`permit-routing.js` centralizes frontend navigation, server logout, same-origin API request headers, and history-restoration checks. `permitSessions.js` authenticates API requests using an HttpOnly cookie. `permitPages.js` guards workspace and dashboard URLs and seeds the verified UI identity before controllers run. The Permit database schema supplies the session tables before startup.
 
 This is a local office application containing a systems portal, building and occupancy permit management, permit administration, and queue management. It uses two independent Express servers and two PostgreSQL databases. The portal links the systems together; it does not merge their databases. The old MariaDB databases are retained only for rollback and are not synchronized.
 
@@ -175,7 +176,7 @@ For the main portal, Express serves the published hashed JavaScript bundle, not 
 | Administration | /superadmin or /superadmin.html | Requests and account administration |
 | Queue | /log-in.html | Select workstation |
 | Queue | /kiosk.html | Registration and clerk workspaces |
-| Queue | /monitor.html | Public queue display and videos |
+| Queue | /monitor.html | Public queue display and spoken ticket calls |
 | Queue | /audit-logs.html | Queue activity viewer |
 | Queue | /secret-management.html | Monitor media management |
 
@@ -648,7 +649,7 @@ Additional existing tables, not referenced by the current queue backend: `occupa
 
 A connection-owned MySQL named lock serializes service transitions across server processes, and a transaction locks the selected records. Completed tickets remain stored with status `completed`; they are excluded from waiting, held, and serving lists. Startup appends `completed` to the known status enum before opening port 5000. This is an additive schema change; it does not reset tickets or recover tickets previously marked dropped. Restart the queue backend after installing this change.
 
-Socket updates include all `serving` tickets and retain `nowServing` for the latest call. The monitor shows all three windows, announces new call/recall stamps, and offers Enable sound for browser audio activation. Clerk controls show the current ticket and a visible action result. Source layouts/controllers are in `frontend/portal-react/system/features/queue-kiosk.*` and `queue-monitor.*`; build and publish after editing them.
+Socket updates include all `serving` tickets and retain `nowServing` for the latest call. The monitor shows all three windows and announces new calls and recalls automatically when the browser allows autoplay. A click or key press retries blocked audio. Clerk controls show the current ticket and a visible action result. Edit the kiosk and monitor sources under `frontend/portal-react/system/features/queue`, then build and publish.
 
 Validation: run `node --test queue-service.test.cjs ticket-submission.test.cjs` from `backend/queue backend`. Tests use connection-local temporary tables so application ticket records remain untouched; they cover the A/B hold sequence, window isolation, stale requests, completion, recall, schema upgrade, and lock contention.
 
@@ -832,7 +833,7 @@ Validation: node --test authLimits.test.cjs from backend/monitorBP backend uses 
 
 
 ### Queue staff authorization
-Windows 1–3 now require an approved, active operator/admin/superadmin account from permit_system. Sign in on the queue workstation-selection page using the same account credentials. A separate queue_session HttpOnly, SameSite=Strict cookie uses hashed tokens in permit_sessions, so queue sign-in does not rotate the permit_session cookie. Existing password changes revoke both types of sessions; account activity and current role are checked on each API request. Queue login reuses the permit login throttling and password-verification code.
+Windows 1–3 require an approved, active Operator, Admin, or Superadmin account from the Permit database. Sign in on the Queue login page. Permit and Queue have separate HttpOnly cookies and share the Permit session table. A new sign-in replaces the account's previous session across both apps. Password changes revoke the account's sessions, and API requests check the account's active status and role. Queue login reuses the Permit login throttling and password verification.
 
 The queue server connects to the account database using PERMIT_DB_HOST, PERMIT_DB_USER, PERMIT_DB_PASSWORD, and PERMIT_DB_NAME (local defaults match the current installation). The account database must be reachable, though the permit HTTP server need not be running. PERMIT_COOKIE_SECURE=true enables secure cookies behind HTTPS; QUEUE_PUBLIC_ORIGIN defines the trusted queue origin behind a proxy. Protected writes require the same origin and the x-queue-request header.
 
