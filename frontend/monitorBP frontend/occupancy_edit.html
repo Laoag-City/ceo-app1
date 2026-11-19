@@ -119,6 +119,12 @@
 <link rel="stylesheet" href="/permit-inspections.css">
 <script src="/permit-inspections.js" defer></script>
 <link rel="stylesheet" href="/permit-checklist.css">
+<link rel="stylesheet" href="/permit-contacts.css">
+<script src="/permit-contacts.js"></script>
+<link rel="stylesheet" href="/permit-added-at.css">
+<script src="/permit-added-at.js"></script>
+<link rel="stylesheet" href="/permit-processing.css">
+<script src="/permit-processing.js"></script>
 </head>
 <body>
 <div id="system-react-root" data-page="permits-occupancy_edit" style="display:contents"></div>
@@ -189,6 +195,9 @@ async function fetchPermitData() {
         document.getElementById('profileDateApplied').textContent = fmtDate(p.date_applied);
         document.title = p.project_title + ' — OP Workspace';
         projectData = p;
+        window.renderPermitDeadline?.(p.processing_deadline);
+        window.PermitAddedAt?.load(p, "occupancy");
+        window.PermitContacts?.render(p, "occupancy", saved=>{permitVersion=saved._version || permitVersion;});
         isEditing = false;
         matrixState = p.matrix || [];
         window.OccupancyTemplates?.update(p);

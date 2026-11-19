@@ -151,6 +151,24 @@ function aggregateReport(rows, filters) {
     };
 }
 
+function createServiceSummary(db, options) {
+    return async query => {
+        const filters=reportFilters({from:query?.from,to:query?.to},options?.now ? options.now() : new Date());
+        const start=new Date(filters.from+'T00:00:00+08:00');
+        const end=new Date(new Date(filters.to+'T00:00:00+08:00').getTime()+86400000);
+        // A single snapshot prevents a reset from counting a visit twice or missing it.
+        const [rows]=await db.query(`SELECT reason,COUNT(*) AS count FROM (
+            SELECT reason,created_at FROM tickets UNION ALL
+            SELECT reason,created_at FROM queue_client_history_archive
+        ) service_visits WHERE created_at>=? AND created_at<? GROUP BY reason`,[start,end]);
+        const counts=new Map(services.map(service=>[service,0]));
+        for(const row of rows)counts.set(row.reason,Number(row.count));
+        return {success:true,filters:{from:filters.from,to:filters.to},timezone:'Asia/Manila',
+            total:[...counts.values()].reduce((sum,count)=>sum+count,0),
+            services:[...counts].map(([service,count])=>({service,count}))};
+    };
+}
+
 function createQueueReports(db, options = {}) {
     return async function readReport(query = {}) {
         const filters = reportFilters(query, options.now ? options.now() : new Date());
@@ -181,4 +199,4 @@ function registerQueueReports(app, db, sessions) {
     });
 }
 
-module.exports = {windows,reportFields,reportDefinitions,ensureReportColumns,ensureReportSchema,recordTicketTransition,reportFilters,aggregateReport,createQueueReports,registerQueueReports};
+module.exports = {windows,reportFields,reportDefinitions,ensureReportColumns,ensureReportSchema,recordTicketTransition,reportFilters,aggregateReport,createQueueReports,createServiceSummary,registerQueueReports};

@@ -1,6 +1,18 @@
 {
-  "permits-approval-inbox":["approvalInboxKind","ai-tab-all","ai-tab-edit","ai-tab-deletion","ai-tab-final"],
-  "permits-monthly-reports":["monthlyReportMonth","monthlyReportKind","mr-tab-summary","mr-tab-details","mr-tab-print"],
+  "permits-approval-inbox": [
+    "approvalInboxKind",
+    "ai-tab-all",
+    "ai-tab-edit",
+    "ai-tab-deletion",
+    "ai-tab-final"
+  ],
+  "permits-monthly-reports": [
+    "monthlyReportMonth",
+    "monthlyReportKind",
+    "mr-tab-summary",
+    "mr-tab-details",
+    "mr-tab-print"
+  ],
   "permits-login": [
     "formMessage",
     "loginForm",
@@ -80,7 +92,9 @@
     "registryDateTo",
     "registryFilterError",
     "registrySort",
-    "sub_project_title"
+    "sub_project_title",
+    "phone_number",
+    "email"
   ],
   "permits-occupancy": [
     "addPermitBtn",
@@ -116,7 +130,9 @@
     "stEval",
     "stFlagged",
     "stTotal",
-    "submitBtn"
+    "submitBtn",
+    "f_phone",
+    "f_email"
   ],
   "permits-edit": [
     "addDisciplineForm",
@@ -216,25 +232,11 @@
   ],
   "queue-kiosk": [
     "activeTicketLabel",
-    "agentName",
-    "agentPhone",
-    "applicantName",
-    "applicantPhone",
-    "barangayDropdownComponent",
-    "barangayHiddenValue",
-    "barangaySearchInput",
-    "bldgDropdownInnerSearch",
-    "bldgDropdownMenuContainer",
-    "bldgLocationDropdownComponent",
-    "bldgLocationHiddenValue",
-    "bldgLocationSearchInput",
-    "bldgNoResultsMessage",
     "callNextBtn",
     "clerkHeader",
     "clerkHoldList",
     "clerkQueueList",
     "clerkSection",
-    "activeTicketLabel",
     "activeTicketName",
     "activeTicketReason",
     "activeTicketStatus",
@@ -252,17 +254,11 @@
     "clerkFinishedList",
     "closeModalBtn",
     "detailsModal",
-    "dropdownInnerSearch",
-    "dropdownMenuContainer",
     "holdBtn",
     "kioskLogoutBtn",
     "logoutBtn",
-    "modalBarangay",
-    "modalContact",
-    "modalFullName",
     "modalReason",
     "modalTicketId",
-    "noResultsMessage",
     "queueActionFeedback",
     "queueForm",
     "recallBtn",
@@ -291,14 +287,36 @@
     "statsRow"
   ],
   "queue-client-history": [
-    "historyTitle", "historyRefresh", "historySearchForm", "historySearch", "historyClear",
-    "historyCount", "historyFeedback", "historyResults", "historyTableBody", "historyRange",
-    "historyPrevious", "historyPage", "historyNext"
+    "historyTitle",
+    "historyRefresh",
+    "historySearchForm",
+    "historyCount",
+    "historyFeedback",
+    "historyResults",
+    "historyTableBody",
+    "historyFrom",
+    "historyTo"
   ],
   "queue-reports": [
-    "reportFilters", "reportFrom", "reportTo", "reportWindow", "reportService", "reportApply",
-    "reportRefresh", "reportExport", "reportPrint", "reportFeedback", "reportResults", "reportPeriod",
-    "reportWait", "reportDuration", "reportCoverage", "reportChart", "reportDailyRows", "reportWindowRows", "reportUpdated"
+    "reportFilters",
+    "reportFrom",
+    "reportTo",
+    "reportWindow",
+    "reportService",
+    "reportApply",
+    "reportRefresh",
+    "reportExport",
+    "reportPrint",
+    "reportFeedback",
+    "reportResults",
+    "reportPeriod",
+    "reportWait",
+    "reportDuration",
+    "reportCoverage",
+    "reportChart",
+    "reportDailyRows",
+    "reportWindowRows",
+    "reportUpdated"
   ],
   "queue-secret-management": [
     "dropzone",

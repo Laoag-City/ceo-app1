@@ -21,7 +21,7 @@ async function queueFixture(workspace='PC1') {
     Object.assign(w,{currentWorkspace:workspace,workspaceTasks:tasks,BACKEND_URL:'http://localhost:5000',socket:{on:(event,fn)=>handlers[event]=fn},
         RequestFeedback:{fetch:async(url,options)=>{calls.push({url,body:JSON.parse(options.body)});return {json:()=>respond(calls.at(-1))};}},
         DestructiveAction:{run:options=>confirmations.push(options)},openDetailsModal:id=>details.push(id)});
-    const state=source.slice(source.indexOf('    let localTicketRegistry ='),source.indexOf('    const searchInput ='));
+    const state=source.slice(source.indexOf('    let localTicketRegistry ='),source.indexOf('    const detailsModal ='));
     const lists=source.slice(source.indexOf('    const visibleTicketNames ='),source.indexOf('    let ticketSubmission ='));
     const actions=source.slice(source.indexOf('    async function serviceAction'),source.indexOf("    document.getElementById('resetBtn')",source.indexOf('    async function serviceAction')));
     w.eval(state+lists+actions);
@@ -58,32 +58,24 @@ test('each window filters all lists, reconnects, and can finish its last client'
     }
 });
 
-test('registration issues a ticket with either location field or both left blank', async () => {
+test('registration issues service-only tickets without any applicant fields', async () => {
     const f = await queueFixture('Kiosk');
     try {
         f.w.FormSafety = {guard: (_formId, submit) => submit};
         f.w.eval('let popupTimeout;\n' + source.slice(source.indexOf('    let ticketSubmission ='), source.indexOf('    // Disable all service actions')));
-        const options = [
-            ['', '', ''],
-            ['Brgy. 1', '', 'Address: Brgy. 1'],
-            ['', 'Brgy. 2', 'Bldg Loc: Brgy. 2'],
-            ['Brgy. 1', 'Brgy. 2', 'Address: Brgy. 1 | Bldg Loc: Brgy. 2']
-        ];
-        for (const [index, [address, location, stored]] of options.entries()) {
-            const ticketId = 'TKT-' + (index + 1);
-            f.respond(async () => ({success: true, ticketId}));
-            f.node('applicantName').value = 'Test Visitor';
-            f.node('applicantPhone').value = '09123456789';
-            f.node('barangayHiddenValue').value = address;
-            f.node('bldgLocationHiddenValue').value = location;
-            f.d.querySelector('input[name="visitReason"][value="Inquire"]').checked = true;
-            f.node('queueForm').requestSubmit();
-            await settle();
-            assert.equal(f.calls.length, index + 1);
-            assert.equal(f.calls[index].body.barangay, stored);
-            assert.equal(f.node('ticketId').innerText, ticketId);
+        for(const id of ['applicantName','applicantPhone','agentName','barangayHiddenValue','bldgLocationHiddenValue'])assert.equal(f.node(id),null);
+        const reasons=Object.values(tasks).flat();
+        for(const [index,reason] of reasons.entries()){
+            const ticketId='TKT-'+(index+1);
+            f.respond(async()=>({success:true,ticketId}));
+            f.d.querySelector('input[name="visitReason"][value="'+reason+'"]').checked=true;
+            f.node('queueForm').requestSubmit();await settle();
+            assert.equal(f.calls.length,index+1);
+            assert.equal(f.calls[index].body.reason,reason);
+            assert.deepEqual(Object.keys(f.calls[index].body).sort(),['reason','requestId']);
+            assert.equal(f.node('ticketId').innerText,ticketId);
         }
-    } finally { f.dom.window.close(); }
+    }finally{f.dom.window.close();}
 });
 
 test('the original window retains an existing active ticket and its finished history after services change',async()=>{

@@ -8,7 +8,7 @@ if ($queueFeatureConfig.host -ne 'localhost' -or $queueFeatureConfig.port -ne 54
 }
 $queueFeaturePassword=Unseal-Password $queueFeatureConfig.passwordDpapi
 try {
- foreach($queueFeatureFile in @('queue-runtime.sql','queue-playlist.sql')) {
+ foreach($queueFeatureFile in @('queue-runtime.sql','queue-playlist.sql','queue-service-only-intake.sql')) {
   Invoke-Postgres $Database 'postgres' $queueFeaturePassword (Get-Content -LiteralPath (Join-Path $PSScriptRoot $queueFeatureFile) -Raw)
  }
  Write-Output "Queue reports and playlist schema are ready in $Database. Existing records were retained."

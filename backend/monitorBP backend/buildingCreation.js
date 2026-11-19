@@ -1,19 +1,21 @@
 // Commit the project, lots, sub-permit and standard stations together.
 const stations=require('./buildingStations');
 const validation=require('./permitValidation');
+const processing=require('./permitProcessing');
+const {officeToday}=require('./permitAging');
 const duplicates=require('./permitDuplicates'),requests=require('./permitCreationRequests');
 const bad=(message,status=400)=>Object.assign(new Error(message),{status});
 module.exports=function buildingCreation(openConnection,{sanitize=value=>String(value ?? '').trim(),validDate}) {
     return async(req,res)=>{
         let conn,unlock;
         try {
-            const body=req.body || {},fields=['project_title','location','owner_name','designer_name','permit_date'];
+            const body=req.body || {};
             const data=validation.metadata('permits',body,sanitize);
-            const values=fields.map(key=>data[key]);
+            const classification=processing.creationFields(body);
             const lots=validation.lots(body.lot_numbers,sanitize);
             const subTitle=validation.text('sub_project_title',body.sub_project_title,sanitize,true);
-            const requestId=requests.key(body),content={...data,lot_numbers:lots,sub_project_title:subTitle};
-            if(!validDate(values[4]))throw bad('Enter a valid permit date.');
+            const requestId=requests.key(body),content={...data,...classification,lot_numbers:lots,sub_project_title:subTitle};
+            if(!validDate(data.permit_date))throw bad('Enter a valid permit date.');
             conn=await openConnection();await conn.beginTransaction();
             unlock=await duplicates.lock(conn,'permits');
             const [users]=await conn.query('SELECT id,role FROM users WHERE id=? AND is_active=1 AND is_verified=1 FOR UPDATE',[req.user?.id]);
@@ -21,7 +23,10 @@ module.exports=function buildingCreation(openConnection,{sanitize=value=>String(
             const prior=await requests.prior(conn,req.user.id,requestId,'permits',content);
             if(prior){await conn.commit();return res.json({success:true,duplicate:true,replayed:true,id:prior,message:'This submission was already saved. No second permit was created.'});}
             duplicates.acknowledge(res,await duplicates.check(conn,'permits',content,body));
-            const [record]=await conn.query('INSERT INTO permits (project_title,location,owner_name,designer_name,permit_date) VALUES (?,?,?,?,?)',values);
+            const insert={...data};
+            if(classification.processing_time)Object.assign(insert,classification,{processing_started_on:officeToday()});
+            const columns=Object.keys(insert);
+            const [record]=await conn.query(`INSERT INTO permits (${columns.join(',')}) VALUES (${columns.map(()=>'?').join(',')})`,columns.map(key=>insert[key]));
             for(const lot of lots)await conn.query('INSERT INTO permit_lots (permit_id,lot_number) VALUES (?,?)',[record.insertId,lot]);
             await stations.seed(conn,record.insertId);
             if(subTitle) {

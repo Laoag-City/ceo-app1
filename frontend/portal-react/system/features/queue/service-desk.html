@@ -21,7 +21,7 @@
             gap: 10px;
             margin-top: 6px;
         }
-        
+
         .custom-radio-label {
             display: flex;
             align-items: center;
@@ -63,7 +63,7 @@
 <script>
     const BACKEND_URL = window.location.origin;
     const currentWorkspace = sessionStorage.getItem('currentWorkspace');
-    
+
     if(!currentWorkspace) {
         window.location.href = 'log-in.html';
     }
@@ -76,16 +76,16 @@
     };
 
     function friendlyStationName(code) {
-        const map = { 
+        const map = {
             Kiosk: 'Registration Desk',
             PC1: 'Window 1 (Receiving / Inquiries)',
-            PC2: 'Window 2 (Releasing Bldg. Occupancy)', 
+            PC2: 'Window 2 (Releasing Bldg. Occupancy)',
             PC3: 'Window 3 (Releasing Bldg. Permit)',
-            Monitor: 'Monitor Display' 
+            Monitor: 'Monitor Display'
         };
         return map[code] || code;
     }
-    
+
     document.getElementById('clerkHeader').innerText = `${friendlyStationName(currentWorkspace)}`;
     document.getElementById('stationChip').innerHTML = `<i class="fa-solid fa-circle" style="font-size:8px; color:#3ddc84; margin-right:6px;"></i>${friendlyStationName(currentWorkspace)}`;
 
@@ -101,7 +101,7 @@
             rightPanel.style.display = 'none';
             document.title = 'Registration Desk | Office of the City Engineer';
             document.getElementById('queuePageTitle').textContent = 'Registration desk';
-            document.getElementById('queuePageDescription').textContent = 'Register an applicant, select their service, and issue a queue ticket.';
+            document.getElementById('queuePageDescription').textContent = 'Choose a service and get your queue ticket.';
         } else {
             document.body.classList.add('queue-window-page');
             regSection.style.display = 'none';
@@ -176,124 +176,22 @@
         updateServiceControls();
     });
 
-    const searchInput = document.getElementById('barangaySearchInput');
-    const innerSearch = document.getElementById('dropdownInnerSearch');
-    const menuContainer = document.getElementById('dropdownMenuContainer');
-    const hiddenValue = document.getElementById('barangayHiddenValue');
-    const options = menuContainer.querySelectorAll('.custom-option');
-    const labels = menuContainer.querySelectorAll('.optgroup-label');
-    const noResults = document.getElementById('noResultsMessage');
-
-    searchInput.addEventListener('click', (e) => {
-        e.stopPropagation();
-        bldgMenuContainer.classList.remove('active');
-        menuContainer.classList.toggle('active');
-        if(menuContainer.classList.contains('active')) {
-            innerSearch.value = '';
-            filterOptions(options, labels, innerSearch, noResults);
-            innerSearch.focus();
-        }
-    });
-
-    options.forEach(option => {
-        option.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const value = option.getAttribute('data-value');
-            searchInput.value = value;
-            hiddenValue.value = value;
-            menuContainer.classList.remove('active');
-        });
-    });
-
-    const bldgSearchInput = document.getElementById('bldgLocationSearchInput');
-    const bldgInnerSearch = document.getElementById('bldgDropdownInnerSearch');
-    const bldgMenuContainer = document.getElementById('bldgDropdownMenuContainer');
-    const bldgHiddenValue = document.getElementById('bldgLocationHiddenValue');
-    const bldgOptions = bldgMenuContainer.querySelectorAll('.custom-option');
-    const bldgLabels = bldgMenuContainer.querySelectorAll('.optgroup-label');
-    const bldgNoResults = document.getElementById('bldgNoResultsMessage');
-
-    bldgSearchInput.addEventListener('click', (e) => {
-        e.stopPropagation();
-        menuContainer.classList.remove('active');
-        bldgMenuContainer.classList.toggle('active');
-        if(bldgMenuContainer.classList.contains('active')) {
-            bldgInnerSearch.value = '';
-            filterOptions(bldgOptions, bldgLabels, bldgInnerSearch, bldgNoResults);
-            bldgInnerSearch.focus();
-        }
-    });
-
-    bldgOptions.forEach(option => {
-        option.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const value = option.getAttribute('data-value');
-            bldgSearchInput.value = value;
-            bldgHiddenValue.value = value;
-            bldgMenuContainer.classList.remove('active');
-        });
-    });
-
-    document.addEventListener('click', () => {
-        menuContainer.classList.remove('active');
-        bldgMenuContainer.classList.remove('active');
-    });
-
-    menuContainer.addEventListener('click', (e) => e.stopPropagation());
-    bldgMenuContainer.addEventListener('click', (e) => e.stopPropagation());
-
-    innerSearch.addEventListener('input', () => filterOptions(options, labels, innerSearch, noResults));
-    bldgInnerSearch.addEventListener('input', () => filterOptions(bldgOptions, bldgLabels, bldgInnerSearch, bldgNoResults));
-
-    function filterOptions(opts, lbs, inputEl, noResEl) {
-        const query = inputEl.value.toLowerCase().trim();
-        let globalMatchCount = 0;
-
-        opts.forEach(opt => {
-            const text = opt.textContent.toLowerCase();
-            if(text.includes(query)) {
-                opt.style.display = 'block';
-                globalMatchCount++;
-            } else {
-                opt.style.display = 'none';
-            }
-        });
-
-        lbs.forEach(label => {
-            let nextEl = label.nextElementSibling;
-            let sectionHasMatch = false;
-            
-            while (nextEl && nextEl.classList.contains('custom-option')) {
-                if (nextEl.style.display === 'block') {
-                    sectionHasMatch = true;
-                }
-                nextEl = nextEl.nextElementSibling;
-            }
-            label.style.display = sectionHasMatch ? 'block' : 'none';
-        });
-
-        noResEl.style.display = (globalMatchCount === 0) ? 'block' : 'none';
-    }
-
     const detailsModal = document.getElementById('detailsModal');
-    
+
     window.openDetailsModal = function(ticketId) {
         const data = localTicketRegistry[ticketId];
         if(!data) return;
 
         document.getElementById('modalTicketId').innerText = `Details for Ticket: ${data.id}`;
-        document.getElementById('modalFullName').innerText = data.name || 'N/A';
-        document.getElementById('modalBarangay').innerText = data.barangay || 'N/A';
-        document.getElementById('modalContact').innerText = data.phone || 'N/A';
         document.getElementById('modalReason').innerText = data.reason || 'N/A';
-        
+
         detailsModal.classList.add('reveal');
     };
 
     document.getElementById('closeModalBtn').addEventListener('click', () => {
         detailsModal.classList.remove('reveal');
     });
-    
+
     window.addEventListener('click', (e) => {
         if(e.target === detailsModal) {
             detailsModal.classList.remove('reveal');
@@ -324,13 +222,13 @@
         const copy=document.createElement(list==='held'?'button':'div');
         copy.className=list==='held'?'desk-ticket-select':'desk-ticket-copy';
         if(list==='held'){
-            copy.type='button';copy.setAttribute('aria-label','Resume '+ticket.id+' — '+ticket.name);
+            copy.type='button';copy.setAttribute('aria-label','Resume '+ticket.id+' — '+(ticket.name || ticket.reason));
             copy.disabled=!queueConnected || actionPending;
             copy.addEventListener('click',()=>window.resumeTicket(ticket.id));
         }
         const number=document.createElement('strong');number.className='desk-ticket-number';number.textContent=ticket.id;
         const client=document.createElement('span');client.className='desk-ticket-client';
-        const name=document.createElement('strong');name.textContent=ticket.name;
+        const name=document.createElement('strong');name.textContent=ticket.name || ticket.id;
         const reason=document.createElement('span');reason.textContent=ticket.reason;
         client.append(name,reason);copy.append(number,client);
         if(list==='held'){const hint=document.createElement('small');hint.className='desk-resume-label';hint.textContent='Click to resume →';client.appendChild(hint);}
@@ -395,32 +293,16 @@
     }
     document.getElementById('queueForm').addEventListener('submit', FormSafety.guard('queueForm', function(e) {
         e.preventDefault();
-        
-        const applicant = document.getElementById('applicantName').value.trim();
-        const agent = document.getElementById('agentName').value.trim();
-        const name = agent ? `${applicant} (Agent: ${agent})` : applicant;
 
-        const applicantPhone = document.getElementById('applicantPhone').value.trim();
-        const agentPhone = document.getElementById('agentPhone').value.trim();
-        const phone = agentPhone ? `${applicantPhone} (Agent: ${agentPhone})` : applicantPhone;
-
-        const email = ""; 
-
-        const address = document.getElementById('barangayHiddenValue').value;
-        const buildingLocation = document.getElementById('bldgLocationHiddenValue').value;
-        const locations = [];
-        if (address) locations.push(`Address: ${address}`);
-        if (buildingLocation) locations.push(`Bldg Loc: ${buildingLocation}`);
-        const barangay = locations.join(' | ');
         const checkedReasonRadio = document.querySelector('input[name="visitReason"]:checked');
         const reason = checkedReasonRadio ? checkedReasonRadio.value : '';
-        
+
         if (!reason) {
             alert("Please select a reason for your visit.");
             return;
         }
-        
-        const payload={name,phone,email,barangay,reason};
+
+        const payload={reason};
         const requestId=submissionId(payload); if(!requestId)return;
         return RequestFeedback.fetch(`${BACKEND_URL}/api/tickets`, {
             method: 'POST',
@@ -433,13 +315,9 @@
                 ticketSubmission=null; sessionStorage.removeItem('queueTicketSubmission');
                 document.getElementById('ticketId').innerText = data.ticketId;
                 document.getElementById('ticketPopup').style.display = 'block';
-                
+
                 document.getElementById('queueForm').reset();
-                document.getElementById('barangaySearchInput').value = '';
-                document.getElementById('barangayHiddenValue').value = '';
-                document.getElementById('bldgLocationSearchInput').value = '';
-                document.getElementById('bldgLocationHiddenValue').value = '';
-                
+
                 clearTimeout(popupTimeout);
                 popupTimeout = setTimeout(() => { document.getElementById('ticketPopup').style.display = 'none'; }, 4000);
             } else {

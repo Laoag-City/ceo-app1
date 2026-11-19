@@ -26,7 +26,8 @@ async function fixture() {
     const act=createQueueService({getConnection:async()=>({dialect:conn.dialect,query:conn.query.bind(conn),beginTransaction:conn.beginTransaction.bind(conn),commit:conn.commit.bind(conn),rollback:conn.rollback.bind(conn),release(){}})},'queue-window-test:'+process.pid);
     const seed=async(rows)=>{
         await conn.query('DELETE FROM tickets');
-        for(const [id,workspace,status='waiting'] of rows)await conn.query('INSERT INTO tickets (id,name,reason,status,called_by) VALUES (?,?,?,?,?)',[id,'Client '+id,tasks[workspace][0],status,['serving','completed'].includes(status)?workspace:null]);
+        // Avoid legacy MySQL temporary-table fractional timestamp default behavior.
+        for(const [id,workspace,status='waiting'] of rows)await conn.query('INSERT INTO tickets (id,name,reason,status,called_by,created_at) VALUES (?,?,?,?,?,?)',[id,'Client '+id,tasks[workspace][0],status,['serving','completed'].includes(status)?workspace:null,new Date()]);
     };
     return {conn,act,seed,end};
 }
@@ -101,7 +102,7 @@ test('actual clerk handlers and SQL: finish and call next, select held, drop, an
                     return {json:async()=>({success:true,ticket:map(['next','resume'].includes(action)?result.ticket:result),completedTicket:map(result.completedTicket)})};
                 }catch(error){return {json:async()=>({success:false,message:error.message})};}
             }}});
-            vm.runInContext(source.slice(source.indexOf('    let localTicketRegistry ='),source.indexOf('    const searchInput =')),context);
+            vm.runInContext(source.slice(source.indexOf('    let localTicketRegistry ='),source.indexOf('    const detailsModal =')),context);
             const actionStart=source.indexOf('    async function serviceAction');
             vm.runInContext(source.slice(actionStart,source.indexOf("    document.getElementById('resetBtn')",actionStart)),context);
             windows.push({nodes,handlers,context});

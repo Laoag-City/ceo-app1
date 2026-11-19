@@ -12,6 +12,7 @@ Install the runtime dependencies and start the PostgreSQL Windows service.
 npm.cmd --prefix "backend/database" ci
 npm.cmd --prefix "backend/monitorBP backend" ci
 npm.cmd --prefix "backend/queue backend" ci
+npm.cmd --prefix "backend/migration" ci
 ```
 
 Run the setup commands in order on a fresh PostgreSQL instance. `Configure-Postgres.ps1` prompts for the local PostgreSQL administrator password. `Prepare-Postgres.ps1` creates the databases and limited application logins. The three `Apply` scripts install the schema and grants. Stop and inspect any error before continuing. If the target databases already exist, determine their purpose before running setup.
@@ -29,19 +30,42 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\backend\migration\Appl
 | `permit_system_migration` | Permit and Queue | Building and occupancy records, staff accounts and sessions, and permit history |
 | `queue_system_migration` | Queue | Tickets, workstation and queue activity, client history, and playlist metadata |
 
-The apps validate the PostgreSQL schema at startup. Start Permit first and Queue second in separate PowerShell terminals.
+The apps validate the PostgreSQL schema at startup. Start Permit first and
+then Queue. Run one command per PowerShell terminal and keep both open.
 
 ```powershell
 npm.cmd --prefix "backend/monitorBP backend" start
 npm.cmd --prefix "backend/queue backend" start
 ```
 
-Check for `success: true` from both services. The Windows launchers bind to loopback for testing on the host.
+Check for `success: true` from both services. The Windows launchers bind to
+loopback for testing on the host.
 
 ```powershell
 Invoke-RestMethod http://localhost:3000/api/health
 Invoke-RestMethod http://localhost:5000/api/health
 ```
+
+## Update an existing local installation
+
+For an existing local installation upgrading to service-only tickets and permit
+contacts, stop both Node services and run the following owner migrations. They
+retain existing permits, ticket history, request approvals, and identifiers.
+The fresh-schema setup above already includes these changes.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\backend\migration\Apply-PermitContacts.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\backend\migration\Apply-PermitProcessing.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\backend\migration\Apply-QueueFeatures.ps1
+```
+
+Contact details and processing categories are stored on the permit records.
+New queue tickets store their service and operational state. Old personal
+fields remain in historical records. Service Summary counts issued
+tickets from the live and archived tables in one database snapshot, filtered by
+registration date in Asia/Manila. Resetting the active queue keeps those counts.
+The deadline counts weekdays starting after the registration day in Manila.
+Weekday holidays currently count toward the deadline.
 
 ## Activate the first Superadmin
 
@@ -67,4 +91,4 @@ For an office server, have IT provide the staff-facing HTTPS addresses and super
 
 Set `PERMIT_PUBLIC_ORIGIN` and `QUEUE_PUBLIC_ORIGIN` on both services so portal links use the office addresses. For HTTPS, set `PERMIT_COOKIE_SECURE=true` on both services. If a reverse proxy is used, it must support Socket.IO WebSocket connections for Queue. See [security configuration](../SECURITY-CONFIGURATION.md) before setting proxy trust.
 
-Before handoff, sign in with an Operator and a Superadmin, verify both registries and reporting, and issue and call a synthetic ticket at each window from a separate account. Check the announcements through the actual monitor speakers. Configure backups for both PostgreSQL databases and perform a restore into separate databases. Keep the Render pilot for synthetic test records. [Local acceptance checklist](../LOCAL-UAT-CHECKLIST.md) · [Backup and recovery](../POSTGRES-BACKUP-RECOVERY.md)
+Before handoff, sign in with an Operator and a Superadmin, verify both registries and reporting, and issue and call a synthetic ticket at each window from a separate account. Check the announcements through the actual monitor speakers. Configure backups for both PostgreSQL databases and perform a restore into separate databases. Keep the Render pilot for synthetic test records. [Acceptance checklist](../LOCAL-UAT-CHECKLIST.md) · [Test results](../FULL-LOCAL-UAT-2026-11-19.md) · [Backup and recovery](../POSTGRES-BACKUP-RECOVERY.md)

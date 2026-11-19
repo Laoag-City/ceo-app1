@@ -4,7 +4,7 @@ Laoag City’s Building and Occupancy Permit system and service-window queue.
 The printable staff guide covers sign-in, daily work, account management,
 Windows startup, and recovery. [Open the operations guide (PDF)](docs/office-operations-guide.pdf)
 
-Setting up a new IT host? Follow the [IT handoff and fresh PostgreSQL setup](docs/it-handoff.md) to create empty databases, activate the first Superadmin, and verify both services.
+Start with the [IT handoff and fresh PostgreSQL setup](docs/it-handoff.md) to create empty databases, activate the first Superadmin, and verify both services. The [latest local acceptance results](FULL-LOCAL-UAT-2026-11-19.md) show what passed and what to check on the office hardware.
 
 | Role | Where to start |
 | --- | --- |
@@ -16,6 +16,15 @@ Staff use individual approved accounts. Signing in again with the same account
 ends its previous session across Permit and Queue. The public Queue display
 opens without a staff sign-in and announces calls automatically when its browser
 allows autoplay. If the browser blocks sound, click the monitor once and test a call.
+
+Both permit forms offer Simple (3 working days), Complex (7), and Highly
+Technical (20). The details workspace shows the date added to the system and
+the processing deadline. Phone and email can be left blank. Operators save
+contact corrections directly from the workspace.
+
+The Registration Desk issues a ticket using the requested service. **Service
+Summary** shows ticket counts by service and date, including tickets from
+before a queue reset. [Contact and queue acceptance checklist](SERVICE-CONTACT-UAT.md)
 
 | Service | Local Windows host | Render test site |
 | --- | --- | --- |

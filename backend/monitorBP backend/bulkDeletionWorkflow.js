@@ -4,6 +4,7 @@
  */
 const crypto = require('node:crypto');
 const {displayName}=require('./stationAccess');
+const {omitUnset}=require('./permitProcessing');
 const configs = {
     permits: { table: 'permits', key: 'permit_id', matrix: 'permit_routing_matrix', label: 'Building' },
     occupancy: { table: 'occupancy_permits', key: 'occupancy_id', matrix: 'occupancy_routing_matrix', label: 'Occupancy' }
@@ -84,7 +85,7 @@ module.exports = function bulkDeletionWorkflow(open) {
         return records.map(record => {
             const id = Number(record.id), own = rows => rows.filter(row => Number(row[c.key]) === id);
             const ownSubs = own(subs), subIds = new Set(ownSubs.map(s => Number(s.id)));
-            return { record, matrix: own(matrix), requests: own(requests), final_reviews: reviews.filter(r => Number(r.project_id) === id),
+            return { record:omitUnset({...record}), matrix: own(matrix), requests: own(requests), final_reviews: reviews.filter(r => Number(r.project_id) === id),
                 ...(kind === 'permits' ? { lots: own(lots), subs: ownSubs, subMatrix: subMatrix.filter(m => subIds.has(Number(m.sub_permit_id))),
                     // Preserve snapshots of requests submitted before this feature
                     // when their projects still have no building inspections.

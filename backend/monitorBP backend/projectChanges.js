@@ -20,7 +20,7 @@ const requirements = {
   "cl11": "Certification from zoning",
   "cl16": "Contractor's Affidavit of Completion"
 };
-const labels = { project_title:'Project', location:'Location', owner_name:'Owner', designer_name:'Designer', permit_date:'Date filed', lot_numbers:'Lots', engineer_name:'Engineer', signature_status:'Status', feedback_remarks:'Remarks', date_checked:'Date Checked', date_approved:'Date Approved', inspection_type:'Inspection', inspection_date:'Inspection date', inspector_name:'Inspector', result:'Result', findings:'Findings', next_inspection_date:'Next inspection' };
+const labels = { phone_number:'Phone number',email:'Email',bp_reference_no:'BP reference',date_applied:'Date applied', project_title:'Project', location:'Location', owner_name:'Owner', designer_name:'Designer', permit_date:'Date filed', lot_numbers:'Lots', engineer_name:'Engineer', signature_status:'Status', feedback_remarks:'Remarks', date_checked:'Date Checked', date_approved:'Date Approved', inspection_type:'Inspection', inspection_date:'Inspection date', inspector_name:'Inspector', result:'Result', findings:'Findings', next_inspection_date:'Next inspection' };
 const clean = value => value == null ? '' : Array.isArray(value) ? value.map(clean).join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value).trim().replace(/<[^>]*>/g,'');
 function compare(before, after, fields, prefix='') {
     const value=(key,raw)=>(key.endsWith('date') || key==='date_checked' || key==='date_approved') && raw ? require('./stationDates').calendar(raw) : clean(raw);
@@ -37,7 +37,7 @@ function fromSnapshot(before, payload) {
         const old=(before.matrix || []).find(item=>Number(item.id)===Number(row.id));
         return old ? compare(old,row,['engineer_name','signature_status','feedback_remarks','date_checked','date_approved'],`${old.discipline_name}${old.sub_permit_id ? ' (sub-permit #'+old.sub_permit_id+')' : ''} · `) : [];
     });
-    return compare(before,payload,['project_title','location','owner_name','designer_name','permit_date','lot_numbers']);
+    return compare(before,payload,['project_title','location','owner_name','designer_name','permit_date','lot_numbers','bp_reference_no','date_applied','phone_number','email']);
 }
 async function capture(query, kind, id, path, payload) {
     if(!id) return [];
@@ -61,7 +61,7 @@ async function capture(query, kind, id, path, payload) {
             return {field:(procedure?'Procedure · ':'')+(names[key] || 'Requirement '+key),before:old[key]?(procedure?'Completed':'Received'):(procedure?'Not completed':'Not received'),after:payload.checklist_state[key]?(procedure?'Completed':'Received'):(procedure?'Not completed':'Not received')};
         });
     }
-    if(Object.keys(payload).some(key=>['project_title','location','owner_name','designer_name','permit_date','lot_numbers'].includes(key))) {
+    if(Object.keys(payload).some(key=>['project_title','location','owner_name','designer_name','permit_date','lot_numbers','bp_reference_no','date_applied','phone_number','email'].includes(key))) {
         const rows=await query(`SELECT * FROM ${occupancy?'occupancy_permits':'permits'} WHERE id=?`,[id]);
         const before=rows[0] || {};
         if(!occupancy && payload.lot_numbers!==undefined)before.lot_numbers=(await query('SELECT lot_number FROM permit_lots WHERE permit_id=? ORDER BY id',[id])).map(row=>row.lot_number);

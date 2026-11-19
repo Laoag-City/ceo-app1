@@ -1,8 +1,24 @@
 [
-  {"source":"assets/permits/permit-aging.js","folder":"monitorBP frontend","file":"permit-aging.js"},
-  {"source":"assets/permits/permit-aging.css","folder":"monitorBP frontend","file":"permit-aging.css"},
-  {"source":"assets/permits/permit-duplicates.js","folder":"monitorBP frontend","file":"permit-duplicates.js"},
-  {"source":"assets/permits/permit-duplicates.css","folder":"monitorBP frontend","file":"permit-duplicates.css"},
+  {
+    "source": "assets/permits/permit-aging.js",
+    "folder": "monitorBP frontend",
+    "file": "permit-aging.js"
+  },
+  {
+    "source": "assets/permits/permit-aging.css",
+    "folder": "monitorBP frontend",
+    "file": "permit-aging.css"
+  },
+  {
+    "source": "assets/permits/permit-duplicates.js",
+    "folder": "monitorBP frontend",
+    "file": "permit-duplicates.js"
+  },
+  {
+    "source": "assets/permits/permit-duplicates.css",
+    "folder": "monitorBP frontend",
+    "file": "permit-duplicates.css"
+  },
   {
     "source": "assets/permits/permit-inspections.js",
     "folder": "monitorBP frontend",
@@ -337,5 +353,35 @@
     "source": "assets/permits/permit-checklist.css",
     "folder": "monitorBP frontend",
     "file": "permit-checklist.css"
+  },
+  {
+    "source": "assets/permits/permit-contacts.js",
+    "folder": "monitorBP frontend",
+    "file": "permit-contacts.js"
+  },
+  {
+    "source": "assets/permits/permit-contacts.css",
+    "folder": "monitorBP frontend",
+    "file": "permit-contacts.css"
+  },
+  {
+    "source": "assets/permits/permit-added-at.js",
+    "folder": "monitorBP frontend",
+    "file": "permit-added-at.js"
+  },
+  {
+    "source": "assets/permits/permit-added-at.css",
+    "folder": "monitorBP frontend",
+    "file": "permit-added-at.css"
+  },
+  {
+    "source": "assets/permits/permit-processing.js",
+    "folder": "monitorBP frontend",
+    "file": "permit-processing.js"
+  },
+  {
+    "source": "assets/permits/permit-processing.css",
+    "folder": "monitorBP frontend",
+    "file": "permit-processing.css"
   }
 ]

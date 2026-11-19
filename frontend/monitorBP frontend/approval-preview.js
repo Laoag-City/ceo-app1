@@ -41,7 +41,7 @@ function renderApprovalChanges(request, { compact = false } = {}) {
             rows.push('<tr><th scope="row">'+approvalEscape(label)+'</th><td>'+approvalEscape(known ? format(oldValue) : 'Previous value unavailable')+'</td><td class="proposed-value">'+approvalEscape(format(newValue))+'</td></tr>');
         }
     }
-    const labels={project_title:'Project name',location:'Location',owner_name:'Owner / applicant',designer_name:'Designer',permit_date:'Permit date',lot_numbers:'Lots'};
+    const labels={project_title:'Project name',location:'Location',owner_name:'Owner / applicant',designer_name:'Designer',permit_date:'Permit date',lot_numbers:'Lots',phone_number:'Phone number',email:'Email'};
     if (request.change_type === 'permit_update') {
         for (const [key,label] of Object.entries(labels)) if (changes[key] !== undefined) add(label,key==='permit_date'?approvalCalendar(before?.[key]):before?.[key],key==='permit_date'?approvalCalendar(changes[key]):changes[key],!!before);
     } else if(request.change_type === 'station_dates') {

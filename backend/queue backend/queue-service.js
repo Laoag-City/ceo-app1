@@ -7,6 +7,12 @@ const {recordTicketTransition} = require('./queue-reports');
 function fail(message, status = 409) { throw Object.assign(new Error(message), {status}); }
 
 async function ensureQueueSchema(db) {
+    if(db.dialect!=='postgres') {
+        for(const key of ['name','barangay']) {
+            const [columns]=await db.query(`SHOW COLUMNS FROM tickets LIKE ?`,[key]);
+            if(columns[0]?.Null==='NO')await db.query(`ALTER TABLE tickets MODIFY ${key} VARCHAR(255) NULL`);
+        }
+    }
     const [columns] = await db.query("SHOW COLUMNS FROM tickets LIKE 'status'");
     const type = columns[0]?.Type;
     // Append to the existing enum without renumbering or rewriting ticket identities.

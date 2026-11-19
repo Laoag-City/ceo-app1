@@ -75,14 +75,14 @@ function createClientHistory(db) {
 }
 
 function registerClientHistory(app, db, sessions) {
-    const readHistory = createClientHistory(db);
+    const readHistory = require('./queue-reports').createServiceSummary(db);
     app.get('/api/client-history', sessions.requireRoles('operator','admin','superadmin'), async (req, res) => {
         res.set('Cache-Control', 'no-store');
         try {
             res.json(await readHistory(req.query));
         } catch (error) {
-            if (!error.status) console.error('Client history failed:', error.code || error.message);
-            res.status(error.status || 503).json({success:false, message: error.status ? error.message : 'Client history is unavailable. Please try again.'});
+            if (!error.status) console.error('Service summary failed:', error.code || error.message);
+            res.status(error.status || 503).json({success:false, message: error.status ? error.message : 'Service summary is unavailable. Please try again.'});
         }
     });
 }
@@ -94,11 +94,15 @@ async function ensureClientHistorySchema(db) {
     } else {
         await db.query(`CREATE TABLE IF NOT EXISTS queue_client_history_archive (
             id BIGINT AUTO_INCREMENT PRIMARY KEY, ticket_id BIGINT NOT NULL,
-            name VARCHAR(255) NOT NULL, phone VARCHAR(50) NULL, barangay VARCHAR(255) NOT NULL,
+            name VARCHAR(255) NULL, phone VARCHAR(50) NULL, barangay VARCHAR(255) NULL,
             reason TEXT NOT NULL, status VARCHAR(20) NULL, created_at TIMESTAMP NOT NULL,
             called_by VARCHAR(50) NULL, archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX client_history_created (created_at,ticket_id)
         ) ENGINE=InnoDB`);
+        for(const key of ['name','barangay']) {
+            const [columns]=await db.query(`SHOW COLUMNS FROM queue_client_history_archive LIKE ?`,[key]);
+            if(columns[0]?.Null==='NO')await db.query(`ALTER TABLE queue_client_history_archive MODIFY ${key} VARCHAR(255) NULL`);
+        }
     }
 }
 

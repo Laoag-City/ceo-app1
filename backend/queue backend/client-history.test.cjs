@@ -96,12 +96,12 @@ test('anonymous, unapproved and stale account requests cannot read client detail
     }
 });
 
-test('history route returns useful validation errors and does not disclose database details', async () => {
+test('service summary validates dates and does not disclose database details', async () => {
     const invoke = routeFixture({dialect:'postgres',query:async () => {throw Object.assign(new Error('confidential connection detail'),{code:'42P01'});}});
-    assert.equal((await invoke({id:1,role:'operator'},{q:'x'.repeat(201)})).status, 400);
+    assert.equal((await invoke({id:1,role:'operator'},{from:'2026-02-30'})).status, 400);
     const response = await invoke({id:1,role:'operator'});
     assert.equal(response.status, 503);
-    assert.equal(response.body.message, 'Client history is unavailable. Please try again.');
+    assert.equal(response.body.message, 'Service summary is unavailable. Please try again.');
     assert.ok(!JSON.stringify(response).includes('confidential'));
 });
 

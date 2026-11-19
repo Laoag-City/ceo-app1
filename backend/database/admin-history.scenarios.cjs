@@ -14,7 +14,8 @@ module.exports=function register(open,dialect){
   await db.query("INSERT INTO permit_change_requests VALUES (1,10,1,'approved','matrix_update','2026-01-02 12:00:00',?,'Reviewed','boss','2026-01-03 12:00:00')",[JSON.stringify(change)]);
   await db.query("INSERT INTO occupancy_change_requests VALUES (1,10,1,'rejected','matrix_update','2026-01-02 12:00:00',?,'Revise','boss','2026-01-03 12:00:00')",[JSON.stringify(change)]);
   await db.query("INSERT INTO project_records (id,kind,project_id,project_title,outcome,category,message,actor_name,created_at,details) VALUES (1,'permits',10,'Building <Cruz>','saved','activity','Updated routing matrix','operator','2026-01-02 12:00:00',?),(2,'permits',20,'Deleted later','saved','activity','Approved project deletion','boss','2026-01-01 12:00:00',''),(3,'occupancy',10,'Occupancy','failed','activity','Failed save','operator','2026-01-05 12:00:00','')",[JSON.stringify({version:1,changes:[{field:'Electrical · Remarks',before:'',after:'Bring revised plans'}]})]);
-  await db.query('UPDATE project_records SET actor_id=2 WHERE id=2');
+  // Preserve the seeded date on legacy MySQL installations with implicit TIMESTAMP updates.
+  await db.query("UPDATE project_records SET actor_id=2,created_at='2026-01-01 12:00:00' WHERE id=2");
   const snapshot={matrix:[{id:50,discipline_name:'Electrical',engineer_name:'Stored engineer',signature_status:'Approved',date_checked:'2026-01-01',date_approved:'2026-01-02',feedback_remarks:'Original review'}],reviewed_engineers:[{station_id:50,display_name:'Historical display name'}]};
   await db.query("INSERT INTO permit_final_reviews (id,kind,project_id,decision,reviewer_name,created_at,remarks,snapshot) VALUES (1,'permits',10,'approved','boss','2026-01-03 12:00:00','Final approval',?)",[JSON.stringify(snapshot)]);
   await db.query('DELETE FROM permits WHERE id=20');

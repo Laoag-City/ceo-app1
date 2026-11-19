@@ -1,9 +1,9 @@
 // Database-sized, server-side validation shared by permit creation and edits.
 const fields = {
-    permits:['project_title','location','owner_name','designer_name','permit_date'],
-    occupancy:['bp_reference_no','project_title','location','owner_name','date_applied']
+    permits:['project_title','location','owner_name','designer_name','permit_date','phone_number','email'],
+    occupancy:['bp_reference_no','project_title','location','owner_name','date_applied','phone_number','email']
 };
-const limits = {project_title:255, location:255, owner_name:255, designer_name:255, bp_reference_no:100, sub_project_title:255, lot_number:100};
+const limits = {project_title:255, location:255, owner_name:255, designer_name:255, bp_reference_no:100, sub_project_title:255, lot_number:100, phone_number:50, email:255};
 const bad = message => Object.assign(new Error(message), {status:400});
 function calendar(value) {
     if(typeof value!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value<'1000-01-01')return false;
@@ -24,7 +24,9 @@ function metadata(kind, body, sanitize, partial = false) {
     const result = {};
     for(const key of fields[kind]) {
         if(partial && body[key]===undefined)continue;
-        result[key] = text(key, body[key], sanitize);
+        result[key] = text(key, body[key], sanitize, key==='phone_number' || key==='email');
+        if(key==='phone_number' && result[key] && (!/^[+()0-9 .-]{7,50}$/.test(result[key]) || (result[key].match(/\d/g)||[]).length<7))throw bad('Enter a valid phone number using digits and optional +, spaces, or dashes.');
+        if(key==='email' && result[key] && !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(result[key]))throw bad('Enter a valid email address.');
         if((key==='permit_date' || key==='date_applied') && !calendar(result[key]))throw bad(`Enter a valid ${key.replace(/_/g,' ')}.`);
     }
     return result;
@@ -33,4 +35,16 @@ function lots(values, sanitize) {
     if(!Array.isArray(values) || !values.length)throw bad('At least one lot number is required.');
     return values.map(value => text('lot_number', value, sanitize));
 }
-module.exports = {fields, limits, calendar, text, metadata, lots};
+async function ensureContactColumns(db) {
+    for(const table of ['permits','occupancy_permits']) {
+        if(db.dialect==='postgres') {
+            await db.query(`SELECT phone_number,email FROM ${table} LIMIT 0`);
+            continue;
+        }
+        for(const [key,width] of [['phone_number',50],['email',255]]) {
+            const [columns]=await db.query(`SHOW COLUMNS FROM ${table} LIKE ?`,[key]);
+            if(!columns.length)await db.query(`ALTER TABLE ${table} ADD COLUMN ${key} VARCHAR(${width}) NULL`);
+        }
+    }
+}
+module.exports = {fields, limits, calendar, text, metadata, lots, ensureContactColumns};

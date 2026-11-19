@@ -13,7 +13,7 @@ export function QueueWindowControls() {
       <Icon name="ticket"/><strong id="activeTicketLabel">Connecting…</strong>
       <p id="activeTicketName" className="desk-client-name"/>
       <p id="activeTicketReason" className="desk-client-service"/>
-      <div className="desk-current-tools"><button type="button" id="recallBtn"><Icon name="recall"/>Call again</button><button type="button" id="activeDetailsBtn">Client details</button></div>
+      <div className="desk-current-tools"><button type="button" id="recallBtn"><Icon name="recall"/>Call again</button><button type="button" id="activeDetailsBtn">Ticket details</button></div>
     </section>
     <div className="clerk-actions-grid">
       <button type="button" className="desk-next" id="callNextBtn"><Icon name="next"/><span>Next ticket</span></button>
@@ -37,6 +37,6 @@ export function QueueTicketLists() {
     </div>
     <section id="waitingPanel" role="tabpanel" aria-labelledby="waitingTab"><p className="desk-list-note">Next ticket calls the first client in this list.</p><div id="clerkQueueList" className="scrollable-queue-box"/></section>
     <section id="heldPanel" role="tabpanel" aria-labelledby="heldTab" hidden><p className="desk-list-note">Click a held ticket to resume it at this window. Your current client will move to Finished.</p><div id="clerkHoldList" className="scrollable-queue-box"/></section>
-    <section id="finishedPanel" role="tabpanel" aria-labelledby="finishedTab" hidden><p className="desk-list-note">Completed clients at this window. Dropped tickets remain in Client history.</p><div id="clerkFinishedList" className="scrollable-queue-box"/></section>
+    <section id="finishedPanel" role="tabpanel" aria-labelledby="finishedTab" hidden><p className="desk-list-note">Completed clients at this window. Dropped tickets remain in Service Summary.</p><div id="clerkFinishedList" className="scrollable-queue-box"/></section>
   </div>
 }

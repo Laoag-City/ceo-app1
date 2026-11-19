@@ -6,18 +6,11 @@
  */
 const crypto = require('crypto');
 const {isService} = require('./queue-services');
-const limits = {name:255, phone:50, email:255, barangay:255, reason:1000};
 const bad = message => Object.assign(new Error(message), {status:400});
 function validateTicket(body = {}) {
- if(!body || typeof body!=='object' || Array.isArray(body))throw bad('Complete the visitor details.');
- const fields=['name','phone','email','barangay','reason'];
- if(fields.some(key=>body[key]!==undefined && typeof body[key]!=='string'))throw bad('Visitor details must be text.');
- const data=Object.fromEntries(fields.map(k=>[k,typeof body[k]==='string'?body[k].trim():'']));
- if(!data.name||!data.phone||!data.reason)throw bad('Complete the visitor name, phone, and visit reason.');
- for(const key of fields) {
-  if(Array.from(data[key]).length>limits[key])throw bad(`${key[0].toUpperCase()+key.slice(1)} must be ${limits[key]} characters or fewer.`);
-  if(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(data[key]))throw bad('Visitor details contain unsupported characters.');
- }
+ if(!body || typeof body!=='object' || Array.isArray(body))throw bad('Choose a requested service.');
+ const reason=typeof body.reason==='string'?body.reason.trim():'';
+ const data={name:null,phone:null,email:null,barangay:null,reason};
  if(!isService(data.reason))throw bad('Choose one of the available services.');
  if(!/^[a-f0-9-]{36}$/i.test(body.requestId||''))throw Object.assign(new Error('Refresh the kiosk page before issuing a ticket.'),{status:400});
  return data;

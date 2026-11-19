@@ -40,7 +40,7 @@ export default function Page() {
        <div className="chip"><span className="chip-icon"><AuthIcon name="monitor"/></span>Choose your workstation</div>
       </div>
      </div>
-     <div className="helper">Use your authorized staff account to access registration, service windows, and client history.</div>
+     <div className="helper">Use your authorized staff account to access registration, service windows, and service counts.</div>
     </section>
     <section className="panel">
      <div className="panel-heading"><div className="kicker">Authorized personnel</div><h2>Welcome back</h2><p>Sign in with your staff account to choose your workstation.</p></div>

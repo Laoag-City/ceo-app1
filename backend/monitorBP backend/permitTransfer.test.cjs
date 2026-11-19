@@ -57,8 +57,8 @@ test('real database import/export: atomicity, preview, permissions and retries',
     const control=await mysql.createConnection({host:'localhost',user:'root'});let created=false,server;
     try {
         await control.query('CREATE DATABASE `'+database+'`');created=true;await control.query('USE `'+database+'`');
-        await control.query('CREATE TABLE permits (id INT AUTO_INCREMENT PRIMARY KEY,project_title VARCHAR(255),location VARCHAR(255),owner_name VARCHAR(255),designer_name VARCHAR(255),permit_date DATE) ENGINE=InnoDB');
-        await control.query('CREATE TABLE occupancy_permits (id INT AUTO_INCREMENT PRIMARY KEY,project_title VARCHAR(255),location VARCHAR(255),owner_name VARCHAR(255),bp_reference_no VARCHAR(100),date_applied DATE) ENGINE=InnoDB');
+        await control.query('CREATE TABLE permits (id INT AUTO_INCREMENT PRIMARY KEY,project_title VARCHAR(255),location VARCHAR(255),owner_name VARCHAR(255),designer_name VARCHAR(255),permit_date DATE,phone_number VARCHAR(50),email VARCHAR(255)) ENGINE=InnoDB');
+        await control.query('CREATE TABLE occupancy_permits (id INT AUTO_INCREMENT PRIMARY KEY,project_title VARCHAR(255),location VARCHAR(255),owner_name VARCHAR(255),bp_reference_no VARCHAR(100),date_applied DATE,phone_number VARCHAR(50),email VARCHAR(255)) ENGINE=InnoDB');
         await control.query('CREATE TABLE permit_lots (id INT AUTO_INCREMENT PRIMARY KEY,permit_id INT,lot_number VARCHAR(100),FOREIGN KEY (permit_id) REFERENCES permits(id)) ENGINE=InnoDB');
         await control.query('CREATE TABLE sub_permits (id INT PRIMARY KEY,permit_id INT) ENGINE=InnoDB');
         await control.query('CREATE TABLE permit_routing_matrix (id INT AUTO_INCREMENT PRIMARY KEY,permit_id INT,sub_permit_id INT,discipline_name VARCHAR(100),engineer_name VARCHAR(100),signature_status VARCHAR(50),feedback_remarks TEXT,date_checked DATE,date_approved DATE) ENGINE=InnoDB');

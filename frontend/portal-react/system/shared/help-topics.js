@@ -15,7 +15,7 @@ export const helpTopics = {
  'permit-create': {
   title:'Create a permit', system:'Permit Management', roles:['operator'],
   summary:'Building and Occupancy permits start with their standard routing stations.',
-  steps:['Open the Building or Occupancy registry and choose Create permit.','Enter the project, applicant, location, and application details. For Occupancy, include the building permit reference.','Save the permit, then open its routing workspace to follow the station reviews.'],
+  steps:['Open the Building or Occupancy registry and choose Create permit.','Enter the project, applicant, location, and application details. For Occupancy, include the building permit reference.','Save the permit, then open its routing workspace to follow the station reviews. Use Edit contact details to save phone and email corrections directly.'],
   note:'Creating a permit does not approve it. Each required station must complete its review before the admin gives final approval.'
  },
  'permit-stations': {
@@ -69,19 +69,19 @@ export const helpTopics = {
  'queue-start': {
   title:'Choose a queue workstation', system:'Queue Management',
   summary:'Each workstation has a specific job in the visitor workflow.',
-  steps:['Choose Registration Desk to register visitors and issue tickets.','Choose Window 1 for receiving Building and Occupancy permit applications and inquiries, Window 2 for Occupancy permit releasing, or Window 3 for Building permit releasing.','Open Monitor Display for the public queue screen, or Client History to find past visits.'],
+  steps:['Choose Registration Desk to select a service and issue tickets.','Choose Window 1 for receiving Building and Occupancy permit applications and inquiries, Window 2 for Occupancy permit releasing, or Window 3 for Building permit releasing.','Open Monitor Display for the public queue screen, or Service Summary to count tickets issued for each service.'],
   note:'A service window may already be in use. Return to workstations when you finish so another staff member can use your window.'
  },
  'queue-registration': {
   title:'Register a visitor and issue a ticket', system:'Queue Management',
   summary:'The requested service determines which window receives the ticket.',
-  steps:['Enter the applicant’s details, contact information, address, and building location. Add agent details when applicable.','Select the requested service: releasing, receiving, or an inquiry.','Submit the ticket and give the issued ticket number to the visitor. It appears in the appropriate window’s Waiting list.'],
+  steps:['Select the requested service: releasing, receiving, or an inquiry.','Click Get ticket. No applicant or contact details are collected at this desk.','Give the issued ticket number to the visitor. It appears in the appropriate window’s Waiting list.'],
   note:'Check the selected service before submitting so the visitor joins the correct waiting line.'
  },
  'queue-actions': {
   title:'Next, Hold, and Drop tickets', system:'Queue Management',
   summary:'These controls act on tickets at your service window.',
-  steps:['Next ticket moves the current client to Finished and calls the next waiting client. If you have no current client, it calls the first waiting ticket.','Hold ticket pauses the current client and moves that ticket to your On hold list.','Drop ticket removes the ticket from the active queue after confirmation. Its dropped status and activity remain in Client History.'],
+  steps:['Next ticket moves the current client to Finished and calls the next waiting client. If you have no current client, it calls the first waiting ticket.','Hold ticket pauses the current client and moves that ticket to your On hold list.','Drop ticket removes the ticket from the active queue after confirmation. The issued ticket remains included in Service Summary.'],
   note:'If no one is waiting, Next ticket still finishes the current client and leaves the window available. Holding your client does not remove another window’s waiting tickets.'
  },
  'queue-held': {
@@ -93,20 +93,20 @@ export const helpTopics = {
  'queue-recall': {
   title:'Call the current client again', system:'Queue Management',
   summary:'Call again repeats the announcement for the ticket you are already serving.',
-  steps:['Check the ticket number and client under Now serving.','Choose Call again if the client needs another announcement.','Use Client details to review the visitor’s information without changing their queue position.'],
+  steps:['Check the ticket number under Now serving.','Choose Call again if the client needs another announcement.','Use Ticket details to review the ticket number and requested service without changing its queue position.'],
   note:'Call again does not finish the client or advance to another ticket. Use Next ticket when service is complete.'
  },
  'queue-history': {
-  title:'Find a previous client visit', system:'Queue Management',
-  summary:'Client History keeps visit records, including completed and dropped tickets.',
-  steps:['Search using a client name, address, ticket ID, or phone number.','Browse the results and use the page controls when more visits are available.','Open a visit to read the client details and activity history. Use Refresh to load the latest records.'],
-  note:'Reading a history record does not put that ticket back in the live queue.'
+  title:'Count tickets by requested service', system:'Queue Management',
+  summary:'Service Summary shows how many tickets were issued for each service.',
+  steps:['Today is selected initially. Choose From and To dates and click Apply dates for another range.','Read the count for each requested service and the total tickets issued. Services with no tickets show zero.','Use Refresh to load the latest counts. Calling, recalling, holding, or completing a ticket does not add to the issued count.'],
+  note:'Queue resets retain these totals. Personal details are not displayed in this summary.'
  },
  'queue-reset': {
   title:'Reset the entire queue', system:'Queue Management',
   summary:'Reset entire queue affects every service window and clears workstation assignments.',
   steps:['Use Queue maintenance only when the entire active queue needs to be cleared.','Read the confirmation, type RESET, and confirm the reset.','Sign in to your workstation again. Ticket numbering starts again at 1001.'],
-  note:'Past clients remain in Client History. Activity logs and uploaded videos are retained.'
+  note:'Service Summary retains counts for previously issued tickets. Activity logs and uploaded videos are retained.'
  }
 }
 

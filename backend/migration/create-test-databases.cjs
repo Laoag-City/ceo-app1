@@ -25,6 +25,7 @@ async function main(){
     if(!ready.length)throw Error('Cyclic schema');
     for(const table of ready){
      const cols=s.columns.filter(c=>c.TABLE_NAME===table).map(c=>c.COLUMN_NAME);
+     if(kind==='permit' && ['permits','occupancy_permits'].includes(table))cols.push('phone_number','email','processing_time','processing_started_on');
      const result=await from.query({text:'SELECT * FROM public.'+table,types:{getTypeParser:()=>v=>v}});
      for(const row of result.rows)await to.query('INSERT INTO public.'+table+' ('+cols.join(',')+') VALUES ('+cols.map((c,i)=>'$'+(i+1)).join(',')+')',cols.map(c=>row[c]));
      remaining.delete(table);
@@ -45,6 +46,7 @@ async function main(){
    if(kind==='queue') {
     await to.query(await fs.readFile(path.join(__dirname,'queue-runtime.sql'),'utf8'));
     await to.query(await fs.readFile(path.join(__dirname,'queue-playlist.sql'),'utf8'));
+    await to.query(await fs.readFile(path.join(__dirname,'queue-service-only-intake.sql'),'utf8'));
    } else {
     await to.query('GRANT SELECT,INSERT,UPDATE,DELETE ON permit_inspections,permit_checklists TO permit_app_migration; GRANT USAGE,SELECT ON SEQUENCE permit_inspections_id_seq,permit_checklists_id_seq TO permit_app_migration');
    }

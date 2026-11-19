@@ -33,7 +33,7 @@ for (const source of ['permit_system', 'queue_system']) {
     else if(d==='NULL'||/^-?\d+$/.test(d)||/^'(?:[^'\\]|'')*'$/.test(d)) line+=' DEFAULT '+d;
     else throw Error('Unsupported default '+d);
    }
-   if(c.IS_NULLABLE==='NO') line+=' NOT NULL';
+   if(c.IS_NULLABLE==='NO' && !(source==='queue_system' && t.TABLE_NAME==='tickets' && ['name','barangay'].includes(c.COLUMN_NAME))) line+=' NOT NULL';
    return line+extra;
   });
   const groups=Object.groupBy(s.indexes.filter(i=>i.TABLE_NAME===t.TABLE_NAME),i=>i.INDEX_NAME);
@@ -58,6 +58,8 @@ for (const source of ['permit_system', 'queue_system']) {
   sql.push(fs.readFileSync(path.join(__dirname,'permit-inspections.sql'),'utf8'));
   sql.push(fs.readFileSync(path.join(__dirname,'permit-checklists.sql'),'utf8'));
   sql.push(fs.readFileSync(path.join(__dirname,'permit-creation-requests.sql'),'utf8'));
+  sql.push(fs.readFileSync(path.join(__dirname,'permit-contacts.sql'),'utf8').replace(/^BEGIN;\s*$/gm,'').replace(/^COMMIT;\s*$/gm,''));
+  sql.push(fs.readFileSync(path.join(__dirname,'permit-processing.sql'),'utf8').replace(/^BEGIN;\s*$/gm,'').replace(/^COMMIT;\s*$/gm,''));
  }
  sql.push(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${q(role)};`, `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${q(role)};`, 'COMMIT;');
  fs.writeFileSync(path.join(__dirname,target+'.sql'),sql.join('\n\n')+'\n');

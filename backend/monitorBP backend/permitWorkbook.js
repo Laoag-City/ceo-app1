@@ -3,7 +3,7 @@
  * the day. Keep this projection separate from the CSV import template.
  */
 const ExcelJS=require('exceljs');
-const labels={project_id:'Project ID',project_title:'Project Name',location:'Location',owner_name:'Owner / Applicant',designer_name:'Designer',permit_date:'Date Filed',date_applied:'Date Applied',bp_reference_no:'BP Reference',lot_numbers:'Lots',status:'Status'};
+const labels={project_id:'Project ID',project_title:'Project Name',location:'Location',owner_name:'Owner / Applicant',designer_name:'Designer',permit_date:'Date Filed',date_applied:'Date Applied',bp_reference_no:'BP Reference',lot_numbers:'Lots',phone_number:'Phone number',email:'Email',status:'Status'};
 module.exports=async function permitWorkbook(kind,headers,rows) {
     const workbook=new ExcelJS.Workbook();
     workbook.creator='Office of the City Engineer';

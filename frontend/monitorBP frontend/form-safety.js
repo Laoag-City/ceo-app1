@@ -20,7 +20,7 @@
    if(el.disabled||el.type==='hidden')continue;
    el.setCustomValidity('');
    if(el.required&&typeof el.value==='string'&&!el.value.trim())el.setCustomValidity('Please enter a value; spaces alone are not valid.');
-   if(el.type==='tel'&&el.value.trim()&&(!/^[+()0-9 .-]{7,25}$/.test(el.value.trim())||(el.value.match(/\d/g)||[]).length<7))el.setCustomValidity('Enter a phone number using digits and optional +, spaces, or dashes.');
+   if(el.type==='tel'&&el.value.trim()&&(!/^[+()0-9 .-]{7,50}$/.test(el.value.trim())||(el.value.match(/\d/g)||[]).length<7))el.setCustomValidity('Enter a phone number using digits and optional +, spaces, or dashes.');
    if(!el.checkValidity()){el.setAttribute('aria-invalid','true');first ||= el;}else el.removeAttribute('aria-invalid');
   }
   if(first){first.reportValidity();first.focus();return false;}return true;

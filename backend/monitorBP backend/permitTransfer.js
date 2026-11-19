@@ -7,8 +7,8 @@ const express = require('express');
 const occupancyStations = require('./occupancyStations');
 const duplicateChecks=require('./permitDuplicates');
 const fields = {
-    permits: ['project_title','location','owner_name','designer_name','permit_date','lot_numbers'],
-    occupancy: ['project_title','location','owner_name','bp_reference_no','date_applied']
+    permits: ['project_title','location','owner_name','designer_name','permit_date','lot_numbers','phone_number','email'],
+    occupancy: ['project_title','location','owner_name','bp_reference_no','date_applied','phone_number','email']
 };
 const tables = {permits:'permits',occupancy:'occupancy_permits'};
 const bad = (message,status=400) => Object.assign(new Error(message),{status});
@@ -44,7 +44,8 @@ function validate(kind,text) {
     const rows=parse(text),headers=rows.shift()?.map(v=>v.trim());
     const expected=fields[kind];
     if(!expected)throw bad('Unknown permit type.');
-    if(!headers || headers.length!==expected.length || new Set(headers).size!==headers.length || expected.some(f=>!headers.includes(f)))throw bad('Columns must match the selected template exactly. Export files are reports; use the import template.');
+    const legacy=expected.filter(f=>!['phone_number','email'].includes(f));
+    if(!headers || ![expected,legacy].some(list=>headers.length===list.length && new Set(headers).size===headers.length && list.every(f=>headers.includes(f))))throw bad('Columns must match the selected template exactly. Export files are reports; use the import template.');
     if(!rows.length || rows.length>100)throw bad('Include between 1 and 100 records.');
     return rows.map((values,index)=>{
         const data=Object.fromEntries(expected.map(f=>[f,(values[headers.indexOf(f)]||'').trim()]));
@@ -52,10 +53,12 @@ function validate(kind,text) {
         if(values.length!==headers.length)errors.push('Incorrect number of columns');
         for(const f of expected) {
             const v=data[f];
-            if(!v)errors.push(f+' is required');
+            if(!v && !['phone_number','email'].includes(f))errors.push(f+' is required');
             if(/[<>]/.test(v))errors.push(f+' must be plain text without angle brackets');
             if(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(v))errors.push(f+' contains control characters');
-            if(f!=='lot_numbers' && Array.from(v).length>(f==='bp_reference_no'?100:255))errors.push(f+' is too long');
+            if(f!=='lot_numbers' && Array.from(v).length>(f==='bp_reference_no'?100:f==='phone_number'?50:255))errors.push(f+' is too long');
+            if(f==='email' && v && !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(v))errors.push('email must be a valid email address');
+            if(f==='phone_number' && v && (!/^[+()0-9 .-]{7,50}$/.test(v)||(v.match(/\d/g)||[]).length<7))errors.push('phone_number must be a valid phone number');
             if(f.endsWith('_date') || f==='date_applied') {
                 const date=new Date(v+'T00:00:00Z');
                 if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==v||v<'1000-01-01')errors.push(f+' must be a real date in YYYY-MM-DD format');

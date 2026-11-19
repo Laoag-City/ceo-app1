@@ -63,8 +63,8 @@ Start with distinct browser sessions/accounts assigned to Windows 1, 2, and 3.
 Keep the public Monitor open in another tab.
 
 - [ ] From Registration, issue two UAT tickets per window and note the six numbers:
-  W1-A/W1-B: Releasing Bldg. Permit; W2-A/W2-B: Releasing Bldg. Occupancy;
-  W3-A/W3-B: Receiving Bldg. Permit (or another Window 3 service).
+  Use Receiving Bldg. Permit, Receiving Occupancy, or Inquiry for Window 1,
+  Releasing Occupancy for Window 2, and Releasing Bldg. Permit for Window 3.
 - [ ] Press Next ticket once in each window. Each A ticket is called in its own
   window and appears in Monitor's matching Now calling card. Each B ticket waits.
 - [ ] Hold W2-A. W2-A moves to Window 2's On hold list. **W1-B and W3-B remain in
@@ -89,14 +89,10 @@ to make the six UAT tickets first.
 
 - [ ] Issue one normal ticket for each of the five service choices. It appears in
   the correct window and on Monitor.
-- [ ] Try a 51-character phone value. The request is rejected with a clear length
-  message, no new ticket is issued, and the form remains usable.
-- [ ] Enter a valid phone value and submit again. One ticket is created.
-- [ ] Include an agent on one valid submission. Applicant/agent details still save.
-
-The limit applies to the stored combined phone text, including an agent's phone.
-Unsupported service values and malformed API payloads were verified automatically;
-there is no need to modify the service options or send custom API requests.
+- [ ] Confirm the form contains service choices and the Get ticket button.
+- [ ] Submit without selecting a service. No ticket is issued.
+- [ ] Open Service Summary and verify that each ticket increases the total for
+  its selected service by one. Calling or recalling the ticket leaves this count unchanged.
 
 ## 5. Public monitor and announcements
 
@@ -149,19 +145,10 @@ not replace the application databases. Expect a backup ID and successful verific
 For details and verification of an existing ID, see `POSTGRES-BACKUP-RECOVERY.md`.
 This new backup/restore drill was **not run** as part of the code fixes.
 
-## Automated verification already completed
+## Automated verification
 
-- 230 frontend checks passed, including quoted-title deletion, failed clips,
-  all-failed recovery, stall timeout, forms, routing, and session notices.
-- 71 Permit PostgreSQL checks passed, including invalid metadata, approval-time
-  revalidation, valid quote/lot edits, permissions, atomic creation, and history.
-- 8 Queue PostgreSQL checks passed, including cross-window Hold isolation,
-  Finish/Next, specific held-ticket selection, report timing, and reset preservation.
-- Backend authentication, API, queue ordering/validation, media, SQL-adapter,
-  retry-safety, and Excel/CSV regression suites passed.
-- npm reported zero vulnerabilities in the updated Permit, Queue, and frontend
-  dependency trees. Express remains on version 4; ExcelJS remains on version 4.
-- Updated frontend sources/assets/builds match their published local copies.
+See the [latest full local acceptance results](FULL-LOCAL-UAT-2026-11-19.md) for
+counts, coverage, and checks to complete on the actual office equipment.
 
 Record any failure with the page, account role, ticket/permit ID, action, expected
 result, actual result, and screenshot. Only submit deletion/cleanup for the UAT

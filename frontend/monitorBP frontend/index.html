@@ -320,6 +320,7 @@ html[data-theme='dark'] .bp-page .registry-card .main-data-row .lot-badge-inline
 <link rel="stylesheet" href="/account-tools.css">
 <link rel="stylesheet" href="/permit-responsive.css">
 <script src="/permit-responsive.js" defer></script>
+<link rel="stylesheet" href="/permit-processing.css">
 </head>
 <body class="bp-page">
 <div id="system-react-root" data-page="permits-index" style="display:contents"></div>
@@ -384,9 +385,12 @@ html[data-theme='dark'] .bp-page .registry-card .main-data-row .lot-badge-inline
         const dataPayload = {
             requestId: window.PermitDuplicates?.creationKey('permits'),
             project_title: document.getElementById('project_title').value,
+            processing_time:document.getElementById('processingTime').value,
             sub_project_title: document.getElementById('sub_project_title').value,
             location: document.getElementById('location').value,
             owner_name: document.getElementById('owner_name').value,
+            phone_number: document.getElementById('phone_number').value,
+            email: document.getElementById('email').value,
             designer_name: document.getElementById('designer_name').value,
             permit_date: document.getElementById('permit_date').value,
             lot_numbers: lotVal ? [lotVal] : []

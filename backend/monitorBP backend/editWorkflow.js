@@ -14,6 +14,7 @@ const finalApproval=require('./finalApproval');
 const occupancyStations=require('./occupancyStations');
 const buildingStations=require('./buildingStations');
 const validation=require('./permitValidation');
+const processing=require('./permitProcessing');
 const duplicateChecks=require('./permitDuplicates');
 function duplicateProposal(kind,state,payload) {
     const data=Object.fromEntries(validation.fields[kind].map(key=>[key,payload[key]??state.record[key]]));
@@ -62,7 +63,9 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
             const [subMatrix] = await conn.query('SELECT m.* FROM permit_routing_matrix m INNER JOIN sub_permits s ON s.id = m.sub_permit_id WHERE s.permit_id = ? ORDER BY m.id FOR UPDATE', [id]);
             state.lots = lots; state.subs = subs; state.subMatrix = subMatrix;
         }
-        const hashState={...state};
+        const hashState={...state,record:processing.omitUnset({...state.record})};
+        // Empty additive contact columns must preserve older pending snapshots.
+        for(const key of ['phone_number','email'])if(!hashState.record[key])delete hashState.record[key];
         const [finalReviews]=await conn.query('SELECT id FROM permit_final_reviews WHERE kind=? AND project_id=? ORDER BY id DESC LIMIT 1'+finalHistoryLock(conn),[c.key==='permit_id'?'permits':'occupancy',id]);
         // Empty history preserves the hashes on older pending requests.
         if(finalReviews.length)hashState.finalRevision=Number(finalReviews[0].id);
@@ -87,6 +90,31 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
             return res.status(err.status || 500).json({ success: false, ...duplicateChecks.response(err), conflict:err.status===409 && !err.duplicate && err.code!=='POSSIBLE_DUPLICATE', message: err.status ? err.message : 'Unable to save this request. No changes were applied. Please refresh and try again.' });
         } finally {try{if(unlock)await unlock();}finally{if(conn)await conn.end();}}
     }
+    function saveContacts(kind) {
+        const c=configs[kind];
+        return (req,res)=>run(res,async conn=>{
+            await actor(conn,req,['operator']);
+            const id=Number(req.params.id);
+            if(!Number.isSafeInteger(id) || id<1)throw invalid('Invalid permit ID.');
+            const body=req.body;
+            if(!body || typeof body!=='object' || Array.isArray(body))throw invalid('Provide the contact details.');
+            // Only these two fields can bypass the project-edit approval workflow.
+            const changes=validation.metadata(kind,{phone_number:body.phone_number,email:body.email},sanitize,true);
+            const keys=Object.keys(changes);
+            if(!keys.length)throw invalid('Provide a phone number or email field to update.');
+            const current=await snapshot(conn,c,id);
+            requireVersion(req,current.hash);
+            const changed=keys.filter(key=>changes[key]!==sanitize(current.state.record[key]));
+            if(changed.length) {
+                await conn.query(`UPDATE ${c.records} SET ${changed.map(key=>key+' = ?').join(', ')} WHERE id = ?`,[...changed.map(key=>changes[key]),id]);
+                res.locals=res.locals || {};
+                res.locals.projectChangeDetail=JSON.stringify({version:1,changes:require('./projectChanges').fromSnapshot(current.state.record,changes)});
+            }
+            const saved=changed.length?await snapshot(conn,c,id):current;
+            return {body:{success:true,unchanged:!changed.length,message:changed.length?'Contact details saved.':'No contact changes to save.',
+                contacts:{phone_number:saved.state.record.phone_number || '',email:saved.state.record.email || ''},_version:saved.hash}};
+        });
+    }
     function submit(kind, type, input) {
         const c = configs[kind];
         return (req, res) => run(res, async conn => {
@@ -97,8 +125,7 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
             const current = await snapshot(conn, c, id);
             if(type!=='station_dates')requireVersion(req,current.hash);
             if(type==='permit_update') {
-                if(kind!=='permits')throw invalid('Unsupported permit edit.');
-                payload={...payload,...validation.metadata('permits',payload,sanitize,true)};
+                payload={...payload,...validation.metadata(kind,payload,sanitize,true)};
                 if(payload.lot_numbers!==undefined)payload.lot_numbers=validation.lots(payload.lot_numbers,sanitize);
             }
             if(type==='permit_update' && proposedChanges(type,payload,current.state)===digest({}))return {body:{success:true,unchanged:true,message:'No project changes to save.',_version:current.hash}};
@@ -169,7 +196,7 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
             return digest(matrixChanges(changes,state));
         }
         const values = {};
-        for (const key of ['project_title', 'location', 'owner_name', 'designer_name', 'permit_date']) {
+        for (const key of ['project_title', 'location', 'owner_name', 'designer_name', 'permit_date','bp_reference_no','date_applied','phone_number','email']) {
             if (changes[key] !== undefined && sanitize(changes[key]) !== sanitize(state.record[key])) values[key] = sanitize(changes[key]);
         }
         if (changes.lot_numbers !== undefined) {
@@ -219,10 +246,11 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
                 await conn.query(`UPDATE ${c.matrix} SET date_checked=?,date_approved=? WHERE id=?`,[changes.date_checked || null,changes.date_approved || null,row.id]);
             } else if (type === 'permit_update') {
                 // Revalidate historical requests before approval as well as new submissions.
-                changes={...changes,...validation.metadata('permits',changes,sanitize,true)};
+                const kind=c.key==='permit_id'?'permits':'occupancy';
+                changes={...changes,...validation.metadata(kind,changes,sanitize,true)};
                 if(changes.lot_numbers!==undefined)changes.lot_numbers=validation.lots(changes.lot_numbers,sanitize);
-                const fields = ['project_title','location','owner_name','designer_name','permit_date'].filter(key => changes[key] !== undefined);
-                if (fields.length) await conn.query(`UPDATE permits SET ${fields.map(key => key + ' = ?').join(', ')} WHERE id = ?`, [...fields.map(key => sanitize(changes[key])), id]);
+                const fields = validation.fields[kind].filter(key => changes[key] !== undefined);
+                if (fields.length) await conn.query(`UPDATE ${c.records} SET ${fields.map(key => key + ' = ?').join(', ')} WHERE id = ?`, [...fields.map(key => sanitize(changes[key])), id]);
                 if (changes.lot_numbers !== undefined) {
                     if (!Array.isArray(changes.lot_numbers)) throw invalid('Invalid lot records.');
                     await conn.query('DELETE FROM permit_lots WHERE permit_id = ?', [id]);
@@ -266,14 +294,14 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
                 return { body: { success: true, message: 'Request declined. Permit retained.' } };
             }
             if(['matrix_update','station_dates'].includes(request.change_type))throw invalid('Station edit approvals have been retired. The designated operator must save the station updates directly. This historical request has been retained.',409);
-            if (!['permit_update', 'matrix_update','station_dates'].includes(request.change_type) || (kind === 'occupancy' && !['matrix_update','station_dates'].includes(request.change_type))) throw invalid('Unsupported change request.');
+            if (!['permit_update', 'matrix_update','station_dates'].includes(request.change_type)) throw invalid('Unsupported change request.');
             let changes = decode(request.changes) || {};
             if (!changes._baseSnapshot || changes._baseSnapshot !== current.hash) {
                 const message = changes._baseSnapshot ? 'Outdated request — approval blocked. This permit changed after the request was submitted. The current permit was not overwritten. Ask the operator to refresh the workspace and submit a fresh request based on its current status.' : 'This older request has no version snapshot and cannot be safely approved. Ask the operator to refresh the permit and submit a new request.';
                 await conn.query(`UPDATE ${c.requests} SET status = 'conflict', reviewed_by = ?, reviewed_at = NOW(), remarks = ? WHERE id = ?`, [String(user.id), message, requestId]);
                 return { status: 409, body: { success: false, conflict: true, message } };
             }
-            changes={...changes,...validation.metadata('permits',changes,sanitize,true)};
+            changes={...changes,...validation.metadata(kind,changes,sanitize,true)};
             if(changes.lot_numbers!==undefined)changes.lot_numbers=validation.lots(changes.lot_numbers,sanitize);
             const acknowledgement=req.body?.allowDuplicates===true?req.body:{allowDuplicates:!!changes._duplicateApproval,duplicateVersion:changes._duplicateApproval?.version};
             if(duplicateIdentityChanged(kind,current.state,changes))duplicateChecks.acknowledge(res,await duplicateChecks.check(conn,kind,duplicateProposal(kind,current.state,changes),acknowledgement,id));
@@ -299,6 +327,7 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
                 return copy;
             };
             const body={...calendarRow(state.record),matrix:state.matrix.map(calendarRow),_version:current.hash,_signatureDatesSupported:true,_stationAccessSupported:true,_assignedEngineerProfileSupported:true,assigned_stations:assigned.map(station=>station.station_name),assigned_station:assigned[0]?.station_name || null,final_approval:finalApproval.summary(state,reviews)};
+            body.processing_deadline=processing.summarize(state.record,body.final_approval);
             if(kind==='occupancy'){body._standardOccupancyStationsSupported=true;body.standard_stations=[...occupancyStations.defaults];}
             if(kind==='permits') {
                 body._standardBuildingStationsSupported=true;body.standard_stations=[...buildingStations.defaults];
@@ -387,7 +416,7 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
             if(remarks.length>4000 || (decision==='returned' && !remarks))throw invalid('Returning a project requires correction remarks (up to 4,000 characters).');
             if(decision==='approved' && status.status==='approved')return {body:{success:true,unchanged:true,message:'This project is already finally approved.'}};
             if(decision==='approved' && !status.ready)throw invalid('Every required station must be approved and any returned corrections saved before final approval.',409);
-            if(decision==='returned' && reviews[0]?.decision==='returned' && reviews[0].snapshot_hash===finalApproval.fingerprint(current.state) && reviews[0].remarks===remarks)return {body:{success:true,unchanged:true}};
+            if(decision==='returned' && status.status==='returned' && status.remarks===remarks)return {body:{success:true,unchanged:true}};
             const operators=await stationAccess.engineers(conn,[...current.state.matrix,...(current.state.subMatrix || [])]);
             const reviewedEngineers=[...current.state.matrix,...(current.state.subMatrix || [])].map(row=>{const live=stationAccess.engineer(row,operators);return {station_id:Number(row.id),operator_id:live.reviewing_operator_id || live.assigned_operator_id,display_name:live.engineer_name};});
             const reviewSnapshot={...current.state,reviewed_engineers:reviewedEngineers};
@@ -395,5 +424,5 @@ module.exports = function createEditWorkflow(openConnection, sanitize = value =>
             return {body:{success:true,message:decision==='approved'?'Project finally approved.':'Project returned for correction.'}};
         });
     }
-    return { submit, review, read, routing, finalReview, initializeOccupancyStations, initializeBuildingStations, snapshot, configs };
+    return { submit, saveContacts, review, read, routing, finalReview, initializeOccupancyStations, initializeBuildingStations, snapshot, configs };
 };

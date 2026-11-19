@@ -1,0 +1,25 @@
+.processing-time-select {
+    display: block;
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 12px;
+    border: 1px solid var(--border, #cbd8e2);
+    border-radius: 8px;
+    color: inherit;
+    background: var(--surface, #fff);
+    font: inherit;
+}
+.permit-processing-deadline:not([hidden]) {
+    display: grid;
+    gap: 4px;
+    margin: 8px 0;
+    padding: 10px 12px;
+    border-inline-start: 3px solid #c84343;
+    border-radius: 6px;
+    background: color-mix(in srgb, #db4b4b 10%, var(--surface, #fff));
+    color: #a82d2d;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.permit-processing-deadline .meta-label { color: inherit; }
+:is([data-theme="dark"], .dark-mode) .permit-processing-deadline:not([hidden]) { color: #ffadad; }

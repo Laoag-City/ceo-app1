@@ -4,7 +4,7 @@
     <!-- React mounts the layout before the search controller. Edit this source, then publish:system. -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client History — Office of the City Engineer</title>
+    <title>Service Summary — Office of the City Engineer</title>
     <script src="/appearance.js"></script>
     <script src="/request-feedback.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,100 +22,51 @@
 <script data-client-history>
 (() => {
     const byId = id => document.getElementById(id);
-    const form = byId('historySearchForm'), search = byId('historySearch');
-    const body = byId('historyTableBody'), results = byId('historyResults');
-    const count = byId('historyCount'), feedback = byId('historyFeedback');
-    const previous = byId('historyPrevious'), next = byId('historyNext');
-    let page = 1, totalPages = 1, query = '', generation = 0, pending = false;
-    const pageSize = 20;
-    const dateFormatter = new Intl.DateTimeFormat('en-PH', {timeZone:'Asia/Manila', year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
-    const statuses = {waiting:'Waiting', holding:'On hold', serving:'In service', completed:'Completed', dropped:'Dropped'};
-    const windows = {PC1:'Window 1', PC2:'Window 2', PC3:'Window 3'};
-
-    function cell(row, value, className) {
-        const td = document.createElement('td');
-        td.textContent = value || '—';
-        if (className) td.className = className;
-        row.append(td);
-        return td;
-    }
-    function message(text) {
-        const tr = document.createElement('tr'), td = cell(tr, text, 'history-empty');
-        td.colSpan = 7;
-        body.replaceChildren(tr);
-    }
-    function render(rows) {
-        if (!rows.length) return message(query ? 'No clients match your search. Try another name, address, ticket ID, or phone number.' : 'No client records yet. Registered visits will appear here.');
-        const fragment = document.createDocumentFragment();
-        rows.forEach(record => {
-            const tr = document.createElement('tr');
-            cell(tr, record.ticketId, 'history-ticket');
-            cell(tr, record.name, 'history-client');
-            cell(tr, record.phone, 'history-phone');
-            cell(tr, record.barangay, 'history-address');
-            const service = cell(tr, record.reason, 'history-service');
-            if (windows[record.called_by]) {
-                const detail = document.createElement('small');
-                detail.textContent = windows[record.called_by];
-                service.append(detail);
-            }
-            const statusCell = cell(tr, ''), badge = document.createElement('span');
-            badge.className = 'history-status history-status-' + (Object.hasOwn(statuses, record.status) ? record.status : 'unknown');
-            badge.textContent = statuses[record.status] || 'Unknown';
-            statusCell.replaceChildren(badge);
-            const date = new Date(record.created_at);
-            cell(tr, record.created_at && !Number.isNaN(date.getTime()) ? dateFormatter.format(date) : '—', 'history-date');
-            fragment.append(tr);
-        });
-        body.replaceChildren(fragment);
-    }
-    function updateControls() {
-        previous.disabled = pending || page <= 1;
-        next.disabled = pending || page >= totalPages;
-        byId('historyRefresh').disabled = pending;
-        byId('historyClear').hidden = !search.value && !query;
-        results.setAttribute('aria-busy', String(pending));
-    }
-    async function load(requestedPage = 1) {
+    const form = byId('historySearchForm');
+    const from = byId('historyFrom'), to = byId('historyTo');
+    const body = byId('historyTableBody'), feedback = byId('historyFeedback');
+    const refresh = byId('historyRefresh'), apply = form.querySelector('button');
+    const parts = new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+    const datePart = type => parts.find(part => part.type === type).value;
+    from.value = to.value = [datePart('year'),datePart('month'),datePart('day')].join('-');
+    let generation = 0;
+    async function load() {
         const current = ++generation;
-        pending = true;
+        refresh.disabled = apply.disabled = true;
         feedback.hidden = true;
-        count.textContent = 'Loading records…';
-        message('Loading client records…');
-        updateControls();
+        byId('historyResults').setAttribute('aria-busy','true');
         try {
-            const params = new URLSearchParams({q:query, page:String(requestedPage), pageSize:String(pageSize)});
-            const response = await RequestFeedback.fetch('/api/client-history?' + params);
+            if (!from.value || !to.value || from.value > to.value) throw new Error('Choose a valid date range.');
+            const response = await RequestFeedback.fetch('/api/client-history?' + new URLSearchParams({from:from.value,to:to.value}));
             const data = await response.json();
             if (current !== generation) return;
-            if (!data.success || !Array.isArray(data.rows) || !data.pagination) throw new Error(data.message || 'Could not load client records.');
-            page = data.pagination.page;
-            totalPages = Math.max(1, data.pagination.totalPages);
-            const total = data.pagination.total;
-            render(data.rows);
-            count.textContent = total.toLocaleString() + (total === 1 ? ' visit' : ' visits') + (query ? ' found' : ' recorded');
-            byId('historyPage').textContent = 'Page ' + page + ' of ' + totalPages;
-            const start = total ? (page - 1) * pageSize + 1 : 0;
-            byId('historyRange').textContent = total ? 'Showing ' + start + '–' + (start + data.rows.length - 1) + ' of ' + total.toLocaleString() + ' visits · Check dates when ticket numbers repeat.' : 'Registered visits stay in this log after a queue reset.';
+            if (response.ok === false || !data.success || !Array.isArray(data.services)) throw new Error(data.message || 'Service counts could not be loaded.');
+            const rows = data.services.map(item => {
+                const row = document.createElement('tr');
+                for (const value of [item.service, Number(item.count).toLocaleString()]) {
+                    const cell = document.createElement('td');
+                    cell.textContent = value;
+                    row.append(cell);
+                }
+                return row;
+            });
+            body.replaceChildren(...rows);
+            byId('historyCount').textContent = Number(data.total).toLocaleString();
         } catch (error) {
             if (current !== generation) return;
-            message('Client records could not be loaded. Use Refresh to try again.');
-            feedback.textContent = error.message || 'Could not load client records. Please try again.';
+            body.replaceChildren();
+            byId('historyCount').textContent = 'Unavailable';
+            feedback.textContent = error.message || 'Use Refresh to retry.';
             feedback.hidden = false;
-            count.textContent = 'Records unavailable';
-            totalPages = 1;
-            byId('historyPage').textContent = 'Page —';
-            byId('historyRange').textContent = '';
         } finally {
-            if (current === generation) {pending = false; updateControls();}
+            if (current === generation) {
+                refresh.disabled = apply.disabled = false;
+                byId('historyResults').setAttribute('aria-busy','false');
+            }
         }
     }
-    form.addEventListener('submit', event => {event.preventDefault(); query = search.value.trim(); page = 1; load();});
-    search.addEventListener('input', updateControls);
-    byId('historyClear').addEventListener('click', () => {search.value = ''; query = ''; page = 1; search.focus(); load();});
-    byId('historyRefresh').addEventListener('click', () => load(page));
-    previous.addEventListener('click', () => {if (!pending && page > 1) load(page - 1);});
-    next.addEventListener('click', () => {if (!pending && page < totalPages) load(page + 1);});
+    form.addEventListener('submit', event => {event.preventDefault(); load();});
+    refresh.addEventListener('click', load);
     load();
 })();
 </script>

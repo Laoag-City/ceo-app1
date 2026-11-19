@@ -40,6 +40,12 @@
 <script src="/building-requirements.js" defer></script>
 <script src="/building-checklist.js" defer></script>
 <link rel="stylesheet" href="/permit-checklist.css">
+<link rel="stylesheet" href="/permit-contacts.css">
+<script src="/permit-contacts.js"></script>
+<link rel="stylesheet" href="/permit-added-at.css">
+<script src="/permit-added-at.js"></script>
+<link rel="stylesheet" href="/permit-processing.css">
+<script src="/permit-processing.js"></script>
 </head>
 <body>
 <div id="system-react-root" data-page="permits-edit" style="display:contents"></div>
@@ -164,6 +170,8 @@
         if (response.status === 404) { window.location.href = "/index.html"; return; }
         const data = await response.json();
         completeDatasetCache = data;
+        window.PermitAddedAt?.load(data, "permits");
+        window.PermitContacts?.render(data, "permits");
         isEditingMode = false;
 
         let lotsList = data.lot_numbers || [];
@@ -171,13 +179,17 @@
         if (lotsList.length === 0) lotsSidebarHtml = '<em style="color:var(--text-muted);">None</em>';
 
         document.getElementById('permitMetaDetails').innerHTML = `
-            <div class="meta-item"><span class="meta-label">Project ID</span><span class="meta-value">${ProjectIdentity.format('building', data.id)}</span></div><div class="meta-item"><span class="meta-label">Project Title</span><span class="meta-value">${escapeHTML(data.project_title)}</span></div>
+            <div class="meta-item"><span class="meta-label">Project ID</span><span class="meta-value">${ProjectIdentity.format('building', data.id)}</span></div>
+            <div id="permitProcessingDeadline" class="permit-processing-deadline" hidden></div>
+            <div class="meta-item"><span class="meta-label">Project Title</span><span class="meta-value">${escapeHTML(data.project_title)}</span></div>
             <div class="meta-item"><span class="meta-label">Location</span><span class="meta-value">${escapeHTML(data.location)}</span></div>
             <div class="meta-item"><span class="meta-label">Owner</span><span class="meta-value">${escapeHTML(data.owner_name)}</span></div>
             <div class="meta-item"><span class="meta-label">Designer</span><span class="meta-value">${escapeHTML(data.designer_name)}</span></div>
             <div class="meta-item"><span class="meta-label">Date Filed</span><span class="meta-value">${formatDisplayDate(data.permit_date)}</span></div>
             <div class="meta-item"><span class="meta-label">Lot Numbers</span><span class="meta-value">${lotsSidebarHtml}</span></div>
         `;
+
+        window.renderPermitDeadline?.(data.processing_deadline);
 
         const scopeSelector = document.getElementById('targetFlowScopeSelector');
         const previousSelection = scopeSelector.value;

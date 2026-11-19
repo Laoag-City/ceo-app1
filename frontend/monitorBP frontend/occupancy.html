@@ -427,6 +427,7 @@ html[data-theme='dark'] .occ-page .registry-card .main-data-row .lot-badge-inlin
 <link rel="stylesheet" href="/account-tools.css">
 <link rel="stylesheet" href="/permit-responsive.css">
 <script src="/permit-responsive.js" defer></script>
+<link rel="stylesheet" href="/permit-processing.css">
 </head>
 <body class="occ-page">
 <div id="system-react-root" data-page="permits-occupancy" style="display:contents"></div>
@@ -599,8 +600,11 @@ document.getElementById('createPermitForm').addEventListener('submit', FormSafet
         const r=await RequestFeedback.fetch('/api/occupancy',{method:'POST',headers:getAuthHeaders(),body:JSON.stringify({
             requestId:window.PermitDuplicates?.creationKey('occupancy'),
             project_title:document.getElementById('f_title').value,
+            processing_time:document.getElementById('processingTime').value,
             location:document.getElementById('f_loc').value,
             owner_name:document.getElementById('f_owner').value,
+            phone_number:document.getElementById('f_phone').value,
+            email:document.getElementById('f_email').value,
             bp_reference_no:document.getElementById('f_bp').value,
             date_applied:document.getElementById('f_date').value
         })});

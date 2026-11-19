@@ -1,0 +1,14 @@
+.permit-contacts{padding:20px 24px;border-top:1px solid var(--border,#d8e2e9)}
+.permit-contacts h3{margin:0 0 14px;font-size:14px}
+.permit-contacts dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 14px;margin:0;font-size:13px}
+.permit-contacts dt{color:var(--text-muted,#637e94)}
+.permit-contacts dd{margin:0;overflow-wrap:anywhere}
+.permit-contacts details{margin-top:16px}
+.permit-contacts summary{color:var(--blue,#1769aa);cursor:pointer;font-size:13px}
+.permit-contacts form{display:grid;gap:12px;margin-top:14px}
+.permit-contacts label{display:grid;gap:6px;font-size:13px}
+.permit-contacts input{width:100%;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--border,#d8e2e9);border-radius:8px;color:inherit;background:var(--input-bg,transparent)}
+.permit-contacts button[type=submit]{padding:10px 14px;border:1px solid var(--blue,#1769aa);border-radius:8px;background:var(--blue,#1769aa);color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.permit-contacts button[type=submit]:disabled{opacity:.6;cursor:wait}
+.permit-contacts [role=status]:empty{display:none}
+.permit-contacts [role=status]{font-size:13px;line-height:1.6;margin-bottom:0}

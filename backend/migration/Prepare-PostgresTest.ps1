@@ -4,7 +4,10 @@ $ErrorActionPreference='Stop'
 $config=Get-Content -LiteralPath (Join-Path $env:USERPROFILE 'PermitManagementConfig\postgres-migration.json') -Raw | ConvertFrom-Json
 $password=Unseal-Password $config.passwordDpapi
 try {
+    Invoke-Postgres 'permit_system_migration' 'postgres' $password (Get-Content "$PSScriptRoot\permit-contacts.sql" -Raw)
+    Invoke-Postgres 'permit_system_migration' 'postgres' $password (Get-Content "$PSScriptRoot\permit-processing.sql" -Raw)
     Invoke-Postgres 'queue_system_migration' 'postgres' $password (Get-Content "$PSScriptRoot\queue-runtime.sql" -Raw)
+    Invoke-Postgres 'queue_system_migration' 'postgres' $password (Get-Content "$PSScriptRoot\queue-service-only-intake.sql" -Raw)
     $start=New-Object System.Diagnostics.ProcessStartInfo
     $start.FileName=(Get-Command node.exe).Source
     $start.Arguments='"'+"$PSScriptRoot\create-test-databases.cjs"+'"'

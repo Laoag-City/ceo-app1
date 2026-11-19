@@ -57,7 +57,7 @@ export default function WorkstationChooser() {
      <GroupHeading id="otherToolsHeading" title="Other Tools"/>
      <div className="workstation-tools-grid">
       <button type="button" className="station-card workstation-tool" data-value="Monitor"><span className="station-symbol"><WorkstationIcon name="monitor"/></span><span className="station-label">Monitor Display</span><span className="station-sublabel">Queue announcements and office videos</span></button>
-      <a className="station-card client-history-link workstation-tool" href="client-history.html"><span className="station-symbol"><WorkstationIcon name="history"/></span><span className="station-label">Client History</span><span className="station-sublabel">Previous visits and client records</span></a>
+      <a className="station-card client-history-link workstation-tool" href="client-history.html"><span className="station-symbol"><WorkstationIcon name="history"/></span><span className="station-label">Service Summary</span><span className="station-sublabel">Tickets issued by requested service</span></a>
       <a className="station-card workstation-tool" href="reports.html"><span className="station-symbol"><WorkstationIcon name="reports"/></span><span className="station-label">Queue Reports</span><span className="station-sublabel">Visit totals, window activity, and service times</span></a>
       <a className="station-card workstation-tool" href="secret-management.html"><span className="station-symbol"><WorkstationIcon name="video"/></span><span className="station-label">Video Playlist</span><span className="station-sublabel">Upload, preview, and arrange monitor videos</span></a>
      </div>

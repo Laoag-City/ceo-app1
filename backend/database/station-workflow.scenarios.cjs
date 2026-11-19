@@ -8,8 +8,8 @@ module.exports=function register(open,dialect){
   const schemas={
    users:'id INTEGER PRIMARY KEY,username VARCHAR(50),password VARCHAR(255),role VARCHAR(20),is_active INTEGER,is_verified INTEGER',
    permit_user_profiles:'user_id INTEGER PRIMARY KEY,display_name VARCHAR(80)',
-   permits:`id ${identity},project_title VARCHAR(100),location VARCHAR(100),owner_name VARCHAR(100),designer_name VARCHAR(100),permit_date DATE,rejection_history JSON`,
-   occupancy_permits:`id ${identity},bp_reference_no VARCHAR(100),project_title VARCHAR(100),location VARCHAR(100),owner_name VARCHAR(100),date_applied DATE,rejection_history JSON`,
+   permits:`id ${identity},project_title VARCHAR(100),location VARCHAR(100),owner_name VARCHAR(100),designer_name VARCHAR(100),permit_date DATE,phone_number VARCHAR(50),email VARCHAR(255),rejection_history JSON`,
+   occupancy_permits:`id ${identity},bp_reference_no VARCHAR(100),project_title VARCHAR(100),location VARCHAR(100),owner_name VARCHAR(100),date_applied DATE,phone_number VARCHAR(50),email VARCHAR(255),rejection_history JSON`,
    permit_lots:`id ${identity},permit_id INTEGER,lot_number VARCHAR(100)`,
    sub_permits:`id ${identity},permit_id INTEGER,sub_project_title VARCHAR(100)`,
    permit_routing_matrix:`id ${identity},permit_id INTEGER,sub_permit_id INTEGER,discipline_name VARCHAR(100),engineer_name VARCHAR(100),signature_status VARCHAR(30),feedback_remarks TEXT,date_checked DATE,date_approved DATE`,
@@ -58,6 +58,35 @@ module.exports=function register(open,dialect){
   return {db,connection,workflow,call,read,save,review};
  }
  const approved={id:50,engineer_name:'Reviewer',signature_status:'Approved',feedback_remarks:'Reviewed',date_checked:'2026-01-01',date_approved:'2026-01-02'};
+ for(const kind of ['permits','occupancy'])test(kind+': operators save and clear contacts directly without requests or a new final approval',async t=>{
+  const {db,workflow,read,call,review}=await fixture(t);
+  const table=kind==='permits'?'permits':'occupancy_permits',requestTable=kind==='permits'?'permit_change_requests':'occupancy_change_requests';
+  const key=kind==='permits'?'permit_id':'occupancy_id';
+  await db.query(`UPDATE ${workflowTable(kind)} SET signature_status='Approved' WHERE ${key}=10`);
+  assert.equal((await review(kind,'approved')).body.success,true);
+  let current=(await read(kind)).body;
+  const originalTitle=current.project_title;
+  const save=(body,options={})=>call(workflow.saveContacts(kind),{body,version:current._version,...options});
+  for(const body of [{email:'invalid'},{phone_number:'not a phone'},{}])assert.equal((await save(body)).code,400);
+  for(const user of [2,3])assert.equal((await save({email:'blocked@example.com'},{user})).code,403);
+  assert.equal((await save({email:'stale@example.com'},{version:'old-version'})).code,409);
+  const first=await save({phone_number:'09123456789',email:'saved@example.com',project_title:'Must not bypass approval',updatedMatrixRows:[]});
+  assert.equal(first.body.success,true);assert.equal(first.body.pending,undefined);
+  assert.equal(first.body.message,'Contact details saved.');
+  const oldVersion=current._version;current=(await read(kind)).body;
+  assert.equal(current.phone_number,'09123456789');assert.equal(current.email,'saved@example.com');
+  assert.equal(current.project_title,originalTitle);assert.equal(current.final_approval.status,'approved');
+  assert.equal(first.body._version,current._version);assert.notEqual(current._version,oldVersion);
+  const unchanged=await save({phone_number:'09123456789',email:'saved@example.com'});
+  assert.equal(unchanged.body.unchanged,true);assert.equal(unchanged.body._version,current._version);
+  assert.equal((await save({phone_number:'',email:''})).body.success,true);
+  current=(await read(kind)).body;
+  assert.equal(current.phone_number,'');assert.equal(current.email,'');assert.equal(current.final_approval.status,'approved');
+  assert.equal((await save({email:'next@example.com'})).body.success,true);
+  assert.equal(Number((await db.query(`SELECT COUNT(*) AS n FROM ${requestTable}`))[0][0].n),0);
+  assert.equal(Number((await db.query('SELECT COUNT(*) AS n FROM permit_final_reviews'))[0][0].n),1);
+  assert.equal((await db.query(`SELECT project_title FROM ${table} WHERE id=10`))[0][0].project_title,originalTitle);
+ });
  test('station migration retains assignments, records, approval history and loaded versions; replay is safe',async t=>{
   const {db,read,review}=await fixture(t,undefined,false);
   await db.query("UPDATE permit_routing_matrix SET signature_status='Approved',engineer_name='Reviewer' WHERE permit_id=10");

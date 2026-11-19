@@ -189,6 +189,8 @@ db.connect(async (err) => {
         for (let query of schemaQueries) {
             await dbPromise.query(query);
         }
+        await require('./permitValidation').ensureContactColumns(dbPromise);
+        await require('./permitProcessing').ensureColumns(dbPromise);
         console.log('Database schema validated and aligned.');
         await require('./stationDates').migrate(dbPromise);
         await require('./stationWorkflowSchema')(dbPromise);
@@ -256,7 +258,9 @@ for (const kind of ['permits', 'occupancy']) {
     app.delete('/api/'+kind+'/:id',(req,res,next)=>req.user.role==='admin'?directDelete(req,res):next());
 }
 app.use(projectRecords.audit);
+require('./permitAddedAt').register(app,db.promise(),sessions);
 for(const kind of ['permits','occupancy']) {
+    app.put(`/api/${kind}/:id/contacts`, sessions.requireRoles('operator'), editWorkflow.saveContacts(kind));
     app.put(`/api/${kind}/:id/final-review`, editWorkflow.finalReview(kind));
     app.put(`/api/${kind}/:id/station-dates`, (req,res)=>editWorkflow.submit(kind,'station_dates',{
         station_id:req.body.station_id,date_checked:req.body.date_checked,date_approved:req.body.date_approved,expected_dates:req.body.expected_dates
@@ -341,7 +345,7 @@ app.put('/api/permits/:id', (req, res) => {
 
     if (!Number.isSafeInteger(permitId) || permitId<1) return res.status(400).json({ success: false, message: 'Invalid permit id.' });
 
-    const allowedFields = ['project_title', 'location', 'owner_name', 'designer_name', 'permit_date'];
+    const allowedFields = ['project_title', 'location', 'owner_name', 'designer_name', 'permit_date','phone_number','email'];
     const incomingPayload = {};
     allowedFields.forEach((field) => {
         if (req.body[field] !== undefined) incomingPayload[field] = req.body[field];

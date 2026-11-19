@@ -1,0 +1,5 @@
+.card-header.permit-details-heading{gap:10px;flex-wrap:wrap}
+.permit-details-heading .card-heading-group{flex:1 1 auto;min-width:0}
+.permit-details-heading .permit-added-at{display:grid;gap:3px;flex:0 0 auto;margin-left:auto;text-align:right;font-size:10px;line-height:1.4;font-weight:700;color:var(--text-primary,#173248)}
+.permit-added-at strong,.permit-added-at time{font-weight:700}
+.permit-added-at time{font-size:11px}
