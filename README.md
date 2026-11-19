@@ -133,4 +133,4 @@ Neither command modifies database records or restarts a running server.
 - Implementation responsibilities. [Code documentation](CODE-DOCUMENTATION.md)
 - Frontend source and publishing instructions. [Frontend architecture](frontend/portal-react/system/README.md)
 
-Never commit credentials, private database backups, or uploaded confidential records.
+Never commit credentials, private database backups, or uploaded confidential records. S
