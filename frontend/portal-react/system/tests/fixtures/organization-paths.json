@@ -23,8 +23,6 @@
   "frontend/portal-react/system/pages/queue-monitor.html": "frontend/portal-react/system/features/queue/monitor.html",
   "frontend/portal-react/system/pages/queue-audit-logs.jsx": "frontend/portal-react/system/features/queue/audit-logs.jsx",
   "frontend/portal-react/system/pages/queue-audit-logs.html": "frontend/portal-react/system/features/queue/audit-logs.html",
-  "frontend/portal-react/system/pages/queue-secret-management.jsx": "frontend/portal-react/system/features/queue/management.jsx",
-  "frontend/portal-react/system/pages/queue-secret-management.html": "frontend/portal-react/system/features/queue/management.html",
   "frontend/portal-react/system/PermitSidebar.jsx": "frontend/portal-react/system/shared/PermitSidebar.jsx",
   "frontend/portal-react/system/legacy-attributes.js": "frontend/portal-react/system/shared/legacy-attributes.js",
   "frontend/monitorBP frontend/admin-console.css": "frontend/portal-react/system/assets/permits/admin-console.css",

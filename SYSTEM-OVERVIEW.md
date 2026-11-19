@@ -3,7 +3,10 @@
 For the file-by-file maintainer comment map, see [CODE-DOCUMENTATION.md](CODE-DOCUMENTATION.md).
 For a new office host with empty PostgreSQL databases, see the [IT handoff guide](docs/it-handoff.md).
 
-Runtime updated October 1, 2026 for the PostgreSQL cutover. Earlier feature sections retain historical implementation notes; see POSTGRES-MIGRATION.md for PostgreSQL SQL conversions, locking and validation. The field reference originated from a read-only database inspection on September 17.
+The application runs on PostgreSQL. The dated implementation notes and September
+schema appendix document earlier releases. Use the [PostgreSQL migration
+guide](POSTGRES-MIGRATION.md) for the cutover and [PostgreSQL backup and
+recovery](POSTGRES-BACKUP-RECOVERY.md) for current backup instructions.
 
 ## 1. What this project is
 
@@ -26,15 +29,17 @@ introductions use rounded panels without the decorative yellow dash. Permit
 layout rules live in `system/assets/permits/permit-sidebar.css`, and queue rules
 live in `system/assets/queue/queue-workspace.css` under the React frontend source.
 
-### Queue entry flow (October 1, 2026)
+### Queue entry flow
 
 The portal opens `/log-in.html`, a dedicated queue username/password page.
 Successful sign-in opens `/workstations.html`; that route checks the queue cookie
 on the server and redirects anonymous visitors to login. Workstation selection
 no longer contains a credential form. Window selection still uses the existing
 authenticated lease API. Logout on the selection page invalidates the queue session.
-Direct kiosk and monitor URLs remain public for unattended devices. Media uploads
-and audit logs require staff permissions, and the public queue feed omits client names and contact details.
+Direct kiosk and monitor URLs remain public for unattended devices. Audit logs
+require staff permissions. The public queue feed omits client names and contact
+details. The monitor displays tickets and announces calls. Former playlist
+bookmarks lead to the workstation chooser.
 
 Edit `frontend/portal-react/system/features/queue/login.jsx` for both layouts and
 the companion `login.html` for styles/controllers. The publisher copies this shell
@@ -50,19 +55,27 @@ The Permit service sends `/` to the public portal at `/portal.html`. The Permit 
 
 This is a local office application containing a systems portal, building and occupancy permit management, permit administration, and queue management. It uses two independent Express servers and two PostgreSQL databases. The portal links the systems together; it does not merge their databases. The old MariaDB databases are retained only for rollback and are not synchronized.
 
-The frontend is a **hybrid React application**. The portal uses React for its layout and interactive state. Thirteen other active pages use React for their initial layouts, while existing JavaScript controllers continue to handle forms, table rendering, approvals, validation, and queue updates. It is not yet a complete rewrite into React hooks and state.
+The frontend is a **hybrid React application**. The portal uses React for its layout and interactive state. Permit and Queue pages use React for their initial layouts, while JavaScript controllers handle forms, table rendering, approvals, validation, and queue updates.
 
 ## 2. Technology stack
 
 ### Project identifiers
 
-Building and occupancy records display independent project references: `BP-1` and `OP-1`. The shared `frontend/portal-react/system/assets/permits/project-identity.js` formatter prefixes each record's existing positive database primary key without adding leading zeros. For example, occupancy ID 6 displays as `OP-6`; ID 10000 displays without truncation. No new table, column, migration, or renumbering is involved. The existing `AUTO_INCREMENT` primary keys in `permits` and `occupancy_permits` allocate numbers independently when records are inserted, including concurrent inserts. Normal edits and sorting do not change them, and normal deletion does not renumber remaining records. Gaps are expected. Database resets or restoring an older backup must not be treated as preserving a global lifetime sequence.
+Building and occupancy records display independent project references. The shared
+`frontend/portal-react/system/assets/permits/project-identity.js` formatter
+prefixes each positive database primary key with `BP-` or `OP-`. PostgreSQL
+identity columns in `permits` and `occupancy_permits` allocate the numbers
+independently. For example, occupancy ID 6 displays as `OP-6`. Normal edits and
+deletion preserve the identifiers of other records. Gaps are expected. The
+checked-in schema starts at `BP-53`, `OP-7`, and `TKT-1014` on new databases.
+An active queue reset restarts the ticket sequence at `TKT-1001` and archives
+the old tickets. [IT handoff guide](docs/it-handoff.md)
 
 References appear in both registries and workspace details and are included in registry search. They are read-only display identifiers; API routes and foreign keys continue using numeric IDs. The occupancy BP Reference field remains separate and is not automatically linked to a building permit by this feature. Sub-permits remain under their existing parent project. Numbering and search checks run with `node --test "frontend/portal-react/system/tests/project-identity.test.cjs" "frontend/portal-react/system/tests/registry-filters.test.cjs"`.
 
 | Layer | Current technology | Responsibility |
 |---|---|---|
-| Page layouts | React 19, JSX | Portal and the 13 active permit/queue layouts |
+| Page layouts | React 19, JSX | Portal, Permit and Queue layouts |
 | Build tool | Vite 8 | Compiles React into browser JavaScript |
 | Portal styling | Tailwind CSS 4 plus custom CSS | Portal layout, colors, responsive styling |
 | Other page styling | Existing custom CSS | Preserves established permit and queue designs |
@@ -72,9 +85,8 @@ References appear in both registries and workspace details and are included in r
 | Backend framework | Express 4 | Static pages and JSON APIs |
 | Database | PostgreSQL 18.6 | Persistent application records |
 | SQL access | pg through backend/database | Compatibility adapter, pools and transactions; mysql2 retained for migration/rollback |
-| Realtime queue transport | Socket.IO 4 | Broadcasts queue and playlist changes |
+| Realtime queue transport | Socket.IO 4 | Broadcasts queue changes |
 | Permit password hashing | bcryptjs | Hashing and checking account passwords |
-| Media upload | Multer 2 | Writes queue monitor videos to disk |
 | Testing | Node test runner; jsdom for React layout checks | Workflow safeguards and DOM compatibility |
 
 This project does not use Next.js, Angular, Vue, TypeScript, Prisma, or a full shadcn/ui installation. The portal button is shadcn-style, using Radix and utility classes. Exact dependency versions are recorded in each package-lock.json; package.json contains the allowed version ranges.
@@ -169,18 +181,22 @@ For the main portal, Express serves the published hashed JavaScript bundle, not 
 | Permit | /login or /login.html | Building operator sign-in and account request |
 | Permit | /occupancy_login.html | Occupancy operator sign-in and account request |
 | Permit | /admin-login.html | Administrator/superadministrator sign-in |
-| Building | / or /index.html | Registry, search/filter, creation, progress and details |
+| Building | /index.html | Registry, search/filter, creation, progress and details |
 | Building | /edit?id=... or /edit.html?id=... | Project workspace |
 | Occupancy | /occupancy or /occupancy.html | Occupancy registry |
 | Occupancy | /occupancy/edit?id=... or /occupancy_edit.html?id=... | Clearance/inspection workspace |
-| Administration | /superadmin or /superadmin.html | Requests and account administration |
-| Queue | /log-in.html | Select workstation |
+| Administration | /admin | Permit requests, final review, and reports |
+| Administration | /superadmin or /superadmin.html | Account requests and administration |
+| Queue | /log-in.html | Staff sign-in |
+| Queue | /workstations.html | Workstation selection and staff tools |
 | Queue | /kiosk.html | Registration and clerk workspaces |
 | Queue | /monitor.html | Public queue display and spoken ticket calls |
 | Queue | /audit-logs.html | Queue activity viewer |
-| Queue | /secret-management.html | Monitor media management |
+| Queue | /client-history.html | Service Summary with issued ticket counts |
+| Queue | /reports.html | Queue Reports |
 
-The permit backend still declares legacy /register and /admin routes referencing files absent from the current frontend. Use the access page and /superadmin flow above. Those existing routes were not changed during cleanup.
+The former Queue playlist URL `/secret-management.html` redirects to
+`/workstations.html`. The workstation chooser requires a staff session.
 
 ## 6. Main user workflows
 
@@ -217,7 +233,12 @@ Operators can request inspection deletion through the existing occupancy change-
 
 ### Queue management
 
-A device selects Registration Kiosk, Window 1, Window 2, Window 3 or Monitor. active_workstations tracks occupancy of workstations. Registration issues tickets. Clerk actions call, recall, hold, unhold or drop tickets. Socket.IO broadcasts queueUpdate so connected screens refresh; playlistUpdate notifies monitor media changes. A stable request key prevents an uncertain/retried ticket submission from issuing another ticket. Reset requires explicit confirmation.
+A device selects the Registration Desk, Window 1, Window 2, Window 3 or
+Monitor. `active_workstations` tracks workstation occupancy. Registration issues
+tickets using the selected service. Clerk actions call, recall, hold, unhold or
+drop tickets. Socket.IO broadcasts `queueUpdate` so connected screens refresh.
+A stable request key prevents an uncertain or retried ticket submission from
+issuing another ticket. Reset requires explicit confirmation.
 
 ## 7. Backend module and API map
 
@@ -231,8 +252,8 @@ A device selects Registration Kiosk, Window 1, Window 2, Window 3 or Monitor. ac
 | stationDates.js | Date validation/normalization and nullable date-column migration |
 | projectRecords.js | Remarks endpoints, activity auditing and author checks |
 | projectChanges.js | Human-readable before/after change summaries |
-| maintenance/permit-backup.js | Permit backup creation, listing and isolated recovery verification |
-| queueServer.js | Queue APIs, Socket.IO, workstation sessions, media and audit logging |
+| backend/migration/postgres-backup.cjs | Both PostgreSQL backups, manifests and isolated recovery verification |
+| queueServer.js | Queue APIs, Socket.IO, workstation sessions and audit logging |
 | ticket-submission.js | Queue submission validation and idempotency |
 
 Representative API families (consult source for exact payloads and authorization):
@@ -256,11 +277,14 @@ Representative API families (consult source for exact payloads and authorization
 | /api/tickets and /api/tickets/{call-next,recall,hold,unhold,drop} | Queue ticket operations |
 | /api/system/reset | Queue reset |
 | /api/logs | Queue audit retrieval |
-| /api/videos/upload, /api/videos/playlist | Monitor media |
+| /api/reports | Queue report totals and timing |
 
 ## 8. Data storage and relationships
 
-The live metadata inspection found **13 tables in permit_system** and **18 tables in queue_system**. Only five queue tables are referenced by the current queue implementation: tickets, active_workstations, audit_logs, videos and ticket_submission_keys. The other 13 are permit-related tables already present there. They were preserved; their presence does not establish synchronization with permit_system.
+The local setup uses `permit_system_migration` for staff and permit records and
+`queue_system_migration` for active and archived tickets, workstation state and
+queue activity. The queue service uses the Permit database to check staff
+accounts. The legacy `videos` table can remain in the queue database for recovery.
 
 Building permits relate to lots, sub-permits and routing rows. Occupancy permits relate to routing, inspections and one checklist. Change requests identify a project and requester. Several child relationships use ON DELETE CASCADE. project_records intentionally retains its own project/actor snapshots without a foreign key that would erase the audit feed when a project is removed; the current read endpoint still requires a live project.
 
@@ -268,22 +292,33 @@ Date-only fields are kept as YYYY-MM-DD/calendar values rather than converting t
 
 | Storage | Contents |
 |---|---|
-| MariaDB | Accounts, permits, stations, requests, posted Remarks, Logs, inspections, checklist state, queue tickets and media metadata |
+| PostgreSQL | Accounts, permits, stations, requests, Remarks, Logs, inspections, checklist state and queue tickets |
 | sessionStorage | Current permit account, queue workstation, per-tab filters/drafts and temporary workflow state |
 | localStorage | Theme and personal station template preferences |
 | engineeringTheme cookie | Shares theme selection across localhost ports; this is not an authentication cookie |
-| frontend/queue frontend/uploads | Uploaded video files; preserve alongside queue database backups |
-| External backup directory | Permit backup SQL, manifests and verification reports |
+| frontend/queue frontend/uploads | Legacy uploads that may be present on older installations |
+| External backup directory | PostgreSQL archives, manifests, recovered legacy media and verification reports |
 
-The field-level schema appendix below is generated from current information_schema metadata, without reading application record contents.
+The field-level schema appendix records the September 17 MariaDB inspection.
+Use the SQL under `backend/migration` for PostgreSQL schema definitions.
 
 ## 9. Authentication and current limitations
 
-Permit roles are operator, admin and superadmin. Accounts have verification and active flags; passwords are hashed with bcryptjs. Random opaque session cookies authenticate requests. SHA-256 token hashes are stored in permit_sessions with an eight-hour absolute expiry. Active/verified flags and the current role are queried on every request. Client identity headers cannot grant access; x-user-id is only a stale-tab hint and a mismatch is rejected. Logs and approval workflows use req.user from the verified session.
+Permit roles are operator, admin and superadmin. Accounts have verification and
+active flags. Passwords are hashed with bcryptjs. Random opaque cookies
+authenticate requests through SHA-256 token hashes stored in `permit_sessions`,
+with a 30-minute inactivity limit and an eight-hour maximum lifetime. A new
+sign-in replaces the account's prior session across Permit and Queue. Requests
+check the account's current role and activation. Logs and approvals use the
+verified session identity.
 
-Queue workstation selection is a separate mechanism from permit accounts. The permit server permits cross-origin reads only for its public health endpoint; the queue server still permits broad CORS. Both retain local database configuration in code. Some frontend links are hardcoded to localhost. Internet deployment or access from other computers needs a separate configuration and security review; changing to React does not resolve those limitations.
+Queue workstation selection uses a lease tied to an authenticated Queue
+session. Set the service origins and review cookie, proxy, and cross-origin
+settings before exposing either service beyond the local host.
+[Security configuration](SECURITY-CONFIGURATION.md)
 
-Startup includes schema-alignment and initial account setup logic. Do not treat a successful Node startup alone as proof that all database objects were provisioned correctly. The queue server does not contain a complete installer for its existing schema.
+Provision the PostgreSQL schema and the first Superadmin during installation.
+The services validate the schema when starting. [IT handoff guide](docs/it-handoff.md)
 
 ## 10. React ownership rules
 
@@ -295,17 +330,20 @@ This architecture preserves the existing look and allows gradual improvement, bu
 
 ## 11. Install, run and rebuild
 
-Run commands from the stated folders. There is no root npm project; the three package.json files own separate dependencies.
+Run commands from the stated folders. The app, database adapter, migration
+tools and frontend build each have their own dependencies.
 
 ### Install dependencies when setting up another computer
 
-In each of backend/monitorBP backend, backend/queue backend and frontend/portal-react:
+Follow the [IT handoff guide](docs/it-handoff.md) to install runtime dependencies
+and provision both databases. To rebuild the browser files, install the frontend
+dependencies from the repository root.
 
 ```powershell
-npm ci
+npm.cmd --prefix "frontend/portal-react" ci
 ```
 
-Use the committed/preserved lockfile for each directory. Node 22.16.0 has been used on this PC. PostgreSQL must be running and the databases and per-user encrypted connection configuration must be provisioned separately. Do not copy only the frontend and expect persistent data to come with it.
+Use the committed lockfile for each directory. PostgreSQL must be running.
 
 ### Start the existing system
 
@@ -381,7 +419,13 @@ Common diagnoses:
 
 ## 13. Backup and recovery
 
-The implemented tool covers **permit_system only**. From backend/monitorBP backend:
+Follow the [PostgreSQL backup and recovery guide](POSTGRES-BACKUP-RECOVERY.md)
+to back up both live databases, verify a restore, or install the scheduled job.
+
+### Historical MySQL backup procedure
+
+The former tool covered **permit_system only**. The historical commands ran
+from `backend/monitorBP backend`:
 
 ```powershell
 node maintenance/permit-backup.js create
@@ -395,7 +439,8 @@ Creation discovers current tables and produces a SQL dump and integrity manifest
 
 The September 10 verification covered the 12 tables present at that time. The schema has since added project_records, permit_sessions and the three People/Profile tables described below; create and verify a fresh backup after the latest server initialization. No new backup was created by this cleanup.
 
-The current tool does not back up queue_system, uploaded queue videos, project source, Windows configuration or database server accounts. Those need separate coordinated backups. There is no automatic schedule, off-device copy, retention policy or one-click live restore in this implementation.
+The original MySQL procedure omitted `queue_system`, legacy queue uploads,
+project source, Windows configuration and database server accounts.
 
 ## 14. Cleanup performed September 16, 2026
 
@@ -405,7 +450,7 @@ Preserved current published bundles, source images, active pages, workflow modul
 
 The originals and generated files still present have documented roles. Do not delete them simply because filenames resemble the live pages. Future cleanup should follow references and build ownership rather than remove duplicates by name.
 
-## 15. Field-level schema reference
+## 15. Historical field-level schema reference
 
 Legend: PK = primary key; UNI = unique-index participation; MUL = non-unique-index participation. A column's key marker alone does not describe the complete definition of a composite index. Nullable means SQL NULL is allowed. Defaults, index order, triggers and complete DDL are not reproduced here; this appendix is a field/relationship reference, not a restoration script.
 
@@ -643,7 +688,7 @@ Declared foreign keys: `permit_id` → `permits.id`.
 
 Additional existing tables, not referenced by the current queue backend: `occupancy_change_requests`, `occupancy_checklists`, `occupancy_inspections`, `occupancy_permits`, `occupancy_routing_matrix`, `permits`, `permit_change_requests`, `permit_lots`, `permit_routing_matrix`, `sub_permits`, `system_disciplines`, `users`. These are preserved and not treated as disposable data.
 
-### Queue service transitions
+### Queue service transitions during the September rollout
 
 `backend/queue backend/queue-service.js` owns call-next, recall, hold, and complete transitions. Each window has its own current ticket (`status = serving`, `called_by = PC1/PC2/PC3`). Calling from either waiting or holding is rejected while that window is occupied. The server selects eligible reasons from its own window mapping. Recall, hold, and completion require the current ticket ID; stale requests cannot act on the next visitor.
 
@@ -654,7 +699,7 @@ Socket updates include all `serving` tickets and retain `nowServing` for the lat
 Validation: run `node --test queue-service.test.cjs ticket-submission.test.cjs` from `backend/queue backend`. Tests use connection-local temporary tables so application ticket records remain untouched; they cover the A/B hold sequence, window isolation, stale requests, completion, recall, schema upgrade, and lock contention.
 
 
-### Permit sessions: operation and testing
+### Permit sessions during the September rollout
 
 The session rollout adds `permit_sessions` (token_hash, user_id, expires_at, created_at). Startup completes schema initialization before opening port 3000. Existing accounts/passwords are preserved: startup no longer seeds default administrator passwords or resets existing credentials. A fresh database must have accounts provisioned separately; restarting is not a password recovery mechanism.
 
@@ -832,7 +877,7 @@ authLimits.js keeps at most 5,000 hashed counter keys in memory, removes expired
 Validation: node --test authLimits.test.cjs from backend/monitorBP backend uses fake clocks and an isolated HTTP server with a mock database, covering cooldown expiry, address isolation, forwarding-header spoofing, successful login resets, memory capacity, password boundaries, and route enforcement.
 
 
-### Queue staff authorization
+### Queue staff authorization during the initial rollout
 Windows 1–3 require an approved, active Operator, Admin, or Superadmin account from the Permit database. Sign in on the Queue login page. Permit and Queue have separate HttpOnly cookies and share the Permit session table. A new sign-in replaces the account's previous session across both apps. Password changes revoke the account's sessions, and API requests check the account's active status and role. Queue login reuses the Permit login throttling and password verification.
 
 The queue server connects to the account database using PERMIT_DB_HOST, PERMIT_DB_USER, PERMIT_DB_PASSWORD, and PERMIT_DB_NAME (local defaults match the current installation). The account database must be reachable, though the permit HTTP server need not be running. PERMIT_COOKIE_SECURE=true enables secure cookies behind HTTPS; QUEUE_PUBLIC_ORIGIN defines the trusted queue origin behind a proxy. Protected writes require the same origin and the x-queue-request header.

@@ -9,8 +9,9 @@ backup scripts. The current targets are `permit_system_migration` and
 - Both complete PostgreSQL databases in compressed custom-format `.dump` archives.
 - Tables, records, account password hashes, indexes, constraints, identities,
   collations, functions and triggers.
-- Every distinct video file referenced by the queue's `videos` table. Preview
-  uploads take precedence over original uploads, matching the preview server.
+- Any existing local video files referenced by the retired playlist's `videos`
+  table. When both copies exist, the backup keeps the preview copy, as the former
+  playlist did.
 - A manifest with archive/media SHA-256 checksums and per-table record checksums.
 - A recovery report describing what was restored and verified.
 
@@ -20,8 +21,9 @@ The two databases have independent snapshots; this is not a cross-database atomi
 snapshot or continuous point-in-time recovery. A final migration cutover still
 requires a brief coordinated pause in writes.
 
-The permit backend's npm shortcuts use this PostgreSQL workflow and cover both
-databases plus local queue videos:
+The permit backend's npm shortcuts back up both databases and any referenced
+legacy local queue media. Run them from the repository root after installing
+the migration dependencies with `npm.cmd --prefix "backend/migration" ci`.
 
 ```powershell
 npm.cmd --prefix "backend/monitorBP backend" run backup:create
@@ -35,7 +37,7 @@ backups; it does not back up the current PostgreSQL databases.
 
 Backups are stored here, outside the website and OneDrive project:
 
-`C:\Users\Majin\PermitManagementPostgresBackups`
+`%USERPROFILE%\PermitManagementPostgresBackups`
 
 The wrapper restricts folder permissions to the current Windows account, SYSTEM,
 and Administrators. These archives contain confidential information. They are
@@ -44,17 +46,23 @@ computer does not protect against loss of that computer/drive; an external or
 off-device copy is still needed. No backups are automatically deleted currently.
 
 Database login credentials are not exported. The wrapper reads the existing
-Windows DPAPI configuration from `C:\Users\Majin\PermitManagementConfig` and passes
+Windows DPAPI configuration from `%USERPROFILE%\PermitManagementConfig` and passes
 the password only to child-process environments. DPAPI credentials are tied to the
 Windows user/machine; they are not portable disaster-recovery credentials.
 
 ## Automatic daily job
 
-Windows Task Scheduler task: **Office PostgreSQL Verified Backup**.
+To install **Office PostgreSQL Verified Backup**, run this from the repository
+root under the Windows account that configured PostgreSQL access.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\backend\migration\Install-PostgresBackupTask.ps1
+```
 
 - Daily at **02:00 Manila time**, with missed runs started when available.
-- Runs under Majin's Windows account while that account is signed in; the computer
-  must be awake. Codex, pgAdmin and the Node website servers need not be open.
+- Runs under the Windows account that installs the task while it is signed in.
+  The computer must be awake. Codex, pgAdmin and the Node website servers need
+  not be open.
 - The PostgreSQL Windows service must be running.
 - Every run creates a backup and performs an isolated restore drill.
 - Duplicate runs are blocked by Task Scheduler and an exclusive operation lock.
@@ -62,7 +70,7 @@ Windows Task Scheduler task: **Office PostgreSQL Verified Backup**.
 
 Check Task Scheduler's **Last Run Result** (0 means the wrapper succeeded), plus:
 
-`C:\Users\Majin\PermitManagementPostgresBackups\latest-operation.json`
+`%USERPROFILE%\PermitManagementPostgresBackups\latest-operation.json`
 
 The result must show `status: passed`. A new backup folder by itself does not prove
 that verification completed. Each valid backup has `manifest.json` with
@@ -78,22 +86,23 @@ chosen private off-device backup location.
 
 ## Manual commands
 
-Create a fresh backup and automatically verify it by restoring:
+Run the following commands from the repository root. Create a fresh backup and
+automatically verify it by restoring:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Users\Majin\OneDrive\Desktop\OJT Projects Final\backend\migration\Postgres-Backup.ps1" -Action backup
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\backend\migration\Postgres-Backup.ps1 -Action backup
 ```
 
 List existing backups and verify their file checksums:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Users\Majin\OneDrive\Desktop\OJT Projects Final\backend\migration\Postgres-Backup.ps1" -Action list
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\backend\migration\Postgres-Backup.ps1 -Action list
 ```
 
 Repeat the recovery drill for a particular backup (replace BACKUP-ID):
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Users\Majin\OneDrive\Desktop\OJT Projects Final\backend\migration\Postgres-Backup.ps1" -Action verify -BackupId "BACKUP-ID"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\backend\migration\Postgres-Backup.ps1 -Action verify -BackupId "BACKUP-ID"
 ```
 
 Backup IDs look like `pg-office-20260930214627-7e3d29fd20c7`; the time in the ID is
@@ -106,10 +115,10 @@ UTC. That example was created on 1 October, 05:46 Manila time.
    credentials; do not expect the old DPAPI configuration to decrypt there.
 2. Place a complete trusted backup folder under the private backup root. Keep its
    manifest, dump files and media subfolder together. Check it with `-Action list`.
-3. Run the following, replacing BACKUP-ID:
+3. Run the following from the repository root, replacing BACKUP-ID:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Users\Majin\OneDrive\Desktop\OJT Projects Final\backend\migration\Postgres-Backup.ps1" -Action restore-new -BackupId "BACKUP-ID"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\backend\migration\Postgres-Backup.ps1 -Action restore-new -BackupId "BACKUP-ID"
 ```
 
 4. The command creates uniquely named `office_restore_permit_...` and
@@ -122,7 +131,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Users\Majin\OneDrive
    runtime roles or passwords to exist on a replacement server.
 6. Before activating recovery, create/reconfigure the limited runtime accounts,
    reapply their table/sequence grants and queue-reset function EXECUTE grant,
-   restore media to the chosen deployment directory, and clear restored login
+   preserve any recovered legacy media with the backup, and clear restored login
    sessions/presence/workstation state. The existing migration scripts show the
    required role privileges; do not use the postgres administrator for the websites.
 7. Choose the final database names and update the connection configuration and

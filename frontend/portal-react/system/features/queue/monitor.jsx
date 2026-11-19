@@ -1,15 +1,14 @@
 /** MAINTAINER GUIDE
- * Public monitor layout. Preserve controller IDs and legacy handler attributes.
+ * Public monitor layout. Preserve the IDs used by the queue controller.
  * React mounts once; the companion HTML controller owns live queue updates.
  */
 import React from 'react'
-import { legacyAttributes } from '../../shared/legacy-attributes'
 
 export default function Page() {
   return <>
     <div className="header">
       <div className="header-content site-header queue-site-header">
-        <div className="monitor-brand" ref={legacyAttributes({ondblclick: "window.location.href='secret-management.html'", style: 'cursor:default;user-select:none;'})}>
+        <div className="monitor-brand">
           <img className="monitor-seal" src="assets/laoag-city-official-seal.png" alt="Laoag City official seal" />
           <div className="header-text"><h1>Office of the City Engineer</h1><p className="header-subtitle">Building and Occupancy Permit Queue</p></div>
         </div>

@@ -1,5 +1,9 @@
 # Queue reports and video playlist
 
+This guide records the original rollout. The current Queue release has retired
+the Video Playlist. See the [IT handoff](../../docs/it-handoff.md) for current
+setup and acceptance checks. The playlist SQL remains part of schema history.
+
 The workstation chooser links to Reports and Video Playlist under Other Tools.
 Both require an active operator, admin, or superadmin session. Video management
 does not grant operators access to account administration, audit logs, or reset.

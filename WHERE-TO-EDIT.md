@@ -22,7 +22,8 @@ Within `frontend/portal-react/system/features/`, each page has:
 | Queue service desk / clerk controls | `queue/service-desk.jsx` and `queue/service-desk.html` |
 | Queue monitor | `queue/monitor.jsx` and `queue/monitor.html` |
 | Queue audit logs | `queue/audit-logs.jsx` and `queue/audit-logs.html` |
-| Queue management | `queue/management.jsx` and `queue/management.html` |
+| Queue service summary | `queue/client-history.jsx` and `queue/client-history.html` |
+| Queue reports | `queue/reports.jsx` and `queue/reports.html` |
 | Printable project summary | `printing/project-summary.html`, `.js`, and `.css` |
 
 The old occupancy/admin sign-in layouts live in `auth/legacy-*.jsx/.html` for compatibility.
@@ -53,27 +54,24 @@ stylesheet change is being overridden. The organization does not rewrite control
 
 ## Save → publish → refresh
 
-**Always run the publish commands from `frontend/portal-react`, not from the
-folder containing the JSX file you edited.** This is the folder containing
-`package.json`. If your terminal is already there, you do not need to run `cd` again.
+Run the publish commands from `frontend/portal-react`, which contains
+`package.json`, or use the repository-root commands below.
 
 | What you edited | Command from `frontend/portal-react` |
 |---|---|
 | Landing portal under `src/` | `npm.cmd run publish:local` |
 | Building, Occupancy, admin, Queue, sidebar, or shared assets under `system/` | `npm.cmd run publish:system` |
 
-For **any system page, shared component, CSS, or browser helper**:
+From the repository root, publish **any system page, shared component, CSS, or browser helper**:
 
 ```powershell
-cd "C:\Users\Majin\OneDrive\Desktop\OJT Projects Final\frontend\portal-react"
-npm.cmd run publish:system
+npm.cmd --prefix "frontend/portal-react" run publish:system
 ```
 
 For **the landing portal**:
 
 ```powershell
-cd "C:\Users\Majin\OneDrive\Desktop\OJT Projects Final\frontend\portal-react"
-npm.cmd run publish:local
+npm.cmd --prefix "frontend/portal-react" run publish:local
 ```
 
 Use `npm.cmd` to avoid PowerShell's blocked `npm.ps1` shortcut. Refresh afterward;

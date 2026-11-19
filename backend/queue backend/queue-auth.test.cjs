@@ -43,10 +43,6 @@ test('production routes wire authorization before mutations and constrain ticket
  assert.ok(source.includes("app.post('/api/tickets/unhold', queueAuth.protectWrite, queueAuth.requireWindow"));
  assert.ok(source.includes("app.post('/api/system/reset', queueAuth.protectWrite, sessions.requireRoles('admin','superadmin')"));
  assert.ok(source.includes('workspace:req.queueWorkspace'));
- assert.ok(source.includes('registerVideoPlaylist(app, {storage:videoStorage, sessions, protectWrite:queueAuth.protectWrite'));
- const media=fs.readFileSync(path.join(__dirname,'video-playlist.js'),'utf8');
- assert.ok(media.includes("sessions.requireRoles('operator', 'admin', 'superadmin')"));
- assert.ok(media.includes("app.post('/api/videos/upload', noStore, protectWrite, staff, receiveVideo"));
  assert.ok(source.includes("app.get('/api/logs', sessions.requireRoles('admin','superadmin')"));
  const service=fs.readFileSync(path.join(__dirname,'queue-service.js'),'utf8');
  assert.ok((service.match(/reason IN \(\?\)/g)||[]).length>=3);

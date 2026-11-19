@@ -1,6 +1,6 @@
 /**
  * MAINTAINER GUIDE
- * Queue API, workstation sessions, media routes, and Socket.IO updates (port 5000).
+ * Queue API, workstation sessions, and Socket.IO updates (port 5000).
  * The database supplies queue state; broadcasts let kiosks, clerks, and the public monitor refresh after changes.
  * Use ticket-submission.js for ticket creation so retries retain the same submission identity. Queue reset is a separate destructive operation.
  */
@@ -10,10 +10,6 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const mysql = require('../database');
 const path = require('path');
-const multer = require('multer'); 
-const fs = require('fs'); 
-const crypto = require('node:crypto');
-const os = require('node:os');
 
 const app = express();
 const PORT = Number(process.env.PORT || process.env.QUEUE_PORT || 5000);
@@ -65,37 +61,6 @@ const queueTransition = createQueueService(db);
 const ticketSubmissions = require('./ticket-submission').createTicketSubmission(db);
 const {registerClientHistory, ensureClientHistorySchema, resetQueueWithHistory} = require('./client-history');
 const {registerQueueReports, ensureReportSchema} = require('./queue-reports');
-const {registerVideoPlaylist, ensureVideoSchema} = require('./video-playlist');
-
-// --- Video Upload Configuration ---
-const uploadDir = process.env.QUEUE_VIDEO_STORAGE === 'cloudinary'
-    ? path.join(os.tmpdir(), 'ojt-queue-video-uploads')
-    : process.env.OFFICE_MEDIA_DIR || (process.env.OFFICE_PG_PREVIEW==='1'
-    ? path.join(__dirname, '..', 'migration', 'preview-uploads')
-    : path.join(__dirname, '..', '..', 'frontend', 'queue frontend', 'uploads'));
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
-        cb(null, crypto.randomUUID() + path.extname(file.originalname).toLowerCase());
-    }
-});
-const upload = multer({storage, limits:{fileSize:100000000, files:1}, fileFilter(req,file,cb) {
-    const valid = file.mimetype.startsWith('video/') && /\.(mp4|webm|mov|m4v)$/i.test(file.originalname);
-    cb(valid ? null : Object.assign(Error('Choose an MP4, WebM, MOV or M4V video.'), {status:400}), valid);
-}});
-const originalUploadDir = path.join(__dirname, '..', '..', 'frontend', 'queue frontend', 'uploads');
-const videoStorage = require('./video-storage')(db, uploadDir, process.env, undefined, [originalUploadDir]);
-function receiveVideo(req,res,next) {
-    upload.single('videoFile')(req,res,error=>{
-        if (!error) return next();
-        res.status(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({success:false,
-            message:error.code === 'LIMIT_FILE_SIZE' ? 'Choose a video smaller than 100 MB.' : 'Choose one MP4, WebM, MOV or M4V video.'});
-    });
-}
 
 // --- Audit Log Writer ---
 async function writeLog(user_station, action, details) {
@@ -193,7 +158,8 @@ app.get('/workstations.html', sessions.resolve, (req,res,next) => {
     }
     next();
 });
-app.get(['/client-history.html','/reports.html','/secret-management.html'], sessions.resolve, (req,res,next) => {
+app.get('/secret-management.html', (req,res) => res.redirect('/workstations.html'));
+app.get(['/client-history.html','/reports.html'], sessions.resolve, (req,res,next) => {
     res.set('Cache-Control','no-store');
     if (!req.user) {
         sessions.clearCookie(res);
@@ -203,7 +169,6 @@ app.get(['/client-history.html','/reports.html','/secret-management.html'], sess
 });
 // Serve frontend static directory directly
 require('../database/preview')(app,path.join(__dirname, '..', '..', 'frontend', 'queue frontend'));
-app.use('/uploads',express.static(uploadDir));
 app.use(require('../database/preview').assets(path.join(__dirname, '..', '..', 'frontend', 'queue frontend')));
 app.use(express.static(path.join(__dirname, '..', '..', 'frontend', 'queue frontend')));
 
@@ -211,10 +176,6 @@ app.use(express.static(path.join(__dirname, '..', '..', 'frontend', 'queue front
 app.get('/portal.html', (req, res) => {
     res.sendFile(path.join(__dirname, '..', '..', 'frontend', 'portal.html'));
 });
-
-registerVideoPlaylist(app, {storage:videoStorage, sessions, protectWrite:queueAuth.protectWrite,
-    receiveVideo, writeLog, io,
-    displayName:user=>require('../monitorBP backend/stationAccess').displayName(accountDb,user)});
 
 // 1. Workstation Session Management (Login)
 app.post('/api/workstations/login',queueAuth.protectWrite,sessions.requireRoles('operator','admin','superadmin'),queueAuth.claim);
@@ -326,7 +287,7 @@ app.get('/api/logs', sessions.requireRoles('admin','superadmin'), async (req, re
 
 // Boot listening layer
 Promise.all([ensureQueueSchema(db),sessions.initialize(),ticketSubmissions.initialize(),ensureClientHistorySchema(db)])
-.then(() => Promise.all([ensureReportSchema(db),ensureVideoSchema(db)]))
+.then(() => ensureReportSchema(db))
 .then(() => server.listen(PORT, process.env.OFFICE_BIND_HOST || undefined, () => {
     console.log(`====================================================`);
     console.log(` Queue database engine: ${mysql.dialect} `);

@@ -100,7 +100,10 @@ to make the six UAT tickets first.
 - [ ] Call a ticket from each window. Check that the correct ticket appears and the voice reads its number and window. With autoplay allowed, this works without clicking the page.
 - [ ] On a browser that blocks autoplay, click anywhere on the monitor once. Call or recall a ticket and confirm it is audible through the monitor's speakers.
 - [ ] Recall a ticket and verify it is announced again. Update a different window and check that unchanged tickets are not repeated.
-- [ ] For the separate staff Video Playlist page, verify upload, preview, reorder, and enable or disable with synthetic clips. The public monitor displays ticket information and announcements.
+- [ ] As a signed-in operator, verify that Registration Desk, the three service
+  windows, Service Summary, and Queue Reports still open. A former Video
+  Playlist bookmark (`/secret-management.html`) should open the workstation
+  chooser (`/workstations.html`).
 
 ## 6. Authentication and navigation regression
 
@@ -108,7 +111,7 @@ to make the six UAT tickets first.
   in Browser B. Browser A shows the session-replaced notice when it next checks
   the session or attempts an action. It cannot keep making authorized changes.
 - [ ] Remember that the one-active-login rule applies across Permit and Queue too.
-- [ ] Sign out and try reopening protected permit, report, and playlist URLs.
+- [ ] Sign out and try reopening protected permit and report URLs.
   Staff data/actions require signing in; the public monitor remains available.
 - [ ] Open `http://localhost:3000/register`. It redirects to the login page.
 - [ ] Check Back to portal from both systems. Local navigation stays on localhost.
@@ -116,7 +119,7 @@ to make the six UAT tickets first.
 ## 7. Reports and exports after the test flows
 
 - [ ] Open Queue reports for today's Manila date. Filter by each window and service.
-  The UAT clients appear in the correct cohort, without duplicate registrations.
+  The UAT tickets contribute once to the totals for the correct window and service.
 - [ ] Check Finished/Dropped counts against the UAT actions you recorded. Held time
   is excluded from service time. Older records without measured timing show unavailable
   timing rather than invented zero-duration service.
@@ -125,8 +128,8 @@ to make the six UAT tickets first.
 
 ## 8. PostgreSQL backup shortcut check
 
-The shortcuts now target both current PostgreSQL databases and local queue video
-files. Historical MySQL backups and their utility were retained.
+The shortcuts cover both current PostgreSQL databases and any existing local
+queue video files referenced by historical records.
 
 - [ ] List existing PostgreSQL backups:
 
@@ -142,13 +145,15 @@ npm.cmd --prefix "backend/monitorBP backend" run backup:create
 
 It creates a backup and verifies restoration into disposable databases. It does
 not replace the application databases. Expect a backup ID and successful verification.
-For details and verification of an existing ID, see `POSTGRES-BACKUP-RECOVERY.md`.
-This new backup/restore drill was **not run** as part of the code fixes.
+The November 19, 2026 UAT verified restoration from an existing archive. Run this
+fresh backup and restore drill to verify backup creation on the office host.
+[PostgreSQL backup and recovery](POSTGRES-BACKUP-RECOVERY.md)
 
 ## Automated verification
 
-See the [latest full local acceptance results](FULL-LOCAL-UAT-2026-11-19.md) for
-counts, coverage, and checks to complete on the actual office equipment.
+The [November 19, 2026 local acceptance results](FULL-LOCAL-UAT-2026-11-19.md)
+record counts and coverage for that release, including the former Video Playlist
+workflow.
 
 Record any failure with the page, account role, ticket/permit ID, action, expected
 result, actual result, and screenshot. Only submit deletion/cleanup for the UAT

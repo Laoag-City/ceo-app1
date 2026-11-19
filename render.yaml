@@ -43,17 +43,9 @@ services:
         value: Asia/Manila
       - key: PERMIT_COOKIE_SECURE
         value: "true"
-      - key: QUEUE_VIDEO_STORAGE
-        value: cloudinary
       - key: QUEUE_DATABASE_URL
         sync: false
       - key: PERMIT_DATABASE_URL
-        sync: false
-      - key: CLOUDINARY_CLOUD_NAME
-        sync: false
-      - key: CLOUDINARY_API_KEY
-        sync: false
-      - key: CLOUDINARY_API_SECRET
         sync: false
 # After Render assigns URLs, set PERMIT_PUBLIC_ORIGIN and QUEUE_PUBLIC_ORIGIN
 # on BOTH services to their actual HTTPS origins, then redeploy. Never guess URLs.

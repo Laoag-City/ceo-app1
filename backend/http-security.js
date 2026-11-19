@@ -51,8 +51,8 @@ function reportPolicy(env) {
         "script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
         "style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:",
-        "img-src 'self' data: blob: https://res.cloudinary.com",
-        "media-src 'self' blob: https://res.cloudinary.com",
+        "img-src 'self' data: blob:",
+        "media-src 'self' blob:",
         'connect-src '+[...connections].join(' '),
         "object-src 'none'", "base-uri 'self'", "form-action 'self'"
     ].join('; ');

@@ -10,12 +10,10 @@ $connections=@($apps.connections | ForEach-Object {
  @{source=$source;host=$_.host;port=$_.port;database=$_.database;user=$_.user;password=(Unseal-Password $_.passwordDpapi)}
 })
 $file=if($Service -eq 'permit'){Join-Path $PSScriptRoot '..\monitorBP backend\monitorServer.js'}else{Join-Path $PSScriptRoot '..\queue backend\queueServer.js'}
-# Retain the PostgreSQL-upload directory used during acceptance; the original
-# MySQL media directory remains a read-only fallback through the existing static route.
 $serverEnvironment=@{
  DB_ENGINE='postgres';TZ='Asia/Manila';OFFICE_PG_CONNECTIONS=($connections|ConvertTo-Json -Compress)
  PERMIT_PORT='3000';QUEUE_PORT='5000';PERMIT_COOKIE_NAME='permit_session';QUEUE_COOKIE_NAME='queue_session'
- OFFICE_BIND_HOST='127.0.0.1';OFFICE_PG_PREVIEW='0';OFFICE_MEDIA_DIR=(Join-Path $PSScriptRoot 'preview-uploads')
+ OFFICE_BIND_HOST='127.0.0.1';OFFICE_PG_PREVIEW='0'
  PERMIT_PUBLIC_ORIGIN=$null;QUEUE_PUBLIC_ORIGIN=$null
 }
 try{

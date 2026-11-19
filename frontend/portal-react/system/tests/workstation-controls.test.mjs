@@ -36,6 +36,16 @@ test('workstation descriptions show receiving and inquiries at Window 1 and rele
  } finally {f.dom.window.close()}
 })
 
+test('Other Tools contains the monitor and both reports', () => {
+ const f = fixture()
+ try {
+  const tools = f.d.querySelector('[aria-labelledby="otherToolsHeading"]')
+  const labels = [...tools.querySelectorAll('.station-label')].map(label => label.textContent)
+  assert.deepEqual(labels, ['Monitor Display', 'Service Summary', 'Queue Reports'])
+  assert.match(tools.querySelector('[data-value="Monitor"]').textContent, /Live queue and ticket announcements/)
+ } finally {f.dom.window.close()}
+})
+
 // JSDOM does not perform native button keyboard activation. Emulate that default
 // only when the real controller has not prevented it, as a browser would do.
 function activateKey(w, button, key) {

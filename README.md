@@ -4,7 +4,7 @@ Laoag City’s Building and Occupancy Permit system and service-window queue.
 The printable staff guide covers sign-in, daily work, account management,
 Windows startup, and recovery. [Open the operations guide (PDF)](docs/office-operations-guide.pdf)
 
-Start with the [IT handoff and fresh PostgreSQL setup](docs/it-handoff.md) to create empty databases, activate the first Superadmin, and verify both services. The [latest local acceptance results](FULL-LOCAL-UAT-2026-11-19.md) show what passed and what to check on the office hardware.
+Start with the [IT handoff and fresh PostgreSQL setup](docs/it-handoff.md) to create empty databases, activate the first Superadmin, and verify both services. Use the [local acceptance checklist](LOCAL-UAT-CHECKLIST.md) to verify the current version on office hardware. The [November 19, 2026 acceptance results](FULL-LOCAL-UAT-2026-11-19.md) record checks for the version tested on that date.
 
 | Role | Where to start |
 | --- | --- |
@@ -47,6 +47,7 @@ Install runtime dependencies from the repository root on a fresh checkout.
 npm.cmd --prefix "backend/database" ci
 npm.cmd --prefix "backend/monitorBP backend" ci
 npm.cmd --prefix "backend/queue backend" ci
+npm.cmd --prefix "backend/migration" ci
 ```
 
 With the PostgreSQL Windows service running, open two PowerShell terminals
@@ -61,6 +62,8 @@ npm.cmd --prefix "backend/queue backend" start
 The launcher reads the current Windows account’s encrypted configuration from
 `PermitManagementConfig\postgres-migration-apps.json` under its user profile.
 The local databases are `permit_system_migration` and `queue_system_migration`.
+The one-time setup creates empty databases using the repository schema, which
+starts new records at `BP-53`, `OP-7`, and `TKT-1014`.
 Check that the Permit and Queue health endpoints both return success.
 
 ```powershell
@@ -133,4 +136,4 @@ Neither command modifies database records or restarts a running server.
 - Implementation responsibilities. [Code documentation](CODE-DOCUMENTATION.md)
 - Frontend source and publishing instructions. [Frontend architecture](frontend/portal-react/system/README.md)
 
-Never commit credentials, private database backups, or uploaded confidential records. S
+Never commit credentials, private database backups, or uploaded confidential records.

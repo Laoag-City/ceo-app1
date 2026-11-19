@@ -74,12 +74,6 @@
     "source": "features/queue/audit-logs"
   },
   {
-    "id": "queue-secret-management",
-    "folder": "queue frontend",
-    "file": "secret-management.html",
-    "source": "features/queue/management"
-  },
-  {
     "id": "queue-client-history",
     "folder": "queue frontend",
     "file": "client-history.html",

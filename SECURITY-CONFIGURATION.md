@@ -39,13 +39,13 @@ memory; multiple instances would require a shared limiter store.
 - Express's identifying `X-Powered-By` header is disabled.
 
 These protections leave current inline scripts, event handlers, styles, live
-queue connections, media playback and download workflows usable. Preview mode
+queue connections and download workflows usable. Preview mode
 retains its extra network restrictions together with the framing policy.
 
 ## CSP resource policy: staged rollout
 
 `Content-Security-Policy-Report-Only` contains a stricter resource policy for the
-current application, fonts/icons, Cloudinary media and local/configured service
+current application, fonts/icons and local/configured service
 connections. It reports violations in the browser console without blocking
 resources. No external reporting endpoint is configured.
 

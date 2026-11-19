@@ -9,7 +9,6 @@ function WorkstationIcon({name,className=''}) {
   monitor:<><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></>,
   history:<><path d="M3 11a9 9 0 1 1 3 7M3 4v7h7M12 7v5l3 2"/></>,
   reports:<><path d="M4 3v18h17M8 17v-5M13 17V8M18 17V5"/></>,
-  video:<><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/></>,
   arrow:<path d="M5 12h14m-6-6 6 6-6 6"/>,
   open:<path d="M7 17 17 7M7 7h10v10"/>,
   check:<><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></>
@@ -56,10 +55,9 @@ export default function WorkstationChooser() {
     <section className="workstation-group" aria-labelledby="otherToolsHeading">
      <GroupHeading id="otherToolsHeading" title="Other Tools"/>
      <div className="workstation-tools-grid">
-      <button type="button" className="station-card workstation-tool" data-value="Monitor"><span className="station-symbol"><WorkstationIcon name="monitor"/></span><span className="station-label">Monitor Display</span><span className="station-sublabel">Queue announcements and office videos</span></button>
+      <button type="button" className="station-card workstation-tool" data-value="Monitor"><span className="station-symbol"><WorkstationIcon name="monitor"/></span><span className="station-label">Monitor Display</span><span className="station-sublabel">Live queue and ticket announcements</span></button>
       <a className="station-card client-history-link workstation-tool" href="client-history.html"><span className="station-symbol"><WorkstationIcon name="history"/></span><span className="station-label">Service Summary</span><span className="station-sublabel">Tickets issued by requested service</span></a>
       <a className="station-card workstation-tool" href="reports.html"><span className="station-symbol"><WorkstationIcon name="reports"/></span><span className="station-label">Queue Reports</span><span className="station-sublabel">Visit totals, window activity, and service times</span></a>
-      <a className="station-card workstation-tool" href="secret-management.html"><span className="station-symbol"><WorkstationIcon name="video"/></span><span className="station-label">Video Playlist</span><span className="station-sublabel">Upload, preview, and arrange monitor videos</span></a>
      </div>
     </section>
     <input type="hidden" id="workspaceSelect" required/>

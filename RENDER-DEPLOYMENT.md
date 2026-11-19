@@ -1,13 +1,17 @@
 # Fresh deployment test: Laoag Engineering's Office
 
 Use a private `majingamo/laoag-engineerings-office` repository, two free Render
-Node web services, two separate Neon databases, and Cloudinary for videos.
+Node web services, and two separate Neon databases.
 This is a team test; the IT department will handle the official deployment.
 Local records remain separate from these new cloud copies.
 
-## Current test deployment — 16 November 2026
+The current Queue release shows tickets and spoken announcements. The hosted
+setup and acceptance steps below apply to this release. The dated deployment
+notes describe past releases, including their former playlist behavior.
 
-Permit and Queue are live on application commit [`105e401`](https://github.com/majingamo/laoag-engineerings-office/commit/105e4016baed5eb5db24fc1fd8d059cfbd937e06). The public Queue Monitor shows the three service windows and reads ticket calls automatically when its browser allows autoplay. A click on the monitor retries blocked audio. Both health endpoints and login pages passed the hosted check. [Permit deploy](https://dashboard.render.com/web/srv-db5jg8g473hc73bdaieg/deploys/dep-dbt9u5k9v7es73a0vdd0) · [Queue deploy](https://dashboard.render.com/web/srv-db5jmgflot8c73f7615g/deploys/dep-dbt9u45ckfvc739h5l1g)
+## Test deployment record — 16 November 2026
+
+Permit and Queue deployed application commit [`105e401`](https://github.com/majingamo/laoag-engineerings-office/commit/105e4016baed5eb5db24fc1fd8d059cfbd937e06). The public Queue Monitor showed the three service windows and read ticket calls automatically when its browser allowed autoplay. A click on the monitor retried blocked audio. Both health endpoints and login pages passed the hosted check. [Permit deploy](https://dashboard.render.com/web/srv-db5jg8g473hc73bdaieg/deploys/dep-dbt9u5k9v7es73a0vdd0) · [Queue deploy](https://dashboard.render.com/web/srv-db5jmgflot8c73f7615g/deploys/dep-dbt9u45ckfvc739h5l1g)
 
 Use the [IT handoff guide](docs/it-handoff.md) for the office installation with empty databases. The restore steps below belong to the hosted test environment.
 
@@ -144,10 +148,11 @@ migration reports and uploaded media. The original checkout and remote stay inta
 Use direct connections for both restoring and the application. The application's
 startup timezone/timeout options caused `08P01` with the previous pooled endpoint.
 
-## 2. Restore the fresh archives using pgAdmin
+## 2. Restore a verified test archive using pgAdmin
 
-Register the new Neon server in pgAdmin with the direct hostname, port `5432`,
-owner role/password and SSL enabled. Right-click each new database > **Restore**:
+Use verified synthetic test archives that match the application release. Register
+the new Neon server in pgAdmin with the direct hostname, port `5432`, owner
+role/password and SSL enabled. Right-click each empty database and choose **Restore**.
 
 | Neon database | Matching archive from the backup folder |
 | --- | --- |
@@ -168,16 +173,13 @@ FROM information_schema.tables
 WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
 ```
 
-Immediately after restoring the 11 October archives, expect 21 Permit tables and
-6 Queue tables. Before starting the latest code, run
-`backend/migration/permit-inspections.sql` as the owner in the Permit database's
-`public` schema. This adds the Building inspection table and brings Permit to 22
-tables. Also apply `backend/migration/permit-checklists.sql` to add Building
-requirements storage and bring Permit to 23 tables. Grant the application's role
-table CRUD and identity-sequence USAGE/SELECT
-if it differs from the owner. The current pilot already has this migration.
-Inspect restore errors before retrying; do not delete existing records to force
-the counts to match.
+Compare the restored databases with the archive manifest. Test the target release
+against the restored schema before switching either service to these databases.
+If you use the historical October 11 archives above, they contain 21 Permit
+tables and 6 Queue tables at that date. They require subsequent schema updates
+before use with a later release. Have the database owner review the required
+migrations and grants for the target release. Some Windows migration scripts
+check for local database and role names.
 
 ## 3. New private GitHub repository
 
@@ -243,14 +245,8 @@ Set these additionally on **Queue**:
 | Variable | Value |
 | --- | --- |
 | `QUEUE_DATABASE_URL` | Private direct URL for `laoag_queue_test` |
-| `QUEUE_VIDEO_STORAGE` | `cloudinary` |
-| `CLOUDINARY_CLOUD_NAME` | Existing Cloudinary cloud name |
-| `CLOUDINARY_API_KEY` | Existing Cloudinary API key |
-| `CLOUDINARY_API_SECRET` | Existing Cloudinary API secret |
 
-Keep secret values only in Render's private environment settings. Reuse the
-existing Cloudinary account if available; deleting Render and Neon does not delete
-Cloudinary. Do not choose paid plans for this test.
+Keep secret values only in Render's private environment settings.
 
 Deploy Permit first and check `/api/health` and `/login`. Then deploy Queue and
 check `/api/health`, `/log-in.html` and `/monitor.html`. Queue signs in through
@@ -272,23 +268,21 @@ Do not guess the URLs or reuse deleted services' addresses. Click **Back to
 portal** from both logins and verify both portal cards open the actual cloud sites.
 No link should open `localhost`.
 
-## 6. Verify stored clips through the staff playlist
+## 6. Verify the public queue monitor
 
-The dump holds metadata; a local `uploads/...` file cannot play on Render. As an
-operator, admin or superadmin, open Queue's video page, upload the backed-up clip
-from `media/`, preview it and choose its order. Disable an unavailable old local
-entry if needed. Existing Cloudinary URLs remain playable in playlist preview without re-uploading. The public queue monitor shows tickets and speaks announcements.
-
-Redeploy Queue and verify the video and tickets remain. Records persist in Neon,
-and new videos persist in Cloudinary; Render's free filesystem is temporary.
+Open `/monitor.html` with no staff session. Issue synthetic tickets from the
+Registration Desk and call one from each window. Verify each ticket shows in
+its assigned window and the announcement reads out the number and window. If
+browser autoplay blocks audio, click the monitor once and recall the ticket.
+Refresh the page and confirm it still reflects the active queue.
 
 ## 7. Hosted acceptance tests
 
 Use different accounts in separate browser profiles/devices. Check both logins,
 roles, logout and session replacement; copied permits/accounts/tickets/history;
 UAT permit edits and admin approval; remarks and printed display names; all three
-queue windows, monitor isolation, and audible ticket announcements; reports with Manila dates; CSV/Excel exports;
-and operator video upload/preview/reordering/toggling after a restart.
+queue windows, monitor isolation, and audible ticket announcements; reports with
+Manila dates; and CSV/Excel exports.
 
 Separate Render domains have separate cookies. Signing in again on the same
 account intentionally replaces its prior session across both systems. Use distinct
@@ -299,5 +293,4 @@ References: [Render web services](https://render.com/docs/web-services),
 [Blueprint specification](https://render.com/docs/blueprint-spec),
 [Node version configuration](https://render.com/docs/node-version),
 [Free limits](https://render.com/docs/free),
-[Neon PostgreSQL migration](https://neon.com/docs/import/migrate-from-postgres),
-[Cloudinary uploads](https://cloudinary.com/documentation/node_image_and_video_upload).
+[Neon PostgreSQL migration](https://neon.com/docs/import/migrate-from-postgres).

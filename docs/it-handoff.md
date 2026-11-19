@@ -28,7 +28,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\backend\migration\Appl
 | Database | Used by | Stores |
 | --- | --- | --- |
 | `permit_system_migration` | Permit and Queue | Building and occupancy records, staff accounts and sessions, and permit history |
-| `queue_system_migration` | Queue | Tickets, workstation and queue activity, client history, and playlist metadata |
+| `queue_system_migration` | Queue | Active and archived tickets, workstation state, and queue activity |
+
+The repository's fresh schema starts the first building permit at `BP-53`, the
+first occupancy permit at `OP-7`, and the first queue ticket at `TKT-1014`.
+These values come from the schema's identity defaults. An active queue reset
+starts subsequent tickets at `TKT-1001` while retaining archived history.
 
 The apps validate the PostgreSQL schema at startup. Start Permit first and
 then Queue. Run one command per PowerShell terminal and keep both open.
@@ -91,4 +96,4 @@ For an office server, have IT provide the staff-facing HTTPS addresses and super
 
 Set `PERMIT_PUBLIC_ORIGIN` and `QUEUE_PUBLIC_ORIGIN` on both services so portal links use the office addresses. For HTTPS, set `PERMIT_COOKIE_SECURE=true` on both services. If a reverse proxy is used, it must support Socket.IO WebSocket connections for Queue. See [security configuration](../SECURITY-CONFIGURATION.md) before setting proxy trust.
 
-Before handoff, sign in with an Operator and a Superadmin, verify both registries and reporting, and issue and call a synthetic ticket at each window from a separate account. Check the announcements through the actual monitor speakers. Configure backups for both PostgreSQL databases and perform a restore into separate databases. Keep the Render pilot for synthetic test records. [Acceptance checklist](../LOCAL-UAT-CHECKLIST.md) · [Test results](../FULL-LOCAL-UAT-2026-11-19.md) · [Backup and recovery](../POSTGRES-BACKUP-RECOVERY.md)
+Before handoff, sign in with an Operator and a Superadmin, verify both registries and reporting, and issue and call a synthetic ticket at each window from a separate account. Check the announcements through the actual monitor speakers. Configure backups for both PostgreSQL databases and perform a restore into separate databases. Keep the Render pilot for synthetic test records. [Current acceptance checklist](../LOCAL-UAT-CHECKLIST.md) · [November 19, 2026 test results](../FULL-LOCAL-UAT-2026-11-19.md) · [Backup and recovery](../POSTGRES-BACKUP-RECOVERY.md)

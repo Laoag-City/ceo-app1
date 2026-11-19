@@ -10,7 +10,6 @@ import Page8 from './features/queue/login.jsx'
 import Page9 from './features/queue/service-desk.jsx'
 import Page10 from './features/queue/monitor.jsx'
 import Page11 from './features/queue/audit-logs.jsx'
-import Page12 from './features/queue/management.jsx'
 import Page13 from './features/queue/client-history.jsx'
 import QueueReports from './features/queue/reports.jsx'
 import MonthlyReports from './features/administration/monthly-reports.jsx'
@@ -30,7 +29,6 @@ export default {
 "queue-kiosk": Page9,
 "queue-monitor": Page10,
 "queue-audit-logs": Page11,
-"queue-secret-management": Page12,
 "queue-client-history": Page13,
 "queue-reports": QueueReports
 }

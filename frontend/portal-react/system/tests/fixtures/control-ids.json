@@ -317,12 +317,5 @@
     "reportDailyRows",
     "reportWindowRows",
     "reportUpdated"
-  ],
-  "queue-secret-management": [
-    "dropzone",
-    "fileInput",
-    "fileNameSpan",
-    "fileSelectedFeedback",
-    "videoUploadForm"
   ]
 }

@@ -92,7 +92,13 @@ function App() {
       <div className="service-grid">{services.map(service => <ServiceCard key={service.id} service={service} status={statuses[service.id]}/>)}</div>
       <div className="support-strip"><div><ShieldCheck size={17}/><span>Authorized personnel only<span className="support-detail"> · Sign in to your workspace to continue.</span></span></div><Button variant="ghost" onClick={() => setRefresh(value => value + 1)} disabled={Object.values(statuses).includes('checking')}><RefreshCw className={Object.values(statuses).includes('checking') ? 'refreshing' : ''}/>Refresh status</Button></div>
     </main>
-    <footer><span>Office of the City Engineer <span className="footer-dot">/</span> Systems portal</span><span><MapPin size={13}/> Laoag City, Philippines</span></footer>
+    <footer>
+      <span className="footer-description">
+        <span>Office of the City Engineer <span className="footer-dot">/</span> Systems portal</span>
+        <span>Developed by Gabriel C. Gamo &amp; Sherwin Angelo E. Pesado - MMSU CCIS BSIT</span>
+      </span>
+      <span><MapPin size={13}/> Laoag City, Philippines</span>
+    </footer>
   </div>
 }
 function ServiceCard({ service, status }) {
